@@ -822,10 +822,51 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Молодець!'), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.text('Молодець!')).style?.decoration,
+      TextDecoration.none,
+    );
 
     await tester.pump(const Duration(milliseconds: 700));
     await tester.pumpAndSettle();
     expect(find.text('Молодець!'), findsNothing);
+  });
+
+  testWidgets('answer flash sits above the keyboard', (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    tester.view.viewInsets = const FakeViewPadding(bottom: 320);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetViewInsets);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.cute,
+        home: Builder(
+          builder: (context) {
+            return Scaffold(
+              body: Center(
+                child: FilledButton(
+                  onPressed: () => showAnswerFlash(context),
+                  child: const Text('go'),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('go'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final center = tester.getCenter(find.text('Молодець!'));
+    expect(center.dy, lessThan(320));
+
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pumpAndSettle();
   });
 
   testWidgets('game field keeps focus after the keyboard opens', (tester) async {
