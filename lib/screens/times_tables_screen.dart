@@ -8,11 +8,12 @@ import '../data/game_round.dart';
 import '../state/habit_scope.dart';
 import '../strings.dart';
 import '../theme.dart';
+import '../widgets/answer_flash.dart';
 import '../widgets/axolotl_mascot.dart';
-import '../widgets/game_plays_banner.dart';
 import '../widgets/game_round_summary.dart';
 import '../widgets/game_scaffold.dart';
 import '../widgets/game_score_bar.dart';
+import '../widgets/game_setup_body.dart';
 
 class TimesTablesScreen extends StatefulWidget {
   const TimesTablesScreen({super.key});
@@ -34,6 +35,7 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
   var _busy = false;
   var _showSummary = false;
   var _roundPoints = 0;
+  var _playing = false;
   String? _feedback;
 
   int get _answer => _a * _b;
@@ -41,10 +43,10 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
   bool get _infinite =>
       HabitScope.of(context).playsLeft(AppConfig.timesTablesGame) <= 0;
 
-  @override
-  void initState() {
-    super.initState();
-    _next();
+  int get _roundReward {
+    if (_min == 1 && _max == 5) return AppConfig.timesTablesEasyPoints;
+    if (_min == 6 && _max == 10) return AppConfig.timesTablesHardPoints;
+    return AppConfig.timesTablesNormalPoints;
   }
 
   void _setRange(int min, int max) {
@@ -67,11 +69,21 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
     });
   }
 
-  void _continueAfterRound() {
+  void _start() {
     _round.reset();
     _roundPoints = 0;
     _showSummary = false;
+    _playing = true;
     _next();
+  }
+
+  void _continueAfterRound() {
+    setState(() {
+      _playing = false;
+      _showSummary = false;
+      _round.reset();
+      _roundPoints = 0;
+    });
   }
 
   Future<void> _finishItem(bool success) async {
@@ -79,7 +91,10 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
     if (!_infinite && _round.isComplete) {
       _roundPoints = await HabitScope.of(
         context,
-      ).tryAwardGamePlay(AppConfig.timesTablesGame);
+      ).tryAwardGamePlay(
+        AppConfig.timesTablesGame,
+        points: _roundReward,
+      );
       if (!mounted) return;
       setState(() {
         _showSummary = true;
@@ -115,9 +130,8 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
       setState(() {
         _busy = true;
         _mood = AxolotlMood.celebrate;
-        _feedback = S.correct;
       });
-      await Future<void>.delayed(const Duration(milliseconds: 800));
+      await showAnswerFlash(context);
       if (!mounted) return;
       await _finishItem(true);
       return;
@@ -143,7 +157,7 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
     return GameScaffold(
       title: S.timesTables,
       mood: _mood,
-      footer: _showSummary
+      footer: !_playing || _showSummary
           ? null
           : Padding(
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
@@ -161,31 +175,39 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
               gameId: AppConfig.timesTablesGame,
               onContinue: _continueAfterRound,
             )
+          : !_playing
+          ? GameSetupBody(
+              gameId: AppConfig.timesTablesGame,
+              onStart: _start,
+              options: [
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  children: [
+                    GameModeChip(
+                      selected: _min == 1 && _max == 5,
+                      onTap: () => _setRange(1, 5),
+                      points: AppConfig.timesTablesEasyPoints,
+                      child: const Text(S.easy),
+                    ),
+                    GameModeChip(
+                      selected: _min == 1 && _max == 10,
+                      onTap: () => _setRange(1, 10),
+                      points: AppConfig.timesTablesNormalPoints,
+                      child: const Text(S.normal),
+                    ),
+                    GameModeChip(
+                      selected: _min == 6 && _max == 10,
+                      onTap: () => _setRange(6, 10),
+                      points: AppConfig.timesTablesHardPoints,
+                      child: const Text(S.hard),
+                    ),
+                  ],
+                ),
+              ],
+            )
           : ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         children: [
-          const GamePlaysBanner(gameId: AppConfig.timesTablesGame),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _RangeChip(
-                label: S.easy,
-                selected: _min == 1 && _max == 5,
-                onTap: () => _setRange(1, 5),
-              ),
-              _RangeChip(
-                label: S.normal,
-                selected: _min == 1 && _max == 10,
-                onTap: () => _setRange(1, 10),
-              ),
-              _RangeChip(
-                label: S.hard,
-                selected: _min == 6 && _max == 10,
-                onTap: () => _setRange(6, 10),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
           GameScoreBar(round: _round, infinite: _infinite),
           const SizedBox(height: 12),
           Text(
@@ -229,31 +251,6 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
                   ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _RangeChip extends StatelessWidget {
-  const _RangeChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: selected,
-        selectedColor: AppColors.blush,
-        onSelected: (_) => onTap(),
       ),
     );
   }

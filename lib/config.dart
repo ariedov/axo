@@ -11,6 +11,12 @@ class AppConfig {
   static const rewardedPlaysPerGame = 3;
   static const roundLength = 10;
   static const gamePlayPoints = 5;
+  static const spellingRoundPoints = 5;
+  static const timesTablesEasyPoints = 1;
+  static const timesTablesNormalPoints = 3;
+  static const timesTablesHardPoints = 5;
+  static const englishOneWayPoints = 3;
+  static const englishBothWaysPoints = 5;
 
   static const timesTablesGame = 'times_tables';
   static const spellingGame = 'spelling';

@@ -68,7 +68,8 @@ class LocalTaskRepository implements TaskRepository {
     final rolled = TaskSnapshot(
       day: today,
       tasks: [
-        for (final task in saved.tasks) task.copyWith(status: TaskStatus.pending),
+        for (final task in saved.tasks)
+          if (!task.todayOnly) task.copyWith(status: TaskStatus.pending),
       ],
     );
     await save(rolled);

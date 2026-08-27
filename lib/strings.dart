@@ -26,6 +26,8 @@ class S {
   static const sendBack = 'Повернути';
   static const cancel = 'Скасувати';
   static const addTask = 'Додати завдання';
+  static const addTodayTaskPrompt =
+      'Введи пароль, щоб додати завдання на сьогодні';
   static const editTask = 'Змінити завдання';
   static const taskTitle = 'Назва';
   static const taskPoints = 'Бали';
@@ -66,6 +68,9 @@ class S {
   static const passwordTooShort = 'Щонайменше 4 символи';
   static const passwordsDontMatch = 'Паролі не збігаються';
   static const letsGo = 'Поїхали!';
+  static const pickGameMode = 'Оберіть режим';
+
+  static String pointsPerRound(int n) => '${pointsWord(n)} за раунд';
   static const ok = 'Гаразд';
   static const currentPassword = 'Поточний пароль';
   static const newPassword = 'Новий пароль';

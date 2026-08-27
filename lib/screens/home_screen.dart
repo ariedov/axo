@@ -15,6 +15,7 @@ import '../widgets/goal_tile.dart';
 import '../widgets/parent_gate.dart';
 import '../widgets/points_hero.dart';
 import '../widgets/task_calendar.dart';
+import '../widgets/task_editor.dart';
 import '../widgets/task_tile.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -85,8 +86,11 @@ class HomeScreen extends StatelessWidget {
                       },
                     ),
                   ],
-                  const SliverToBoxAdapter(
-                    child: _SectionTitle(title: S.todaysTasks),
+                  SliverToBoxAdapter(
+                    child: _SectionTitle(
+                      title: S.todaysTasks,
+                      onAdd: () => _addTodayTask(context),
+                    ),
                   ),
                   SliverList.builder(
                     itemCount: store.tasks.length,
@@ -130,6 +134,15 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _addTodayTask(BuildContext context) async {
+    if (!await askParent(context, message: S.addTodayTaskPrompt)) return;
+    if (!context.mounted) return;
+    final result = await editTaskDialog(context, todayOnly: true);
+    final task = result?.task;
+    if (task == null || !context.mounted) return;
+    await HabitScope.of(context).upsertTask(task);
+  }
+
   Future<void> _spendGoal(BuildContext context, RewardGoal goal) async {
     final store = HabitScope.of(context);
     if (!goal.canAfford(store.totalPoints)) return;
@@ -152,19 +165,34 @@ class HomeScreen extends StatelessWidget {
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title});
+  const _SectionTitle({required this.title, this.onAdd});
 
   final String title;
+  final VoidCallback? onAdd;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 12, 12, 8),
-      child: Text(
-        title,
-        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.w900,
-        ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          if (onAdd != null)
+            IconButton(
+              key: const Key('add-today-task'),
+              tooltip: S.addTask,
+              onPressed: onAdd,
+              icon: const Icon(Icons.add_circle_rounded),
+              color: AppColors.pinkDark,
+            ),
+        ],
       ),
     );
   }

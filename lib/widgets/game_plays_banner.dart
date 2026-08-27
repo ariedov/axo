@@ -16,17 +16,48 @@ class GamePlaysBanner extends StatelessWidget {
     final used = store.playsUsed(gameId);
     final max = AppConfig.rewardedPlaysPerGame;
     final capped = used >= max;
+
+    if (capped) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(
+          S.gamePointsGone,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 20,
+            height: 1.3,
+            color: AppColors.muted,
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        capped
-            ? S.gamePointsGone
-            : '${S.gamePointsLeft}: ${S.gameRoundsProgress(used, max)}',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontWeight: FontWeight.w800,
-          color: capped ? AppColors.muted : AppColors.goldDeep,
-        ),
+      child: Column(
+        children: [
+          Text(
+            S.gamePointsLeft,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 20,
+              color: AppColors.goldDeep,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            S.gameRoundsProgress(used, max),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontWeight: FontWeight.w900,
+              fontSize: 40,
+              height: 1.1,
+              color: AppColors.goldDeep,
+            ),
+          ),
+        ],
       ),
     );
   }

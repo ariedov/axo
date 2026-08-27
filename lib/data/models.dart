@@ -7,6 +7,7 @@ class HabitTask {
     required this.points,
     required this.icon,
     this.status = TaskStatus.pending,
+    this.todayOnly = false,
   });
 
   final String id;
@@ -14,6 +15,7 @@ class HabitTask {
   final int points;
   final String icon;
   final TaskStatus status;
+  final bool todayOnly;
 
   bool get isPending => status == TaskStatus.pending;
   bool get isSubmitted => status == TaskStatus.submitted;
@@ -24,6 +26,7 @@ class HabitTask {
     int? points,
     String? icon,
     TaskStatus? status,
+    bool? todayOnly,
   }) {
     return HabitTask(
       id: id,
@@ -31,6 +34,7 @@ class HabitTask {
       points: points ?? this.points,
       icon: icon ?? this.icon,
       status: status ?? this.status,
+      todayOnly: todayOnly ?? this.todayOnly,
     );
   }
 
@@ -40,6 +44,7 @@ class HabitTask {
     'points': points,
     'icon': icon,
     'status': status.name,
+    'todayOnly': todayOnly,
   };
 
   factory HabitTask.fromJson(Map<String, dynamic> json) {
@@ -52,6 +57,7 @@ class HabitTask {
         (value) => value.name == json['status'],
         orElse: () => TaskStatus.pending,
       ),
+      todayOnly: json['todayOnly'] == true,
     );
   }
 }

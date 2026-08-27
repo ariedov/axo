@@ -81,6 +81,14 @@ class SpeechBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.titleMedium?.copyWith(
+      fontWeight: FontWeight.w800,
+      height: 1.3,
+    );
+    final fontSize = style?.fontSize ?? 16;
+    final lineHeight = fontSize * (style?.height ?? 1.3);
+    final twoLines = MediaQuery.textScalerOf(context).scale(lineHeight) * 2;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24),
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
@@ -95,11 +103,17 @@ class SpeechBubble extends StatelessWidget {
           ),
         ],
       ),
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w800,
+      child: SizedBox(
+        height: twoLines,
+        width: double.infinity,
+        child: Center(
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: style,
+          ),
         ),
       ),
     );

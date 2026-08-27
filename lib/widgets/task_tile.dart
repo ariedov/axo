@@ -15,10 +15,9 @@ class TaskTile extends StatelessWidget {
     required this.onVerify,
   });
 
-  static const height = 120.0;
-  static const actionWidth = 108.0;
-  static const actionHeight = 44.0;
-  static const titleHeight = 44.0;
+  static const height = 128.0;
+  static const actionHeight = 48.0;
+  static const _actionSlot = 148.0;
 
   final HabitTask task;
   final VoidCallback onSubmit;
@@ -46,27 +45,22 @@ class TaskTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         child: Container(
           height: height,
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(22),
             border: Border.all(color: colors.$2, width: 2),
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Stack(
             children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: _StatusMark(status: task.status, icon: task.icon),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      height: titleHeight,
-                      child: Align(
-                        alignment: Alignment.topLeft,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _StatusMark(status: task.status, icon: task.icon),
+                      const SizedBox(width: 10),
+                      Expanded(
                         child: Text(
                           task.title,
                           maxLines: 2,
@@ -74,57 +68,55 @@ class TaskTile extends StatelessWidget {
                           style: titleStyle,
                         ),
                       ),
+                    ],
+                  ),
+                  const Spacer(),
+                  Align(
+                    alignment: Alignment.bottomRight,
+                    child: _Action(
+                      task: task,
+                      onSubmit: onSubmit,
+                      onUnsubmit: onUnsubmit,
+                      onVerify: onVerify,
                     ),
-                    const Spacer(),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                S.plusPoints(task.points),
-                                maxLines: 1,
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(
-                                      color: AppColors.pinkDark,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                              ),
-                              Text(
-                                switch (task.status) {
-                                  TaskStatus.submitted => S.waiting,
-                                  TaskStatus.verified => S.verified,
-                                  TaskStatus.pending => '',
-                                },
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      color: task.isVerified
-                                          ? AppColors.tealDark
-                                          : AppColors.goldDeep,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(
-                          width: actionWidth,
-                          height: actionHeight,
-                          child: _Action(
-                            task: task,
-                            onSubmit: onSubmit,
-                            onUnsubmit: onUnsubmit,
-                            onVerify: onVerify,
-                          ),
-                        ),
-                      ],
+                  ),
+                ],
+              ),
+              Positioned(
+                left: 0,
+                bottom: 0,
+                child: IgnorePointer(
+                  child: Text(
+                    S.plusPoints(task.points),
+                    maxLines: 1,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.pinkDark,
+                      fontWeight: FontWeight.w800,
+                      height: 1.15,
                     ),
-                  ],
+                  ),
                 ),
               ),
+              if (task.status != TaskStatus.pending)
+                Positioned(
+                  left: 0,
+                  right: _actionSlot,
+                  bottom: 20,
+                  child: IgnorePointer(
+                    child: Text(
+                      task.isSubmitted ? S.waiting : S.verified,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: task.isVerified
+                            ? AppColors.tealDark
+                            : AppColors.goldDeep,
+                        fontWeight: FontWeight.w700,
+                        height: 1.15,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -174,47 +166,51 @@ class _Action extends StatelessWidget {
   final VoidCallback onUnsubmit;
   final VoidCallback onVerify;
 
+  static const _labelStyle = TextStyle(
+    fontFamily: 'Nunito',
+    fontWeight: FontWeight.w800,
+    fontSize: 16,
+  );
+
   ButtonStyle get _buttonStyle => FilledButton.styleFrom(
     minimumSize: const Size(0, TaskTile.actionHeight),
-    maximumSize: const Size(TaskTile.actionWidth, TaskTile.actionHeight),
-    padding: const EdgeInsets.symmetric(horizontal: 8),
+    padding: const EdgeInsets.symmetric(horizontal: 16),
     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    visualDensity: VisualDensity.compact,
+    textStyle: _labelStyle,
   );
 
   @override
   Widget build(BuildContext context) {
     if (task.isVerified) {
-      return const Center(
-        child: Icon(Icons.verified_rounded, color: AppColors.tealDark, size: 32),
+      return const Icon(
+        Icons.verified_rounded,
+        color: AppColors.tealDark,
+        size: 32,
       );
     }
 
     if (task.isSubmitted) {
       return Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            width: 40,
-            height: TaskTile.actionHeight,
-            child: IconButton(
-              onPressed: onUnsubmit,
-              tooltip: S.notYet,
-              padding: EdgeInsets.zero,
-              icon: const Icon(Icons.undo_rounded),
-              color: AppColors.muted,
-            ),
+          IconButton(
+            onPressed: onUnsubmit,
+            tooltip: S.notYet,
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 48),
+            icon: const Icon(Icons.undo_rounded),
+            color: AppColors.muted,
           ),
-          Expanded(
-            child: FilledButton(
-              onPressed: () {
-                HapticFeedback.selectionClick();
-                onVerify();
-              },
-              style: _buttonStyle.copyWith(
-                backgroundColor: const WidgetStatePropertyAll(AppColors.goldDeep),
-              ),
-              child: const FittedBox(child: Text(S.verify)),
+          FilledButton(
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              onVerify();
+            },
+            style: _buttonStyle.copyWith(
+              backgroundColor: const WidgetStatePropertyAll(AppColors.goldDeep),
             ),
+            child: const Text(S.verify),
           ),
         ],
       );
@@ -226,7 +222,7 @@ class _Action extends StatelessWidget {
         onSubmit();
       },
       style: _buttonStyle,
-      child: const FittedBox(child: Text(S.done)),
+      child: const Text(S.done),
     );
   }
 }

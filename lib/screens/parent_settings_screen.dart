@@ -125,6 +125,7 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final store = HabitScope.of(context);
+    final daily = store.dailyTasks;
 
     return Scaffold(
       appBar: AppBar(title: const Text(S.parentSection)),
@@ -181,10 +182,10 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 sliver: SliverReorderableList(
-                  itemCount: store.tasks.length,
-                  onReorderItem: store.reorderTasks,
+                  itemCount: daily.length,
+                  onReorderItem: store.reorderDailyTasks,
                   itemBuilder: (context, index) {
-                    final task = store.tasks[index];
+                    final task = daily[index];
                     return Padding(
                       key: ValueKey(task.id),
                       padding: const EdgeInsets.only(bottom: 10),

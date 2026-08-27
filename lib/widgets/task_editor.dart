@@ -17,17 +17,22 @@ class TaskEditResult {
 Future<TaskEditResult?> editTaskDialog(
   BuildContext context, {
   HabitTask? existing,
+  bool todayOnly = false,
 }) {
   return showDialog<TaskEditResult>(
     context: context,
-    builder: (context) => _TaskEditor(existing: existing),
+    builder: (context) => _TaskEditor(
+      existing: existing,
+      todayOnly: existing?.todayOnly ?? todayOnly,
+    ),
   );
 }
 
 class _TaskEditor extends StatefulWidget {
-  const _TaskEditor({this.existing});
+  const _TaskEditor({this.existing, this.todayOnly = false});
 
   final HabitTask? existing;
+  final bool todayOnly;
 
   @override
   State<_TaskEditor> createState() => _TaskEditorState();
@@ -68,6 +73,7 @@ class _TaskEditorState extends State<_TaskEditor> {
           points: points,
           icon: _icon,
           status: widget.existing?.status ?? TaskStatus.pending,
+          todayOnly: widget.todayOnly,
         ),
       ),
     );

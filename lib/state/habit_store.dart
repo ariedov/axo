@@ -48,6 +48,10 @@ class HabitStore extends ChangeNotifier {
   int get pendingCount => tasks.where((task) => task.isPending).length;
   int get waitingCount => tasks.where((task) => task.isSubmitted).length;
   int get verifiedCount => tasks.where((task) => task.isVerified).length;
+  List<HabitTask> get dailyTasks => [
+    for (final task in tasks)
+      if (!task.todayOnly) task,
+  ];
 
   Future<void> load() async {
     totalPoints = await pointsRepo.fetchTotal();
@@ -110,17 +114,18 @@ class HabitStore extends ChangeNotifier {
   }
 
   /// Awards once per completed round. Returns 0 when the daily cap is reached.
-  Future<int> tryAwardGamePlay(String gameId) async {
+  Future<int> tryAwardGamePlay(String gameId, {int? points}) async {
     if (playsLeft(gameId) <= 0) return 0;
+    final amount = points ?? AppConfig.gamePlayPoints;
 
     plays = plays.increment(gameId);
     await gamePlays.save(plays);
     totalPoints = await pointsRepo.award(
-      amount: AppConfig.gamePlayPoints,
+      amount: amount,
       taskId: 'game:$gameId',
     );
     notifyListeners();
-    return AppConfig.gamePlayPoints;
+    return amount;
   }
 
   Future<void> submit(String taskId) {
@@ -156,7 +161,7 @@ class HabitStore extends ChangeNotifier {
   Future<void> upsertTask(HabitTask task) async {
     final index = tasks.indexWhere((item) => item.id == task.id);
     if (index == -1) {
-      tasks = [...tasks, task];
+      tasks = _insertTask(task);
     } else {
       final copy = [...tasks];
       copy[index] = task;
@@ -182,6 +187,31 @@ class HabitStore extends ChangeNotifier {
     tasks = copy;
     await _persist();
     notifyListeners();
+  }
+
+  Future<void> reorderDailyTasks(int oldIndex, int newIndex) async {
+    if (oldIndex == newIndex) return;
+    final daily = dailyTasks;
+    final moved = daily.removeAt(oldIndex);
+    daily.insert(newIndex, moved);
+    var index = 0;
+    tasks = [
+      for (final task in tasks)
+        if (task.todayOnly) task else daily[index++],
+    ];
+    await _persist();
+    notifyListeners();
+  }
+
+  List<HabitTask> _insertTask(HabitTask task) {
+    if (task.todayOnly) return [...tasks, task];
+    final extrasStart = tasks.indexWhere((item) => item.todayOnly);
+    if (extrasStart == -1) return [...tasks, task];
+    return [
+      ...tasks.sublist(0, extrasStart),
+      task,
+      ...tasks.sublist(extrasStart),
+    ];
   }
 
   Future<void> upsertGoal(RewardGoal goal) async {

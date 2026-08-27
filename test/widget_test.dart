@@ -18,7 +18,11 @@ import 'package:app/state/habit_scope.dart';
 import 'package:app/state/habit_store.dart';
 import 'package:app/strings.dart';
 import 'package:app/theme.dart';
+import 'package:app/widgets/answer_flash.dart';
+import 'package:app/widgets/axolotl_mascot.dart';
+import 'package:app/widgets/game_input_body.dart';
 import 'package:app/widgets/game_plays_banner.dart';
+import 'package:app/widgets/game_scaffold.dart';
 import 'package:app/widgets/task_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -123,6 +127,36 @@ void main() {
     expect(store.tasks.map((task) => task.id), ['c', 'b', 'a']);
   });
 
+  test('today-only extras stay off the daily list', () async {
+    final store = testStore(
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+      ],
+    );
+    await store.load();
+    await store.upsertTask(
+      const HabitTask(
+        id: 'park',
+        title: 'Прогулянка',
+        points: 15,
+        icon: 'walk',
+        todayOnly: true,
+      ),
+    );
+    expect(store.tasks.map((task) => task.id), ['bed', 'park']);
+    expect(store.dailyTasks.map((task) => task.id), ['bed']);
+
+    await store.upsertTask(
+      const HabitTask(id: 'teeth', title: 'Зуби', points: 5, icon: 'hygiene'),
+    );
+    expect(store.tasks.map((task) => task.id), ['bed', 'teeth', 'park']);
+    expect(store.dailyTasks.map((task) => task.id), ['bed', 'teeth']);
+
+    await store.reorderDailyTasks(0, 1);
+    expect(store.dailyTasks.map((task) => task.id), ['teeth', 'bed']);
+    expect(store.tasks.map((task) => task.id), ['teeth', 'bed', 'park']);
+  });
+
   test('goals can be saved, reordered, and spent', () async {
     final store = testStore(
       points: 80,
@@ -172,6 +206,44 @@ void main() {
     expect(loaded.current.tasks.single.isPending, isTrue);
     expect(loaded.previous?.day, '2026-08-26');
     expect(loaded.previous?.tasks.single.isVerified, isTrue);
+  });
+
+  test('today-only tasks disappear the next day', () async {
+    final memory = <String, String>{};
+    memory['tasks_snapshot'] = jsonEncode(
+      TaskSnapshot(
+        day: '2026-08-26',
+        tasks: const [
+          HabitTask(
+            id: 'bed',
+            title: 'Застелити ліжко',
+            points: 10,
+            icon: 'bed',
+            status: TaskStatus.verified,
+          ),
+          HabitTask(
+            id: 'park',
+            title: 'Прогулянка',
+            points: 15,
+            icon: 'walk',
+            todayOnly: true,
+            status: TaskStatus.verified,
+          ),
+        ],
+      ).toJson(),
+    );
+
+    final repo = LocalTaskRepository(
+      (key) async => memory[key],
+      (key, value) async => memory[key] = value,
+      now: () => DateTime(2026, 8, 27),
+    );
+
+    final loaded = await repo.loadToday();
+    expect(loaded.current.tasks, hasLength(1));
+    expect(loaded.current.tasks.single.id, 'bed');
+    expect(loaded.current.tasks.single.isPending, isTrue);
+    expect(loaded.previous?.tasks, hasLength(2));
   });
 
   test('yesterday progress is saved when the day rolls over', () async {
@@ -293,6 +365,21 @@ void main() {
     expect(await store.tryAwardGamePlay('spelling'), 5);
   });
 
+  test('game rounds award different points by mode', () async {
+    final store = testStore();
+    await store.load();
+
+    expect(await store.tryAwardGamePlay('times_tables', points: 1), 1);
+    expect(store.totalPoints, 1);
+    expect(await store.tryAwardGamePlay('times_tables', points: 3), 3);
+    expect(await store.tryAwardGamePlay('times_tables', points: 5), 5);
+    expect(await store.tryAwardGamePlay('times_tables', points: 5), 0);
+    expect(store.totalPoints, 9);
+
+    expect(await store.tryAwardGamePlay('english', points: 3), 3);
+    expect(await store.tryAwardGamePlay('spelling', points: 5), 5);
+  });
+
   testWidgets('game banner counts scored rounds as used out of three', (
     tester,
   ) async {
@@ -310,15 +397,16 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(find.text('Раунди з балами сьогодні: 0/3'), findsOneWidget);
+    expect(find.text('Раунди з балами сьогодні'), findsOneWidget);
+    expect(find.text('0/3'), findsOneWidget);
 
     expect(await store.tryAwardGamePlay('english'), 5);
     await tester.pump();
-    expect(find.text('Раунди з балами сьогодні: 1/3'), findsOneWidget);
+    expect(find.text('1/3'), findsOneWidget);
 
     expect(await store.tryAwardGamePlay('english'), 5);
     await tester.pump();
-    expect(find.text('Раунди з балами сьогодні: 2/3'), findsOneWidget);
+    expect(find.text('2/3'), findsOneWidget);
 
     expect(await store.tryAwardGamePlay('english'), 5);
     await tester.pump();
@@ -361,6 +449,36 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Змінити пароль'), findsOneWidget);
+  });
+
+  testWidgets('parent settings hides today-only tasks', (tester) async {
+    final store = testStore(
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+        HabitTask(
+          id: 'park',
+          title: 'Прогулянка',
+          points: 15,
+          icon: 'walk',
+          todayOnly: true,
+        ),
+      ],
+    );
+    await store.load();
+
+    await tester.pumpWidget(
+      HabitScope(
+        store: store,
+        child: MaterialApp(
+          theme: AppTheme.cute,
+          home: const ParentSettingsScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Застелити ліжко'), findsOneWidget);
+    expect(find.text('Прогулянка'), findsNothing);
   });
 
   testWidgets('parent settings can add and remove points', (tester) async {
@@ -599,10 +717,13 @@ void main() {
     expect(find.text('Почистити зуби'), findsOneWidget);
     expect(find.text('Завдання на сьогодні'), findsOneWidget);
 
+    final bubbleSize = tester.getSize(find.byType(SpeechBubble));
+
     await tester.tap(find.text('Зробив!'));
     await tester.pump();
     expect(find.text('Чекає маму чи тата'), findsOneWidget);
     expect(store.totalPoints, 42);
+    expect(tester.getSize(find.byType(SpeechBubble)), bubbleSize);
 
     await tester.tap(find.text('Перевірити'));
     await tester.pump();
@@ -623,5 +744,125 @@ void main() {
     expect(find.text('Множення'), findsOneWidget);
     expect(find.text('Правопис'), findsOneWidget);
     expect(find.text('Англійська'), findsOneWidget);
+  });
+
+  testWidgets('home can add a today-only task after parent approval', (
+    tester,
+  ) async {
+    final store = testStore(
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+      ],
+    );
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('add-today-task')),
+      300,
+      scrollable: find.byType(Scrollable),
+    );
+    await tester.tap(find.byKey(const Key('add-today-task')));
+    await tester.pump();
+
+    expect(
+      find.text('Введи пароль, щоб додати завдання на сьогодні'),
+      findsOneWidget,
+    );
+    await tester.enterText(find.byType(TextField), 'nope');
+    await tester.tap(find.text('Перевірити'));
+    await tester.pump();
+    expect(find.text('Неправильний пароль'), findsOneWidget);
+    expect(find.text('Додати завдання'), findsNothing);
+
+    await tester.enterText(find.byType(TextField), '4826');
+    await tester.tap(find.text('Перевірити'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Додати завдання'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'Прогулянка');
+    await tester.tap(find.text('Зберегти'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Прогулянка'), findsOneWidget);
+    expect(store.tasks, hasLength(2));
+    expect(store.tasks.last.title, 'Прогулянка');
+    expect(store.tasks.last.todayOnly, isTrue);
+    expect(store.dailyTasks, hasLength(1));
+  });
+
+  testWidgets('answer flash appears then fades away', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.cute,
+        home: Builder(
+          builder: (context) {
+            return Scaffold(
+              body: Center(
+                child: FilledButton(
+                  onPressed: () => showAnswerFlash(context),
+                  child: const Text('go'),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('go'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Молодець!'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pumpAndSettle();
+    expect(find.text('Молодець!'), findsNothing);
+  });
+
+  testWidgets('game field keeps focus after the keyboard opens', (tester) async {
+    final focus = FocusNode();
+    addTearDown(focus.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.cute,
+        home: GameScaffold(
+          title: 'Гра',
+          mood: AxolotlMood.happy,
+          child: GameInputBody(
+            chrome: const [Text('Раунди')],
+            prompt: const [Text('Підказка')],
+            field: TextField(focusNode: focus),
+            action: FilledButton(
+              onPressed: () {},
+              child: const Text('Перевірити'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byType(TextField));
+    await tester.pump();
+    expect(focus.hasFocus, isTrue);
+    expect(find.text('Раунди'), findsOneWidget);
+
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    addTearDown(tester.view.resetViewInsets);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(focus.hasFocus, isTrue);
+    expect(find.text('Раунди'), findsOneWidget);
   });
 }
