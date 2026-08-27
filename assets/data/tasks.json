@@ -1,0 +1,11 @@
+[
+  {"id": "brush-morning", "title": "Почистити зуби вранці", "points": 10, "icon": "hygiene"},
+  {"id": "make-bed", "title": "Застелити ліжко", "points": 10, "icon": "bed"},
+  {"id": "breakfast", "title": "Поснідати", "points": 5, "icon": "food"},
+  {"id": "homework", "title": "Зробити домашнє завдання", "points": 20, "icon": "homework"},
+  {"id": "read", "title": "Почитати книжку", "points": 15, "icon": "read"},
+  {"id": "toys", "title": "Прибрати іграшки", "points": 10, "icon": "toys"},
+  {"id": "walk", "title": "Прогулянка або руханка", "points": 15, "icon": "walk"},
+  {"id": "help", "title": "Допомогти вдома", "points": 15, "icon": "help"},
+  {"id": "brush-evening", "title": "Почистити зуби ввечері", "points": 10, "icon": "night"}
+]
