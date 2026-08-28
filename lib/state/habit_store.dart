@@ -205,8 +205,8 @@ class HabitStore extends ChangeNotifier {
     final task = copy.removeAt(oldIndex);
     copy.insert(newIndex, task);
     tasks = copy;
-    await _persist();
     notifyListeners();
+    await _persist();
   }
 
   Future<void> reorderDailyTasks(int oldIndex, int newIndex) async {
@@ -219,8 +219,8 @@ class HabitStore extends ChangeNotifier {
       for (final task in tasks)
         if (task.todayOnly) task else daily[index++],
     ];
-    await _persist();
     notifyListeners();
+    await _persist();
   }
 
   List<HabitTask> _insertTask(HabitTask task) {
@@ -259,8 +259,8 @@ class HabitStore extends ChangeNotifier {
     final goal = copy.removeAt(oldIndex);
     copy.insert(newIndex, goal);
     goals = copy;
-    await _persistGoals();
     notifyListeners();
+    await _persistGoals();
   }
 
   Future<bool> spendGoal(String goalId, {bool celebrate = true}) async {

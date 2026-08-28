@@ -122,6 +122,30 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
     }
   }
 
+  static Widget _proxyDecorator(
+    Widget child,
+    int index,
+    Animation<double> animation,
+  ) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        final t = Curves.easeOut.transform(animation.value);
+        return Transform.scale(
+          scale: 1 + (0.02 * t),
+          child: Material(
+            elevation: 8 * t,
+            color: Colors.transparent,
+            shadowColor: AppColors.pink.withValues(alpha: 0.35),
+            borderRadius: BorderRadius.circular(18),
+            child: child,
+          ),
+        );
+      },
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final store = HabitScope.of(context);
@@ -184,6 +208,7 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
                 sliver: SliverReorderableList(
                   itemCount: daily.length,
                   onReorderItem: store.reorderDailyTasks,
+                  proxyDecorator: _proxyDecorator,
                   itemBuilder: (context, index) {
                     final task = daily[index];
                     return Padding(
@@ -254,6 +279,7 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
                 sliver: SliverReorderableList(
                   itemCount: store.goals.length,
                   onReorderItem: store.reorderGoals,
+                  proxyDecorator: _proxyDecorator,
                   itemBuilder: (context, index) {
                     final goal = store.goals[index];
                     return Padding(
@@ -527,6 +553,8 @@ class _DailyTaskRow extends StatelessWidget {
                   children: [
                     Text(
                       task.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.w800),
                     ),
                     Text(
@@ -607,6 +635,8 @@ class _GoalRow extends StatelessWidget {
                   children: [
                     Text(
                       goal.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.w800),
                     ),
                     Text(
