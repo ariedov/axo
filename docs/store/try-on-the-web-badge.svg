@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="343" height="125" viewBox="0 0 343 125" role="img" aria-label="Спробувати в браузері">
+  <rect x="1.5" y="1.5" width="340" height="122" rx="18" fill="#000" stroke="#fff" stroke-width="3"/>
+  <g fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round">
+    <circle cx="62" cy="62.5" r="28"/>
+    <ellipse cx="62" cy="62.5" rx="12" ry="28"/>
+    <path d="M34 62.5h56M42 44.5h40M42 80.5h40"/>
+  </g>
+  <text x="108" y="52" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="600" letter-spacing="1.2">СПРОБУВАТИ</text>
+  <text x="108" y="88" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700">у браузері</text>
+</svg>
