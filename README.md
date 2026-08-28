@@ -6,7 +6,7 @@
   <a href="https://play.google.com/store/apps/details?id=com.dleibovych.axo">
     <img src="docs/store/google-play-badge.png" alt="Доступно в Google Play" height="80" />
   </a>
-  &nbsp;&nbsp;
+  
   <a href="https://ariedov.github.io/axo/">
     <img src="docs/store/try-on-the-web-badge.svg" alt="Спробувати в браузері" height="80" />
   </a>
