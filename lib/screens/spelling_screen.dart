@@ -83,6 +83,10 @@ class _SpellingScreenState extends State<SpellingScreen> {
   void _keepKeyboard() {
     if (!mounted || _showSummary || !_playing) return;
     _focus.requestFocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _input.selection = TextSelection.collapsed(offset: _input.text.length);
+    });
   }
 
   void _start() {
@@ -129,6 +133,7 @@ class _SpellingScreenState extends State<SpellingScreen> {
     if (current == null) return;
     final guess = _input.text;
     if (normalizeAnswer(guess).isEmpty) return;
+    _input.selection = TextSelection.collapsed(offset: guess.length);
 
     if (answersMatch(guess, current.word)) {
       HapticFeedback.mediumImpact();

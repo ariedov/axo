@@ -94,7 +94,7 @@ class _AnswerFlashState extends State<_AnswerFlash>
       CurvedAnimation(parent: _fade, curve: Curves.easeOutBack),
     );
 
-    return IgnorePointer(
+    return AbsorbPointer(
       child: FadeTransition(
         opacity: _fade,
         child: ColoredBox(
