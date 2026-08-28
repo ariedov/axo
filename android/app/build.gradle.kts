@@ -26,8 +26,8 @@ android {
         applicationId = "com.dleibovych.axo"
         minSdk = flutter.minSdkVersion
         targetSdk = 36
-        versionCode = 1
-        versionName = "1"
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
         resourceConfigurations += listOf("uk", "en")
     }
 
