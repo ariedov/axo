@@ -89,6 +89,8 @@ class S {
   static const bonusPoints = 'Бонус і штраф';
   static const bonusPointsHint =
       'Нарахуйте або зніміть будь-яку кількість балів.';
+  static const bonusPointsPrompt =
+      'Введи пароль, щоб нарахувати або зняти бали';
   static const addPoints = 'Додати';
   static const removePoints = 'Зняти';
   static const pointsAmount = 'Скільки балів';

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../config.dart';
 import '../data/models.dart';
 import '../state/habit_scope.dart';
 import '../strings.dart';
 import '../theme.dart';
+import '../widgets/bonus_points_section.dart';
 import '../widgets/goal_editor.dart';
 import '../widgets/labeled_field.dart';
 import '../widgets/task_editor.dart';
@@ -22,7 +22,6 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
   final _current = TextEditingController();
   final _next = TextEditingController();
   final _repeat = TextEditingController();
-  final _bonus = TextEditingController();
   String? _message;
   var _ok = false;
 
@@ -31,7 +30,6 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
     _current.dispose();
     _next.dispose();
     _repeat.dispose();
-    _bonus.dispose();
     super.dispose();
   }
 
@@ -70,24 +68,6 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(spent ? S.spentGoal : S.notEnoughPoints)),
     );
-  }
-
-  Future<void> _adjustPoints(int delta) async {
-    final applied = await HabitScope.of(context).adjustPoints(delta);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          applied == 0 ? S.noPointsToRemove : S.pointsAdjusted(applied),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _adjustCustom(bool add) async {
-    final amount = int.tryParse(_bonus.text.trim()) ?? 0;
-    if (amount <= 0) return;
-    await _adjustPoints(add ? amount : -amount);
   }
 
   Future<void> _savePassword() async {
@@ -302,11 +282,7 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(24, 22, 24, 0),
                 sliver: SliverToBoxAdapter(
-                  child: _BonusPointsSection(
-                    points: store.totalPoints,
-                    amount: _bonus,
-                    onCustom: _adjustCustom,
-                  ),
+                  child: const BonusPointsSection(),
                 ),
               ),
               SliverPadding(
@@ -390,119 +366,6 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _BonusPointsSection extends StatefulWidget {
-  const _BonusPointsSection({
-    required this.points,
-    required this.amount,
-    required this.onCustom,
-  });
-
-  final int points;
-  final TextEditingController amount;
-  final ValueChanged<bool> onCustom;
-
-  @override
-  State<_BonusPointsSection> createState() => _BonusPointsSectionState();
-}
-
-class _BonusPointsSectionState extends State<_BonusPointsSection> {
-  @override
-  void initState() {
-    super.initState();
-    widget.amount.addListener(_onAmountChanged);
-  }
-
-  @override
-  void didUpdateWidget(covariant _BonusPointsSection oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.amount != widget.amount) {
-      oldWidget.amount.removeListener(_onAmountChanged);
-      widget.amount.addListener(_onAmountChanged);
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.amount.removeListener(_onAmountChanged);
-    super.dispose();
-  }
-
-  void _onAmountChanged() {
-    if (mounted) setState(() {});
-  }
-
-  bool get _canAdjust {
-    final amount = int.tryParse(widget.amount.text.trim()) ?? 0;
-    return amount > 0;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Text(
-          S.bonusPoints,
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-            fontSize: 20,
-          ),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          S.bonusPointsHint,
-          style: TextStyle(
-            color: AppColors.muted,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          S.pointsNow(widget.points),
-          style: const TextStyle(
-            fontWeight: FontWeight.w900,
-            fontSize: 16,
-            color: AppColors.pinkDark,
-          ),
-        ),
-        const SizedBox(height: 12),
-        LabeledField(
-          key: const Key('bonus-amount'),
-          controller: widget.amount,
-          label: S.pointsAmount,
-          keyboardType: const TextInputType.numberWithOptions(
-            signed: false,
-            decimal: false,
-          ),
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) {
-            if (_canAdjust) widget.onCustom(true);
-          },
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: _canAdjust ? () => widget.onCustom(false) : null,
-                child: const Text(S.removePoints),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: FilledButton(
-                onPressed: _canAdjust ? () => widget.onCustom(true) : null,
-                child: const Text(S.addPoints),
-              ),
-            ),
-          ],
-        ),
-      ],
     );
   }
 }

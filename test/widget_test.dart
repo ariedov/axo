@@ -828,6 +828,37 @@ void main() {
     expect(find.text('Англійська'), findsOneWidget);
   });
 
+  testWidgets('home points label opens bonus screen after parent password', (
+    tester,
+  ) async {
+    final store = testStore(points: 42);
+    await store.load();
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('points-label')));
+    await tester.pump();
+    expect(
+      find.text('Введи пароль, щоб нарахувати або зняти бали'),
+      findsOneWidget,
+    );
+
+    await tester.enterText(find.byType(TextField), '4826');
+    await tester.tap(find.text('Перевірити'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Бонус і штраф'), findsOneWidget);
+    expect(find.text('Зараз 42 бали'), findsOneWidget);
+    await tester.enterText(find.byKey(const Key('bonus-amount')), '8');
+    await tester.pump();
+    await tester.tap(find.text('Додати'));
+    await tester.pump();
+    expect(store.totalPoints, 50);
+    expect(find.text('Нараховано 8 балів'), findsAtLeastNWidgets(1));
+  });
+
   testWidgets('home can add a today-only task after parent approval', (
     tester,
   ) async {

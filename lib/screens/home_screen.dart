@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../config.dart';
 import '../data/models.dart';
+import '../screens/bonus_points_screen.dart';
 import '../screens/english_screen.dart';
 import '../screens/parent_settings_screen.dart';
 import '../screens/spelling_screen.dart';
@@ -57,7 +58,10 @@ class HomeScreen extends StatelessWidget {
                           style: Theme.of(context).textTheme.headlineMedium
                               ?.copyWith(fontWeight: FontWeight.w900),
                         ),
-                        PointsHero(points: store.totalPoints),
+                        PointsHero(
+                          points: store.totalPoints,
+                          onLabelTap: () => _openBonus(context),
+                        ),
                         AxolotlMascot(mood: mood, size: store.celebrating ? 150 : 128),
                         SpeechBubble(
                           text: S.mascotLine(
@@ -130,6 +134,17 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Future<void> _openBonus(BuildContext context) async {
+    if (!await askParent(context, message: S.bonusPointsPrompt)) return;
+    if (!context.mounted) return;
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => const BonusPointsScreen(),
       ),
     );
   }

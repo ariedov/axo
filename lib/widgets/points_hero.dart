@@ -4,9 +4,10 @@ import '../strings.dart';
 import '../theme.dart';
 
 class PointsHero extends StatelessWidget {
-  const PointsHero({super.key, required this.points});
+  const PointsHero({super.key, required this.points, this.onLabelTap});
 
   final int points;
+  final VoidCallback? onLabelTap;
 
   @override
   Widget build(BuildContext context) {
@@ -43,15 +44,38 @@ class PointsHero extends StatelessWidget {
               color: AppColors.goldDeep,
             ),
           ),
-          Text(
-            S.pointsWord(points).split(' ').last,
-            style: TextStyle(
-              fontFamily: 'Nunito',
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: AppColors.goldDeep.withValues(alpha: 0.85),
+          if (onLabelTap == null)
+            Text(
+              S.pointsWord(points).split(' ').last,
+              style: TextStyle(
+                fontFamily: 'Nunito',
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppColors.goldDeep.withValues(alpha: 0.85),
+              ),
+            )
+          else
+            TextButton(
+              key: const Key('points-label'),
+              onPressed: onLabelTap,
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.goldDeep.withValues(alpha: 0.9),
+                backgroundColor: Colors.white.withValues(alpha: 0.5),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                textStyle: const TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              child: Text(S.pointsWord(points).split(' ').last),
             ),
-          ),
         ],
       ),
     );
