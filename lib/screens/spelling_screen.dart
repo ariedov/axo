@@ -153,7 +153,7 @@ class _SpellingScreenState extends State<SpellingScreen> {
     _keepKeyboard();
     await showAnswerFlash(
       context,
-      message: misses >= 2 ? 'Було «${current.word}». ${S.tryAgain}' : S.tryAgain,
+      message: misses >= 2 ? 'Було «${current.word}». ${S.keepGoing}' : S.tryAgain,
       success: false,
       hold: Duration(milliseconds: misses >= 2 ? 1100 : 700),
     );

@@ -36,7 +36,6 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
   var _showSummary = false;
   var _roundPoints = 0;
   var _playing = false;
-  String? _feedback;
 
   int get _answer => _a * _b;
 
@@ -63,7 +62,6 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
       _b = _min + _random.nextInt(_max - _min + 1);
       _input = '';
       _misses = 0;
-      _feedback = null;
       _mood = AxolotlMood.happy;
       _busy = false;
     });
@@ -100,7 +98,6 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
         _showSummary = true;
         _busy = false;
         _mood = AxolotlMood.celebrate;
-        _feedback = null;
       });
       return;
     }
@@ -111,7 +108,6 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
     if (_busy || _showSummary || _input.length >= 4) return;
     setState(() {
       _input += digit;
-      _feedback = null;
     });
   }
 
@@ -138,17 +134,24 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
     }
 
     HapticFeedback.heavyImpact();
+    final misses = _misses + 1;
     setState(() {
-      _misses += 1;
+      _misses = misses;
       _mood = AxolotlMood.cheer;
-      _feedback = _misses >= 2 ? 'Було $_answer. ${S.tryAgain}' : S.tryAgain;
+      _busy = true;
       _input = '';
     });
-    if (_misses >= 2) {
-      _busy = true;
-      await Future<void>.delayed(const Duration(milliseconds: 1400));
-      if (!mounted) return;
+    await showAnswerFlash(
+      context,
+      message: misses >= 2 ? 'Було $_answer. ${S.keepGoing}' : S.tryAgain,
+      success: false,
+      hold: Duration(milliseconds: misses >= 2 ? 1100 : 700),
+    );
+    if (!mounted) return;
+    if (misses >= 2) {
       await _finishItem(false);
+    } else {
+      setState(() => _busy = false);
     }
   }
 
@@ -230,25 +233,6 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
               fontWeight: FontWeight.w900,
               color: AppColors.pinkDark,
             ),
-          ),
-          SizedBox(
-            height: 44,
-            child: _feedback == null
-                ? null
-                : Align(
-                    alignment: Alignment.center,
-                    child: Text(
-                      _feedback!,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18,
-                        color: _mood == AxolotlMood.celebrate
-                            ? AppColors.tealDark
-                            : AppColors.pinkDark,
-                      ),
-                    ),
-                  ),
           ),
         ],
       ),

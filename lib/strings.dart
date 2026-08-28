@@ -37,6 +37,7 @@ class S {
   static const check = 'Перевірити';
   static const correct = 'Молодець!';
   static const tryAgain = 'Спробуй ще раз';
+  static const keepGoing = 'Давай далі!';
   static const writeTheWord = 'Напиши слово';
   static const next = 'Далі';
   static const easy = 'Легко';
@@ -57,10 +58,19 @@ class S {
   static const parentSection = 'Батьківський розділ';
   static const parentSectionPrompt = 'Введи пароль, щоб відкрити налаштування';
   static const onboardingHello = 'Привіт! Я Аксо.';
+  static const onboardingParentsBody =
+      'Цей розділ — для мами і тата. Тут ви налаштуєте додаток, перш ніж віддати телефон дитині.';
   static const onboardingBody =
       'Мама або тато: придумайте пароль і скільки балів дати на старт. Паролем ви підтверджуватимете завдання.';
   static const onboardingPrivacy =
       'Усі дані лишаються на цьому пристрої. Без реклами, без акаунтів і без інтернету.';
+  static const onboardingGoalHello = 'За що збираємо бали?';
+  static const onboardingGoalBody =
+      'На що дитина збиратиме бали? Можна поставити нову ціль тут.';
+  static const onboardingDoneHello = 'Усе готово!';
+  static const onboardingDoneBody =
+      'Налаштування завершено. Далі Аксо — для дитини: завдання, ігри й цілі. Мама й тато підтверджують виконане паролем.';
+  static const understood = 'Зрозуміло';
   static const choosePassword = 'Придумайте пароль';
   static const repeatPassword = 'Повторіть пароль';
   static const startingPoints = 'Початкові бали';

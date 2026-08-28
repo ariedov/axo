@@ -171,7 +171,7 @@ class _EnglishScreenState extends State<EnglishScreen> {
 
     HapticFeedback.heavyImpact();
     final misses = _misses + 1;
-    final revealed = 'Було «$_answer». ${S.tryAgain}';
+    final revealed = 'Було «$_answer». ${S.keepGoing}';
     setState(() {
       _misses = misses;
       _mood = AxolotlMood.cheer;

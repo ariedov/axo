@@ -8,6 +8,7 @@ import 'package:app/data/game_plays.dart';
 import 'package:app/data/game_round.dart';
 import 'package:app/data/goal_repository.dart';
 import 'package:app/data/models.dart';
+import 'package:app/data/onboarding_flags.dart';
 import 'package:app/data/parent_auth.dart';
 import 'package:app/data/points_repository.dart';
 import 'package:app/data/task_repository.dart';
@@ -80,6 +81,47 @@ void main() {
     expect(S.pointsWord(5), '5 балів');
     expect(S.pointsWord(11), '11 балів');
     expect(S.pointsWord(21), '21 бал');
+  });
+
+  test('onboarding is remembered after a reload', () async {
+    final flags = InMemoryOnboardingFlags();
+    final auth = InMemoryParentAuth();
+    final points = InMemoryPointsRepository();
+    final goals = InMemoryGoalRepository();
+
+    Future<HabitStore> open() async {
+      final store = HabitStore(
+        pointsRepo: points,
+        taskRepo: InMemoryTaskRepository(
+          TaskSnapshot(day: todayStamp(), tasks: const []),
+        ),
+        parentAuth: auth,
+        gamePlays: InMemoryGamePlaysRepository(),
+        goalRepo: goals,
+        historyRepo: InMemoryDayHistoryRepository(),
+        onboardingFlags: flags,
+        celebrateFor: Duration.zero,
+      );
+      await store.load();
+      return store;
+    }
+
+    var store = await open();
+    expect(store.needsOnboarding, isTrue);
+
+    await store.completeOnboarding(
+      password: 'mama',
+      startingPoints: 40,
+      goal: const RewardGoal(id: 'ice', title: 'Морозиво', cost: 50, icon: 'gift'),
+    );
+    expect(store.needsOnboarding, isFalse);
+    expect(store.totalPoints, 40);
+
+    store = await open();
+    expect(store.needsOnboarding, isFalse);
+    expect(store.parentPassword, 'mama');
+    expect(store.totalPoints, 40);
+    expect(store.goals.single.title, 'Морозиво');
   });
 
   test('submit waits for parent before awarding points', () async {
@@ -608,25 +650,65 @@ void main() {
     expect(tester.getSize(find.byType(AlertDialog)), dialog);
   });
 
-  testWidgets('first launch asks parent to set a password', (tester) async {
+  testWidgets('first launch walks parents through setup once', (tester) async {
     final store = testStore(password: null);
     await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     await tester.pumpWidget(AxolotlApp(store: store));
     await tester.pump();
 
     expect(find.text('Привіт! Я Аксо.'), findsOneWidget);
+    expect(
+      find.text(
+        'Цей розділ — для мами і тата. Тут ви налаштуєте додаток, перш ніж віддати телефон дитині.',
+      ),
+      findsOneWidget,
+    );
+    expect(store.needsOnboarding, isTrue);
+
+    await tester.tap(find.text('Далі'));
+    await tester.pump();
 
     await tester.enterText(find.byType(TextField).at(0), 'mama');
     await tester.enterText(find.byType(TextField).at(1), 'mama');
-    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.tap(find.text('Далі'));
     await tester.pump();
-    await tester.tap(find.text('Поїхали!'));
+
+    expect(find.text('За що збираємо бали?'), findsOneWidget);
+    expect(store.parentPassword, isNull);
+
+    await tester.tap(find.byKey(const Key('onboarding-add-goal')));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField).first, 'Морозиво');
+    await tester.tap(find.text('Зберегти'));
+    await tester.pump();
+    expect(find.text('Морозиво'), findsOneWidget);
+
+    await tester.tap(find.text('Далі'));
+    await tester.pump();
+    expect(find.text('Усе готово!'), findsOneWidget);
+    expect(
+      find.text(
+        'Налаштування завершено. Далі Аксо — для дитини: завдання, ігри й цілі. Мама й тато підтверджують виконане паролем.',
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Зрозуміло'));
     await tester.pump();
 
     expect(store.parentPassword, 'mama');
     expect(store.totalPoints, 50);
+    expect(store.onboardingComplete, isTrue);
+    expect(store.needsOnboarding, isFalse);
+    expect(store.goals.single.title, 'Морозиво');
     expect(store.history.activatedOn, todayStamp());
     expect(find.text('Завдання на сьогодні'), findsOneWidget);
+    expect(find.text('Морозиво'), findsOneWidget);
   });
 
   testWidgets('home calendar shows the current month', (tester) async {

@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'config.dart';
 import 'data/day_history_repository.dart';
 import 'data/goal_repository.dart';
+import 'data/onboarding_flags.dart';
 import 'data/parent_auth.dart';
 import 'data/points_repository.dart';
 import 'data/game_plays.dart';
@@ -61,6 +62,12 @@ Future<void> main() async {
       (key) async => prefs.getString(key),
       (key, value) async {
         await prefs.setString(key, value);
+      },
+    ),
+    onboardingFlags: LocalOnboardingFlags(
+      (key) async => prefs.getBool(key),
+      (key, value) async {
+        await prefs.setBool(key, value);
       },
     ),
   );

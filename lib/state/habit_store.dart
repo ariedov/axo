@@ -5,6 +5,7 @@ import '../data/day_history_repository.dart';
 import '../data/game_plays.dart';
 import '../data/goal_repository.dart';
 import '../data/models.dart';
+import '../data/onboarding_flags.dart';
 import '../data/parent_auth.dart';
 import '../data/points_repository.dart';
 import '../data/task_repository.dart';
@@ -18,9 +19,11 @@ class HabitStore extends ChangeNotifier {
     required this.gamePlays,
     required this.goalRepo,
     required this.historyRepo,
+    OnboardingFlags? onboardingFlags,
     this.celebrateFor = const Duration(seconds: 3),
     DateTime Function()? now,
-  }) : now = now ?? DateTime.now;
+  }) : onboardingFlags = onboardingFlags ?? InMemoryOnboardingFlags(),
+       now = now ?? DateTime.now;
 
   final PointsRepository pointsRepo;
   final TaskRepository taskRepo;
@@ -28,6 +31,7 @@ class HabitStore extends ChangeNotifier {
   final GamePlaysRepository gamePlays;
   final GoalRepository goalRepo;
   final DayHistoryRepository historyRepo;
+  final OnboardingFlags onboardingFlags;
   final Duration celebrateFor;
   final DateTime Function() now;
 
@@ -37,11 +41,11 @@ class HabitStore extends ChangeNotifier {
   bool ready = false;
   bool celebrating = false;
   String? parentPassword;
+  bool onboardingComplete = false;
   GamePlaysSnapshot plays = GamePlaysSnapshot.empty();
   DayHistory history = const DayHistory();
 
-  bool get needsOnboarding =>
-      parentPassword == null || parentPassword!.isEmpty;
+  bool get needsOnboarding => !onboardingComplete;
 
   bool checkPassword(String value) => value.trim() == parentPassword;
 
@@ -59,6 +63,13 @@ class HabitStore extends ChangeNotifier {
     tasks = todayLoad.current.tasks;
     goals = await goalRepo.load();
     parentPassword = await parentAuth.read();
+    onboardingComplete = await onboardingFlags.isComplete();
+    if (!onboardingComplete &&
+        parentPassword != null &&
+        parentPassword!.isNotEmpty) {
+      onboardingComplete = true;
+      await onboardingFlags.markComplete();
+    }
     plays = await gamePlays.loadToday();
     history = await historyRepo.load();
     if (todayLoad.previous != null) {
@@ -79,11 +90,20 @@ class HabitStore extends ChangeNotifier {
   Future<void> completeOnboarding({
     required String password,
     required int startingPoints,
+    RewardGoal? goal,
   }) async {
     totalPoints = await pointsRepo.setTotal(startingPoints);
-    await setParentPassword(password);
+    parentPassword = password.trim();
+    await parentAuth.write(parentPassword!);
+    if (goal != null) {
+      goals = [...goals, goal];
+      await _persistGoals();
+    }
+    onboardingComplete = true;
+    await onboardingFlags.markComplete();
     await _ensureActivated();
     await _syncTodayHistory();
+    notifyListeners();
   }
 
   Future<int> adjustPoints(int delta) async {
