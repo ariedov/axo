@@ -108,14 +108,18 @@ class RewardGoal {
     required this.title,
     required this.cost,
     required this.icon,
+    this.completedOn,
   });
 
   final String id;
   final String title;
   final int cost;
   final String icon;
+  final String? completedOn;
 
-  bool canAfford(int points) => points >= cost;
+  bool get isCompleted => completedOn != null;
+
+  bool canAfford(int points) => !isCompleted && points >= cost;
 
   double progress(int points) {
     if (cost <= 0) return 1;
@@ -125,12 +129,18 @@ class RewardGoal {
     return value;
   }
 
-  RewardGoal copyWith({String? title, int? cost, String? icon}) {
+  RewardGoal copyWith({
+    String? title,
+    int? cost,
+    String? icon,
+    String? completedOn,
+  }) {
     return RewardGoal(
       id: id,
       title: title ?? this.title,
       cost: cost ?? this.cost,
       icon: icon ?? this.icon,
+      completedOn: completedOn ?? this.completedOn,
     );
   }
 
@@ -139,6 +149,7 @@ class RewardGoal {
     'title': title,
     'cost': cost,
     'icon': icon,
+    if (completedOn != null) 'completedOn': completedOn,
   };
 
   factory RewardGoal.fromJson(Map<String, dynamic> json) {
@@ -147,6 +158,7 @@ class RewardGoal {
       title: json['title'] as String,
       cost: json['cost'] as int,
       icon: json['icon'] as String? ?? 'star',
+      completedOn: json['completedOn'] as String?,
     );
   }
 }

@@ -123,6 +123,18 @@ class S {
   static const spentGoal = 'Ціль отримано!';
   static const spendGoalPrompt = 'Видати цю ціль і списати бали?';
   static const noGoalsYet = 'Поки немає цілей — додайте щось смачненьке.';
+  static const completedGoals = 'Видані цілі';
+  static const completedGoalsHint =
+      'Цілі, які вже видали дитині.';
+  static const noCompletedGoals = 'Поки немає виданих цілей.';
+
+  static String completedGoalOn(String iso) {
+    final date = DateTime.tryParse(iso);
+    if (date == null) return iso;
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return 'Видано $day.$month.${date.year}';
+  }
   static const calendar = 'Календар';
   static const previousMonth = 'Попередній місяць';
   static const nextMonth = 'Наступний місяць';

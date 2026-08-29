@@ -61,6 +61,18 @@ class HabitStore extends ChangeNotifier {
     for (final task in tasks)
       if (!task.todayOnly) task,
   ];
+  List<RewardGoal> get activeGoals => [
+    for (final goal in goals)
+      if (!goal.isCompleted) goal,
+  ];
+  List<RewardGoal> get completedGoals {
+    final done = [
+      for (final goal in goals)
+        if (goal.isCompleted) goal,
+    ];
+    done.sort((a, b) => b.completedOn!.compareTo(a.completedOn!));
+    return done;
+  }
 
   Future<void> load() async {
     totalPoints = await pointsRepo.fetchTotal();
@@ -245,7 +257,7 @@ class HabitStore extends ChangeNotifier {
       goals = [...goals, goal];
     } else {
       final copy = [...goals];
-      copy[index] = goal;
+      copy[index] = goal.copyWith(completedOn: copy[index].completedOn);
       goals = copy;
     }
     await _persistGoals();
@@ -260,10 +272,14 @@ class HabitStore extends ChangeNotifier {
 
   Future<void> reorderGoals(int oldIndex, int newIndex) async {
     if (oldIndex == newIndex) return;
-    final copy = [...goals];
-    final goal = copy.removeAt(oldIndex);
-    copy.insert(newIndex, goal);
-    goals = copy;
+    final active = activeGoals;
+    final moved = active.removeAt(oldIndex);
+    active.insert(newIndex, moved);
+    var index = 0;
+    goals = [
+      for (final goal in goals)
+        if (goal.isCompleted) goal else active[index++],
+    ];
     notifyListeners();
     await _persistGoals();
   }
@@ -272,10 +288,17 @@ class HabitStore extends ChangeNotifier {
     final index = goals.indexWhere((item) => item.id == goalId);
     if (index == -1) return false;
     final goal = goals[index];
+    if (goal.isCompleted) return false;
     final next = await pointsRepo.spend(amount: goal.cost, goalId: goal.id);
     if (next == null) return false;
     totalPoints = next;
-    goals = [for (final item in goals) if (item.id != goalId) item];
+    goals = [
+      for (final item in goals)
+        if (item.id == goalId)
+          item.copyWith(completedOn: now().toIso8601String())
+        else
+          item,
+    ];
     await _persistGoals();
     if (celebrate && celebrateFor > Duration.zero) {
       celebrating = true;

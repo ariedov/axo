@@ -240,11 +240,15 @@ void main() {
 
     expect(await store.spendGoal('ice'), isTrue);
     expect(store.totalPoints, 30);
-    expect(store.goals.map((goal) => goal.id), ['park']);
+    expect(store.activeGoals.map((goal) => goal.id), ['park']);
+    expect(store.completedGoals.single.id, 'ice');
+    expect(store.completedGoals.single.isCompleted, isTrue);
+    expect(store.goals, hasLength(2));
 
+    expect(await store.spendGoal('ice'), isFalse);
     expect(await store.spendGoal('park'), isFalse);
     expect(store.totalPoints, 30);
-    expect(store.goals, hasLength(1));
+    expect(store.activeGoals, hasLength(1));
   });
 
   test('a new day resets progress but keeps the task list', () async {
@@ -635,8 +639,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(store.totalPoints, 30);
-    expect(store.goals, isEmpty);
+    expect(store.activeGoals, isEmpty);
+    expect(store.completedGoals.single.id, 'ice');
     expect(find.text('Ціль отримано!'), findsOneWidget);
+    expect(find.text('Поки немає цілей — додайте щось смачненьке.'), findsOneWidget);
+
+    tester
+        .state<ScrollableState>(find.byType(Scrollable).first)
+        .position
+        .jumpTo(0);
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('completed-goals')));
+    await tester.pump();
+    expect(find.text('Видані цілі'), findsOneWidget);
+    expect(find.text('Морозиво'), findsOneWidget);
   });
 
   testWidgets('task editor keeps delete away from cancel', (tester) async {
@@ -798,7 +814,8 @@ void main() {
     await tester.pump();
 
     expect(store.totalPoints, 0);
-    expect(store.goals, isEmpty);
+    expect(store.activeGoals, isEmpty);
+    expect(store.completedGoals.single.id, 'ice');
     expect(find.text('Морозиво'), findsNothing);
   });
 

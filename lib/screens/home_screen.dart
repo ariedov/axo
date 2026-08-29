@@ -74,14 +74,14 @@ class HomeScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (store.goals.isNotEmpty) ...[
+                  if (store.activeGoals.isNotEmpty) ...[
                     const SliverToBoxAdapter(
                       child: _SectionTitle(title: S.goals),
                     ),
                     SliverList.builder(
-                      itemCount: store.goals.length,
+                      itemCount: store.activeGoals.length,
                       itemBuilder: (context, index) {
-                        final goal = store.goals[index];
+                        final goal = store.activeGoals[index];
                         return GoalTile(
                           goal: goal,
                           points: store.totalPoints,

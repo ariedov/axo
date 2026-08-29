@@ -6,6 +6,7 @@ import '../state/habit_scope.dart';
 import '../strings.dart';
 import '../theme.dart';
 import '../widgets/bonus_points_section.dart';
+import '../widgets/completed_goals_sheet.dart';
 import '../widgets/goal_editor.dart';
 import '../widgets/labeled_field.dart';
 import '../widgets/task_editor.dart';
@@ -224,6 +225,13 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
                             ),
                           ),
                           IconButton(
+                            key: const Key('completed-goals'),
+                            tooltip: S.completedGoals,
+                            onPressed: () => showCompletedGoalsSheet(context),
+                            icon: const Icon(Icons.history_rounded),
+                            color: AppColors.muted,
+                          ),
+                          IconButton(
                             tooltip: S.addGoal,
                             onPressed: () => _editGoal(null),
                             icon: const Icon(Icons.add_circle_rounded),
@@ -239,7 +247,7 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      if (store.goals.isEmpty)
+                      if (store.activeGoals.isEmpty)
                         const Padding(
                           padding: EdgeInsets.only(bottom: 8),
                           child: Text(
@@ -257,11 +265,11 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 sliver: SliverReorderableList(
-                  itemCount: store.goals.length,
+                  itemCount: store.activeGoals.length,
                   onReorderItem: store.reorderGoals,
                   proxyDecorator: _proxyDecorator,
                   itemBuilder: (context, index) {
-                    final goal = store.goals[index];
+                    final goal = store.activeGoals[index];
                     return Padding(
                       key: ValueKey(goal.id),
                       padding: const EdgeInsets.only(bottom: 10),
