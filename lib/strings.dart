@@ -103,6 +103,20 @@ class S {
   }
 
   static const noPointsToRemove = 'Немає балів, щоб зняти';
+  static const backup = 'Резервна копія';
+  static const backupHint =
+      'Збережіть дані на випадок зміни телефону. Пароль у файл не потрапляє.';
+  static const exportBackup = 'Експортувати';
+  static const exportFailed = 'Не вдалося зберегти файл';
+  static const importBackup = 'Імпортувати';
+  static const importFailed = 'Не вдалося відкрити файл';
+  static const importInvalid =
+      'Це не файл Аксо, або він з новішої версії додатка';
+  static const importReplaceTitle = 'Замінити дані?';
+  static const importReplaceBody =
+      'Усі поточні бали, завдання, цілі та історія на цьому телефоні будуть замінені даними з файлу. Пароль лишиться той самий. Це не можна скасувати.';
+  static const importConfirm = 'Замінити';
+  static const importDone = 'Дані відновлено';
   static const privacy = 'Приватність';
   static const privacyBody =
       'Аксо працює лише на цьому телефоні. Завдання, бали, цілі та батьківський пароль зберігаються локально. Ми не збираємо і не надсилаємо дані, не показуємо рекламу і не використовуємо рекламний ідентифікатор.';

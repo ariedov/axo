@@ -1,6 +1,7 @@
 abstract class OnboardingFlags {
   Future<bool> isComplete();
   Future<void> markComplete();
+  Future<void> setComplete(bool value);
 }
 
 class LocalOnboardingFlags implements OnboardingFlags {
@@ -15,7 +16,10 @@ class LocalOnboardingFlags implements OnboardingFlags {
   Future<bool> isComplete() async => await _read(key) ?? false;
 
   @override
-  Future<void> markComplete() => _write(key, true);
+  Future<void> markComplete() => setComplete(true);
+
+  @override
+  Future<void> setComplete(bool value) => _write(key, value);
 }
 
 class InMemoryOnboardingFlags implements OnboardingFlags {
@@ -27,7 +31,10 @@ class InMemoryOnboardingFlags implements OnboardingFlags {
   Future<bool> isComplete() async => complete;
 
   @override
-  Future<void> markComplete() async {
-    complete = true;
+  Future<void> markComplete() => setComplete(true);
+
+  @override
+  Future<void> setComplete(bool value) async {
+    complete = value;
   }
 }

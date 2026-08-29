@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../config.dart';
+import '../data/backup_share.dart';
 import '../data/models.dart';
 import '../state/habit_scope.dart';
 import '../strings.dart';
@@ -100,6 +101,41 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
       _current.clear();
       _next.clear();
       _repeat.clear();
+    }
+  }
+
+  Future<void> _exportBackup() async {
+    try {
+      await saveBackup(HabitScope.of(context).exportBackup());
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(S.exportFailed)),
+      );
+    }
+  }
+
+  Future<void> _importBackup() async {
+    try {
+      final snapshot = await pickBackup();
+      if (snapshot == null || !mounted) return;
+      final confirmed = await showImportReplaceDialog(context);
+      if (!confirmed || !mounted) return;
+      await HabitScope.of(context).importBackup(snapshot);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(S.importDone)),
+      );
+    } on FormatException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(S.importInvalid)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(S.importFailed)),
+      );
     }
   }
 
@@ -344,6 +380,34 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
                         onPressed: _savePassword,
                         child: const Text(S.save),
                       ),
+                      const SizedBox(height: 28),
+                      const Text(
+                        S.backup,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 20,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        S.backupHint,
+                        style: TextStyle(
+                          color: AppColors.muted,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      OutlinedButton(
+                        key: const Key('export-backup'),
+                        onPressed: _exportBackup,
+                        child: const Text(S.exportBackup),
+                      ),
+                      const SizedBox(height: 10),
+                      OutlinedButton(
+                        key: const Key('import-backup'),
+                        onPressed: _importBackup,
+                        child: const Text(S.importBackup),
+                      ),
                       const SizedBox(height: 16),
                       TextButton(
                         onPressed: () {
@@ -376,6 +440,30 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
       ),
     );
   }
+}
+
+Future<bool> showImportReplaceDialog(BuildContext context) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(28),
+      ),
+      title: const Text(S.importReplaceTitle),
+      content: const Text(S.importReplaceBody),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text(S.cancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text(S.importConfirm),
+        ),
+      ],
+    ),
+  );
+  return confirmed == true;
 }
 
 class _DailyTaskRow extends StatelessWidget {

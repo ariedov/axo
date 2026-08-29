@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:app/config.dart';
 import 'package:app/data/answer.dart';
+import 'package:app/data/backup.dart';
 import 'package:app/data/day_history_repository.dart';
 import 'package:app/data/game_plays.dart';
 import 'package:app/data/game_round.dart';
@@ -249,6 +250,108 @@ void main() {
     expect(await store.spendGoal('park'), isFalse);
     expect(store.totalPoints, 30);
     expect(store.activeGoals, hasLength(1));
+  });
+
+  test('export backup has family data and omits the parent password', () async {
+    final store = testStore(
+      points: 40,
+      password: 'secret-pass',
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+      ],
+      goals: const [
+        RewardGoal(
+          id: 'ice',
+          title: 'Морозиво',
+          cost: 50,
+          icon: 'gift',
+          completedOn: '2026-08-29T10:00:00.000',
+        ),
+      ],
+    );
+    await store.load();
+
+    final snapshot = store.exportBackup();
+    expect(snapshot.fileName, startsWith('axo-'));
+    expect(snapshot.fileName, endsWith('.json'));
+
+    final json = snapshot.toJson();
+    expect(json['app'], BackupSnapshot.appId);
+    expect(json['format'], BackupSnapshot.format);
+    expect(json['data']['points'], 40);
+    expect(json['data']['onboardingComplete'], isTrue);
+    expect(
+      (json['data']['tasks'] as Map)['tasks'],
+      isNotEmpty,
+    );
+    expect((json['data']['goals'] as List).single['completedOn'], isNotNull);
+    expect(json['data']['history'], isA<Map<String, dynamic>>());
+    expect(json['data']['gamePlays'], isA<Map<String, dynamic>>());
+
+    final encoded = snapshot.encode();
+    expect(encoded.contains('secret-pass'), isFalse);
+    expect(encoded.contains('parent_password'), isFalse);
+
+    final restored = BackupSnapshot.fromJson(
+      jsonDecode(encoded) as Map<String, dynamic>,
+    );
+    expect(restored.points, 40);
+    expect(restored.tasks.tasks.single.id, 'bed');
+    expect(restored.goals.single.isCompleted, isTrue);
+    expect(restored.onboardingComplete, isTrue);
+
+    expect(
+      () => BackupSnapshot.fromJson({
+        'app': 'axo',
+        'format': BackupSnapshot.format + 1,
+        'exportedAt': '2026-08-29T00:00:00.000Z',
+        'data': <String, dynamic>{},
+      }),
+      throwsFormatException,
+    );
+  });
+
+  test('import backup replaces family data and keeps the password', () async {
+    final source = testStore(
+      points: 40,
+      password: 'secret-pass',
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+      ],
+      goals: const [
+        RewardGoal(
+          id: 'ice',
+          title: 'Морозиво',
+          cost: 50,
+          icon: 'gift',
+          completedOn: '2026-08-29T10:00:00.000',
+        ),
+      ],
+    );
+    await source.load();
+    await source.tryAwardGamePlay(AppConfig.timesTablesGame, points: 3);
+    final snapshot = source.exportBackup();
+
+    final target = testStore(
+      points: 99,
+      password: 'keep-me',
+      tasks: const [
+        HabitTask(id: 'other', title: 'Інше', points: 5, icon: 'star'),
+      ],
+      goals: const [
+        RewardGoal(id: 'park', title: 'Парк', cost: 100, icon: 'walk'),
+      ],
+    );
+    await target.load();
+    await target.importBackup(snapshot);
+
+    expect(target.parentPassword, 'keep-me');
+    expect(target.totalPoints, 43);
+    expect(target.tasks.single.id, 'bed');
+    expect(target.goals.single.id, 'ice');
+    expect(target.goals.single.isCompleted, isTrue);
+    expect(target.playsUsed(AppConfig.timesTablesGame), 1);
+    expect(target.onboardingComplete, isTrue);
   });
 
   test('a new day resets progress but keeps the task list', () async {
@@ -519,6 +622,47 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Змінити пароль'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Експортувати'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Резервна копія'), findsOneWidget);
+    expect(find.byKey(const Key('export-backup')), findsOneWidget);
+    expect(find.byKey(const Key('import-backup')), findsOneWidget);
+    expect(
+      find.text('Імпорт замінить усі дані на цьому телефоні.'),
+      findsNothing,
+    );
+    await tester.scrollUntilVisible(
+      find.text('Імпортувати'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Імпортувати'), findsOneWidget);
+  });
+
+  testWidgets('import replace dialog warns that data will be replaced', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.cute,
+        home: Builder(
+          builder: (context) {
+            return TextButton(
+              onPressed: () => showImportReplaceDialog(context),
+              child: const Text('go'),
+            );
+          },
+        ),
+      ),
+    );
+    await tester.tap(find.text('go'));
+    await tester.pumpAndSettle();
+    expect(find.text(S.importReplaceTitle), findsOneWidget);
+    expect(find.text(S.importReplaceBody), findsOneWidget);
+    expect(find.text(S.importConfirm), findsOneWidget);
   });
 
   testWidgets('parent settings hides today-only tasks', (tester) async {

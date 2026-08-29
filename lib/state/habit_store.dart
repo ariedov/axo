@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../config.dart';
+import '../data/backup.dart';
 import '../data/day_history_repository.dart';
 import '../data/game_plays.dart';
 import '../data/goal_repository.dart';
@@ -311,6 +312,28 @@ class HabitStore extends ChangeNotifier {
   }
 
   DayProgress? progressFor(String day) => history[day];
+
+  BackupSnapshot exportBackup() {
+    return BackupSnapshot(
+      exportedAt: now(),
+      points: totalPoints,
+      onboardingComplete: onboardingComplete,
+      tasks: TaskSnapshot(day: todayStamp(now()), tasks: tasks),
+      goals: goals,
+      history: history,
+      plays: plays,
+    );
+  }
+
+  Future<void> importBackup(BackupSnapshot snapshot) async {
+    await pointsRepo.setTotal(snapshot.points);
+    await taskRepo.save(snapshot.tasks);
+    await goalRepo.save(snapshot.goals);
+    await historyRepo.save(snapshot.history);
+    await gamePlays.save(snapshot.plays);
+    await onboardingFlags.setComplete(snapshot.onboardingComplete);
+    await load();
+  }
 
   Future<void> _ensureActivated() async {
     if (history.activatedOn != null) return;
