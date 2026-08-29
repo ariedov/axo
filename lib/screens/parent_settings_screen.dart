@@ -106,37 +106,38 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
 
   Future<void> _exportBackup() async {
     try {
-      await saveBackup(HabitScope.of(context).exportBackup());
+      final saved = await saveBackup(HabitScope.of(context).exportBackup());
+      if (!saved) return;
+      _showMessage(S.exportDone);
     } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(S.exportFailed)),
-      );
+      _showMessage(S.exportFailed);
     }
   }
 
   Future<void> _importBackup() async {
     try {
-      final snapshot = await pickBackup();
-      if (snapshot == null || !mounted) return;
       final confirmed = await showImportReplaceDialog(context);
       if (!confirmed || !mounted) return;
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      if (!mounted) return;
+      final snapshot = await pickBackup();
+      if (snapshot == null || !mounted) return;
       await HabitScope.of(context).importBackup(snapshot);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(S.importDone)),
-      );
+      _showMessage(S.importDone);
     } on FormatException {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(S.importInvalid)),
-      );
+      _showMessage(S.importInvalid);
     } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(S.importFailed)),
-      );
+      _showMessage(S.importFailed);
     }
+  }
+
+  void _showMessage(String text) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(SnackBar(content: Text(text)));
+    });
   }
 
   static Widget _proxyDecorator(
@@ -445,6 +446,7 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
 Future<bool> showImportReplaceDialog(BuildContext context) async {
   final confirmed = await showDialog<bool>(
     context: context,
+    barrierDismissible: false,
     builder: (context) => AlertDialog(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(28),

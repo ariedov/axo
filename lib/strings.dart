@@ -107,6 +107,7 @@ class S {
   static const backupHint =
       'Збережіть дані на випадок зміни телефону. Пароль у файл не потрапляє.';
   static const exportBackup = 'Експортувати';
+  static const exportDone = 'Файл збережено';
   static const exportFailed = 'Не вдалося зберегти файл';
   static const importBackup = 'Імпортувати';
   static const importFailed = 'Не вдалося відкрити файл';

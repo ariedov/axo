@@ -645,24 +645,46 @@ void main() {
   testWidgets('import replace dialog warns that data will be replaced', (
     tester,
   ) async {
+    final store = testStore(
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+      ],
+    );
+    await store.load();
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.cute,
-        home: Builder(
-          builder: (context) {
-            return TextButton(
-              onPressed: () => showImportReplaceDialog(context),
-              child: const Text('go'),
-            );
-          },
+      HabitScope(
+        store: store,
+        child: MaterialApp(
+          theme: AppTheme.cute,
+          home: const ParentSettingsScreen(),
         ),
       ),
     );
-    await tester.tap(find.text('go'));
+    await tester.pump();
+    await tester.scrollUntilVisible(
+      find.text('Імпортувати'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    await tester.tap(find.byKey(const Key('import-backup')));
     await tester.pumpAndSettle();
     expect(find.text(S.importReplaceTitle), findsOneWidget);
     expect(find.text(S.importReplaceBody), findsOneWidget);
-    expect(find.text(S.importConfirm), findsOneWidget);
+
+    await tester.tap(find.text(S.cancel));
+    await tester.pumpAndSettle();
+    expect(find.text(S.importReplaceTitle), findsNothing);
+
+    await tester.tap(find.byKey(const Key('import-backup')));
+    await tester.pumpAndSettle();
+    expect(find.text(S.importReplaceTitle), findsOneWidget);
+    expect(find.text(S.importReplaceBody), findsOneWidget);
   });
 
   testWidgets('parent settings hides today-only tasks', (tester) async {
