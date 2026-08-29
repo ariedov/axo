@@ -56,12 +56,16 @@ class _AxolotlMascotState extends State<AxolotlMascot>
   Widget build(BuildContext context) {
     final image = Image.asset(
       _asset,
-      width: widget.size,
-      height: widget.size,
+      fit: BoxFit.contain,
       filterQuality: FilterQuality.high,
       gaplessPlayback: true,
     );
-    if (!widget.animate) return image;
+    final box = SizedBox(
+      width: widget.size,
+      height: widget.size,
+      child: image,
+    );
+    if (!widget.animate) return box;
 
     return AnimatedBuilder(
       animation: _pulse,
@@ -69,7 +73,7 @@ class _AxolotlMascotState extends State<AxolotlMascot>
         final scale = 0.97 + (_pulse.value * 0.06);
         return Transform.scale(scale: scale, child: child);
       },
-      child: image,
+      child: box,
     );
   }
 }

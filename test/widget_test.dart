@@ -135,10 +135,34 @@ void main() {
     await store.submit('bed');
     expect(store.tasks.first.isSubmitted, isTrue);
     expect(store.totalPoints, 0);
+    expect(store.todayEarnedPoints, 0);
+    expect(store.todayPossiblePoints, 10);
 
     await store.verify('bed');
     expect(store.tasks.first.isVerified, isTrue);
     expect(store.totalPoints, 10);
+    expect(store.todayEarnedPoints, 10);
+    expect(store.todayPossiblePoints, 10);
+  });
+
+  test('today task points count verified against the full list', () async {
+    final store = testStore(
+      tasks: const [
+        HabitTask(
+          id: 'bed',
+          title: 'Застелити ліжко',
+          points: 10,
+          icon: 'bed',
+          status: TaskStatus.verified,
+        ),
+        HabitTask(id: 'teeth', title: 'Зуби', points: 15, icon: 'hygiene'),
+      ],
+    );
+    await store.load();
+
+    expect(store.todayEarnedPoints, 10);
+    expect(store.todayPossiblePoints, 25);
+    expect(S.todayTaskPoints(10, 25), '10 / 25 балів');
   });
 
   test('rejecting a task does not award points', () async {
@@ -798,9 +822,12 @@ void main() {
     expect(find.text('42'), findsOneWidget);
     expect(find.text('Почистити зуби'), findsOneWidget);
     expect(find.text('Завдання на сьогодні'), findsOneWidget);
+    expect(find.text('0 / 10 балів'), findsOneWidget);
 
     final bubbleSize = tester.getSize(find.byType(SpeechBubble));
 
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -80));
+    await tester.pump();
     await tester.tap(find.text('Зробив!'));
     await tester.pump();
     expect(find.text('Чекає маму чи тата'), findsOneWidget);
@@ -817,6 +844,7 @@ void main() {
     await tester.pump();
     expect(store.totalPoints, 52);
     expect(find.text('Підтверджено'), findsOneWidget);
+    expect(find.text('10 / 10 балів'), findsOneWidget);
 
     await tester.scrollUntilVisible(
       find.text('Множення'),
@@ -980,6 +1008,25 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 700));
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('mascot keeps the same size for every mood', (tester) async {
+    Future<Size> sizeFor(AxolotlMood mood) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Center(
+            child: AxolotlMascot(mood: mood, size: 128, animate: false),
+          ),
+        ),
+      );
+      await tester.pump();
+      return tester.getSize(find.byType(AxolotlMascot));
+    }
+
+    const slot = Size(128, 128);
+    expect(await sizeFor(AxolotlMood.happy), slot);
+    expect(await sizeFor(AxolotlMood.cheer), slot);
+    expect(await sizeFor(AxolotlMood.celebrate), slot);
   });
 
   testWidgets('game field keeps focus after the keyboard opens', (tester) async {

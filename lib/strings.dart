@@ -148,6 +148,9 @@ class S {
 
   static String dayTasksProgress(int done, int total) => '$done з $total';
 
+  static String todayTaskPoints(int earned, int possible) =>
+      '$earned / ${pointsWord(possible)}';
+
   static String pointsWord(int n) {
     final abs = n.abs();
     final mod10 = abs % 10;

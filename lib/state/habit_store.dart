@@ -52,6 +52,11 @@ class HabitStore extends ChangeNotifier {
   int get pendingCount => tasks.where((task) => task.isPending).length;
   int get waitingCount => tasks.where((task) => task.isSubmitted).length;
   int get verifiedCount => tasks.where((task) => task.isVerified).length;
+  int get todayEarnedPoints => tasks
+      .where((task) => task.isVerified)
+      .fold(0, (sum, task) => sum + task.points);
+  int get todayPossiblePoints =>
+      tasks.fold(0, (sum, task) => sum + task.points);
   List<HabitTask> get dailyTasks => [
     for (final task in tasks)
       if (!task.todayOnly) task,

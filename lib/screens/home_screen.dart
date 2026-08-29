@@ -62,7 +62,7 @@ class HomeScreen extends StatelessWidget {
                           points: store.totalPoints,
                           onLabelTap: () => _openBonus(context),
                         ),
-                        AxolotlMascot(mood: mood, size: store.celebrating ? 150 : 128),
+                        AxolotlMascot(mood: mood, size: 128),
                         SpeechBubble(
                           text: S.mascotLine(
                             remaining: store.pendingCount,
@@ -93,6 +93,12 @@ class HomeScreen extends StatelessWidget {
                   SliverToBoxAdapter(
                     child: _SectionTitle(
                       title: S.todaysTasks,
+                      subtitle: store.todayPossiblePoints == 0
+                          ? null
+                          : S.todayTaskPoints(
+                              store.todayEarnedPoints,
+                              store.todayPossiblePoints,
+                            ),
                       onAdd: () => _addTodayTask(context),
                     ),
                   ),
@@ -180,9 +186,10 @@ class HomeScreen extends StatelessWidget {
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title, this.onAdd});
+  const _SectionTitle({required this.title, this.subtitle, this.onAdd});
 
   final String title;
+  final String? subtitle;
   final VoidCallback? onAdd;
 
   @override
@@ -192,11 +199,28 @@ class _SectionTitle extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              title,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w900,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle!,
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      height: 1.2,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           if (onAdd != null)
