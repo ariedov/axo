@@ -295,7 +295,14 @@ class _GamesSection extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 168,
+            child: Row(
+              children: [
                 Expanded(
                   child: _GameCard(
                     icon: Icons.translate_rounded,
@@ -311,6 +318,8 @@ class _GamesSection extends StatelessWidget {
                     ),
                   ),
                 ),
+                const SizedBox(width: 10),
+                const Expanded(child: SizedBox.shrink()),
               ],
             ),
           ),
