@@ -62,6 +62,8 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
   }
 
   Future<void> _spendGoal(RewardGoal goal) async {
+    final confirmed = await showSpendGoalDialog(context, goal);
+    if (!confirmed || !mounted) return;
     final spent = await HabitScope.of(context).spendGoal(
       goal.id,
       celebrate: false,
@@ -441,6 +443,32 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
       ),
     );
   }
+}
+
+Future<bool> showSpendGoalDialog(BuildContext context, RewardGoal goal) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(28),
+      ),
+      title: const Text(S.spendGoalTitle),
+      content: Text(S.spendGoalConfirm(goal.title)),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text(S.cancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: FilledButton.styleFrom(backgroundColor: AppColors.goldDeep),
+          child: const Text(S.spendGoal),
+        ),
+      ],
+    ),
+  );
+  return confirmed == true;
 }
 
 Future<bool> showImportReplaceDialog(BuildContext context) async {

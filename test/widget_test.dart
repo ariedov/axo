@@ -804,6 +804,32 @@ void main() {
     await tester.tap(find.text('Видати'));
     await tester.pumpAndSettle();
 
+    expect(find.text(S.spendGoalTitle), findsOneWidget);
+    expect(find.text('Видати «Морозиво» і списати бали?'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(TextField),
+      ),
+      findsNothing,
+    );
+    expect(store.totalPoints, 80);
+
+    await tester.tap(find.text(S.cancel));
+    await tester.pumpAndSettle();
+    expect(find.text(S.spendGoalTitle), findsNothing);
+    expect(store.totalPoints, 80);
+
+    await tester.tap(find.text('Видати'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Видати'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
     expect(store.totalPoints, 30);
     expect(store.activeGoals, isEmpty);
     expect(store.completedGoals.single.id, 'ice');

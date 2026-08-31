@@ -133,10 +133,14 @@ class S {
   static const editGoal = 'Змінити ціль';
   static const goalCost = 'Вартість у балах';
   static const spendGoal = 'Видати';
+  static const spendGoalTitle = 'Видати ціль?';
   static const goalReady = 'Можна отримати!';
   static const notEnoughPoints = 'Ще не вистачає балів';
   static const spentGoal = 'Ціль отримано!';
   static const spendGoalPrompt = 'Видати цю ціль і списати бали?';
+
+  static String spendGoalConfirm(String title) =>
+      'Видати «$title» і списати бали?';
   static const noGoalsYet = 'Поки немає цілей — додайте щось смачненьке.';
   static const completedGoals = 'Видані цілі';
   static const completedGoalsHint =
