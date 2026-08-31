@@ -53,8 +53,7 @@ class HabitStore extends ChangeNotifier {
   String? strikeDay;
   int penaltyPoints = AppConfig.defaultPenaltyPoints;
 
-  bool get canStrike =>
-      strikes < AppConfig.strikesToPenalty && strikeDay != todayStamp(now());
+  bool get canStrike => strikes < AppConfig.strikesToPenalty;
 
   bool get needsOnboarding => !onboardingComplete;
 

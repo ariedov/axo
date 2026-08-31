@@ -109,7 +109,7 @@ class S {
   static const strikePrompt = 'Введи пароль, щоб дати страйк';
   static const penaltySettings = 'Штраф за страйки';
   static const penaltySettingsHint =
-      'Один страйк на день. Після трьох страйків бали знімаються, а 3 з 3 лишається до наступного дня.';
+      'Після трьох страйків бали знімаються, а 3 з 3 лишається до наступного дня.';
   static const penaltyPoints = 'Штраф у балах';
   static const penaltySaved = 'Штраф збережено';
   static const clearStrikes = 'Скинути страйки';
@@ -153,6 +153,8 @@ class S {
   static const dailyTasksHint =
       'Ці завдання з’являються щоранку. Бали дитина отримує лише після вашої перевірки.';
   static const optionalTasks = 'Додаткові завдання';
+  static const optionalTasksHint =
+      'Щоб заробити ще балів. Мама чи тато можуть додати справу на сьогодні.';
   static const dailyOptionalTasks = 'Щоденні додаткові завдання';
   static const dailyOptionalTasksHint =
       'Ці завдання теж з’являються щоранку, але їх не обов’язково виконувати.';

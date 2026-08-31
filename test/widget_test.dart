@@ -686,6 +686,47 @@ void main() {
     expect(store.progressFor(todayStamp())?.completed, 2);
   });
 
+  test('optional tasks do not affect calendar completion', () async {
+    final store = testStore(
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+        HabitTask(
+          id: 'help',
+          title: 'Допомогти вдома',
+          points: 8,
+          icon: 'star',
+          optional: true,
+        ),
+        HabitTask(
+          id: 'park',
+          title: 'Прогулянка',
+          points: 15,
+          icon: 'walk',
+          todayOnly: true,
+          optional: true,
+        ),
+      ],
+    );
+    await store.load();
+    expect(store.progressFor(todayStamp())?.total, 1);
+    expect(store.progressFor(todayStamp())?.completed, 0);
+    expect(store.progressFor(todayStamp())?.isFull, isFalse);
+    expect(store.progressFor(todayStamp())?.isPartial, isFalse);
+
+    await store.submit('help');
+    await store.verify('help');
+    expect(store.progressFor(todayStamp())?.completed, 0);
+    expect(store.progressFor(todayStamp())?.isFull, isFalse);
+    expect(store.progressFor(todayStamp())?.isPartial, isFalse);
+
+    await store.submit('bed');
+    await store.verify('bed');
+    expect(store.progressFor(todayStamp())?.completed, 1);
+    expect(store.progressFor(todayStamp())?.total, 1);
+    expect(store.progressFor(todayStamp())?.isFull, isTrue);
+    expect(store.progressFor(todayStamp())?.isPartial, isFalse);
+  });
+
   test('three strikes apply the penalty and stay until the next day', () async {
     var clock = DateTime(2026, 8, 29);
     final store = testStore(points: 25, now: () => clock);
@@ -695,18 +736,13 @@ void main() {
     expect(result.penaltyHit, isFalse);
     expect(store.strikes, 1);
     expect(store.totalPoints, 25);
-    expect(store.canStrike, isFalse);
+    expect(store.canStrike, isTrue);
 
-    result = await store.addStrike();
-    expect(result.penaltyHit, isFalse);
-    expect(store.strikes, 1);
-
-    clock = DateTime(2026, 8, 30);
     result = await store.addStrike();
     expect(result.penaltyHit, isFalse);
     expect(store.strikes, 2);
+    expect(store.canStrike, isTrue);
 
-    clock = DateTime(2026, 8, 31);
     result = await store.addStrike();
     expect(result.penaltyHit, isTrue);
     expect(result.applied, -10);
@@ -735,9 +771,7 @@ void main() {
       expect(store.penaltyPoints, 20);
 
       await store.addStrike();
-      clock = DateTime(2026, 8, 30);
       await store.addStrike();
-      clock = DateTime(2026, 8, 31);
       final result = await store.addStrike();
       expect(result.penaltyHit, isTrue);
       expect(result.applied, -4);
@@ -1648,7 +1682,31 @@ void main() {
     );
     expect(find.text('Додаткові завдання'), findsOneWidget);
     expect(find.text('Допомогти вдома'), findsOneWidget);
+    expect(find.text(S.optionalTasksHint), findsNothing);
     expect(find.byKey(const Key('add-today-task')), findsOneWidget);
+  });
+
+  testWidgets('home explains extra tasks when the list is empty', (tester) async {
+    final store = testStore(
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+      ],
+    );
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+    await tester.scrollUntilVisible(
+      find.text(S.optionalTasksHint),
+      300,
+      scrollable: find.byType(Scrollable),
+    );
+    expect(find.text('Додаткові завдання'), findsOneWidget);
+    expect(find.text(S.optionalTasksHint), findsOneWidget);
   });
 
   testWidgets('home can add a today-only task after parent approval', (
