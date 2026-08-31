@@ -9,6 +9,7 @@ import '../data/models.dart';
 import '../data/onboarding_flags.dart';
 import '../data/parent_auth.dart';
 import '../data/points_repository.dart';
+import '../data/strikes_repository.dart';
 import '../data/task_repository.dart';
 import '../data/today.dart';
 
@@ -21,9 +22,11 @@ class HabitStore extends ChangeNotifier {
     required this.goalRepo,
     required this.historyRepo,
     OnboardingFlags? onboardingFlags,
+    StrikesRepository? strikesRepo,
     this.celebrateFor = const Duration(seconds: 3),
     DateTime Function()? now,
   }) : onboardingFlags = onboardingFlags ?? InMemoryOnboardingFlags(),
+       strikesRepo = strikesRepo ?? InMemoryStrikesRepository(),
        now = now ?? DateTime.now;
 
   final PointsRepository pointsRepo;
@@ -33,6 +36,7 @@ class HabitStore extends ChangeNotifier {
   final GoalRepository goalRepo;
   final DayHistoryRepository historyRepo;
   final OnboardingFlags onboardingFlags;
+  final StrikesRepository strikesRepo;
   final Duration celebrateFor;
   final DateTime Function() now;
 
@@ -45,6 +49,8 @@ class HabitStore extends ChangeNotifier {
   bool onboardingComplete = false;
   GamePlaysSnapshot plays = GamePlaysSnapshot.empty();
   DayHistory history = const DayHistory();
+  int strikes = 0;
+  int penaltyPoints = AppConfig.defaultPenaltyPoints;
 
   bool get needsOnboarding => !onboardingComplete;
 
@@ -90,6 +96,8 @@ class HabitStore extends ChangeNotifier {
     }
     plays = await gamePlays.loadToday();
     history = await historyRepo.load();
+    strikes = await strikesRepo.fetchStrikes();
+    penaltyPoints = await strikesRepo.fetchPenaltyPoints();
     if (todayLoad.previous != null) {
       await _recordSnapshot(todayLoad.previous!);
     }
@@ -135,6 +143,31 @@ class HabitStore extends ChangeNotifier {
     return applied;
   }
 
+  Future<({int applied, bool penaltyHit})> addStrike() async {
+    final next = strikes + 1;
+    if (next < AppConfig.strikesToPenalty) {
+      strikes = await strikesRepo.setStrikes(next);
+      notifyListeners();
+      return (applied: 0, penaltyHit: false);
+    }
+    final applied = await adjustPoints(-penaltyPoints);
+    strikes = await strikesRepo.setStrikes(0);
+    notifyListeners();
+    return (applied: applied, penaltyHit: true);
+  }
+
+  Future<void> clearStrikes() async {
+    if (strikes == 0) return;
+    strikes = await strikesRepo.setStrikes(0);
+    notifyListeners();
+  }
+
+  Future<void> setPenaltyPoints(int amount) async {
+    if (amount < 1) return;
+    penaltyPoints = await strikesRepo.setPenaltyPoints(amount);
+    notifyListeners();
+  }
+
   Future<bool> changePassword({
     required String current,
     required String next,
@@ -169,14 +202,16 @@ class HabitStore extends ChangeNotifier {
   Future<void> submit(String taskId) {
     return _update(
       taskId,
-      (task) => task.isPending ? task.copyWith(status: TaskStatus.submitted) : task,
+      (task) =>
+          task.isPending ? task.copyWith(status: TaskStatus.submitted) : task,
     );
   }
 
   Future<void> unsubmit(String taskId) {
     return _update(
       taskId,
-      (task) => task.isSubmitted ? task.copyWith(status: TaskStatus.pending) : task,
+      (task) =>
+          task.isSubmitted ? task.copyWith(status: TaskStatus.pending) : task,
     );
   }
 
@@ -211,7 +246,10 @@ class HabitStore extends ChangeNotifier {
   }
 
   Future<void> deleteTask(String taskId) async {
-    tasks = [for (final task in tasks) if (task.id != taskId) task];
+    tasks = [
+      for (final task in tasks)
+        if (task.id != taskId) task,
+    ];
     await _persist();
     await _syncTodayHistory();
     notifyListeners();
@@ -266,7 +304,10 @@ class HabitStore extends ChangeNotifier {
   }
 
   Future<void> deleteGoal(String goalId) async {
-    goals = [for (final goal in goals) if (goal.id != goalId) goal];
+    goals = [
+      for (final goal in goals)
+        if (goal.id != goalId) goal,
+    ];
     await _persistGoals();
     notifyListeners();
   }
@@ -322,6 +363,8 @@ class HabitStore extends ChangeNotifier {
       goals: goals,
       history: history,
       plays: plays,
+      strikes: strikes,
+      penaltyPoints: penaltyPoints,
     );
   }
 
@@ -332,6 +375,8 @@ class HabitStore extends ChangeNotifier {
     await historyRepo.save(snapshot.history);
     await gamePlays.save(snapshot.plays);
     await onboardingFlags.setComplete(snapshot.onboardingComplete);
+    await strikesRepo.setStrikes(snapshot.strikes);
+    await strikesRepo.setPenaltyPoints(snapshot.penaltyPoints);
     await load();
   }
 

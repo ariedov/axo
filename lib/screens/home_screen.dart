@@ -15,6 +15,7 @@ import '../widgets/axolotl_mascot.dart';
 import '../widgets/goal_tile.dart';
 import '../widgets/parent_gate.dart';
 import '../widgets/points_hero.dart';
+import '../widgets/strikes_card.dart';
 import '../widgets/task_calendar.dart';
 import '../widgets/task_editor.dart';
 import '../widgets/task_tile.dart';
@@ -125,6 +126,9 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
                     ),
+                  const SliverToBoxAdapter(
+                    child: StrikesCard(key: Key('strikes-card')),
+                  ),
                   const SliverToBoxAdapter(child: _GamesSection()),
                   const SliverToBoxAdapter(
                     child: Padding(

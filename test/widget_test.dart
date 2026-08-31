@@ -12,6 +12,7 @@ import 'package:app/data/models.dart';
 import 'package:app/data/onboarding_flags.dart';
 import 'package:app/data/parent_auth.dart';
 import 'package:app/data/points_repository.dart';
+import 'package:app/data/strikes_repository.dart';
 import 'package:app/data/task_repository.dart';
 import 'package:app/data/today.dart';
 import 'package:app/main.dart';
@@ -34,6 +35,8 @@ HabitStore testStore({
   List<HabitTask> tasks = const [],
   List<RewardGoal> goals = const [],
   String? password = '4826',
+  int strikes = 0,
+  int penaltyPoints = AppConfig.defaultPenaltyPoints,
 }) {
   return HabitStore(
     pointsRepo: InMemoryPointsRepository(points),
@@ -44,6 +47,10 @@ HabitStore testStore({
     gamePlays: InMemoryGamePlaysRepository(),
     goalRepo: InMemoryGoalRepository([...goals]),
     historyRepo: InMemoryDayHistoryRepository(),
+    strikesRepo: InMemoryStrikesRepository(
+      strikes: strikes,
+      penaltyPoints: penaltyPoints,
+    ),
     celebrateFor: Duration.zero,
   );
 }
@@ -113,7 +120,12 @@ void main() {
     await store.completeOnboarding(
       password: 'mama',
       startingPoints: 40,
-      goal: const RewardGoal(id: 'ice', title: 'Морозиво', cost: 50, icon: 'gift'),
+      goal: const RewardGoal(
+        id: 'ice',
+        title: 'Морозиво',
+        cost: 50,
+        icon: 'gift',
+      ),
     );
     expect(store.needsOnboarding, isFalse);
     expect(store.totalPoints, 40);
@@ -233,8 +245,14 @@ void main() {
       ],
     );
     await store.load();
-    expect(store.goals.singleWhere((goal) => goal.id == 'ice').canAfford(80), isTrue);
-    expect(store.goals.singleWhere((goal) => goal.id == 'park').canAfford(80), isFalse);
+    expect(
+      store.goals.singleWhere((goal) => goal.id == 'ice').canAfford(80),
+      isTrue,
+    );
+    expect(
+      store.goals.singleWhere((goal) => goal.id == 'park').canAfford(80),
+      isFalse,
+    );
 
     await store.reorderGoals(0, 1);
     expect(store.goals.map((goal) => goal.id), ['park', 'ice']);
@@ -280,13 +298,12 @@ void main() {
     expect(json['format'], BackupSnapshot.format);
     expect(json['data']['points'], 40);
     expect(json['data']['onboardingComplete'], isTrue);
-    expect(
-      (json['data']['tasks'] as Map)['tasks'],
-      isNotEmpty,
-    );
+    expect((json['data']['tasks'] as Map)['tasks'], isNotEmpty);
     expect((json['data']['goals'] as List).single['completedOn'], isNotNull);
     expect(json['data']['history'], isA<Map<String, dynamic>>());
     expect(json['data']['gamePlays'], isA<Map<String, dynamic>>());
+    expect(json['data']['strikes'], 0);
+    expect(json['data']['penaltyPoints'], AppConfig.defaultPenaltyPoints);
 
     final encoded = snapshot.encode();
     expect(encoded.contains('secret-pass'), isFalse);
@@ -352,6 +369,8 @@ void main() {
     expect(target.goals.single.isCompleted, isTrue);
     expect(target.playsUsed(AppConfig.timesTablesGame), 1);
     expect(target.onboardingComplete, isTrue);
+    expect(target.strikes, 0);
+    expect(target.penaltyPoints, AppConfig.defaultPenaltyPoints);
   });
 
   test('a new day resets progress but keeps the task list', () async {
@@ -486,6 +505,93 @@ void main() {
     expect(store.progressFor(todayStamp())?.completed, 2);
   });
 
+  test('three strikes apply the penalty and reset the counter', () async {
+    final store = testStore(points: 25);
+    await store.load();
+
+    var result = await store.addStrike();
+    expect(result.penaltyHit, isFalse);
+    expect(store.strikes, 1);
+    expect(store.totalPoints, 25);
+
+    result = await store.addStrike();
+    expect(result.penaltyHit, isFalse);
+    expect(store.strikes, 2);
+
+    result = await store.addStrike();
+    expect(result.penaltyHit, isTrue);
+    expect(result.applied, -10);
+    expect(store.strikes, 0);
+    expect(store.totalPoints, 15);
+  });
+
+  test(
+    'strike penalty uses the parent amount and never goes below zero',
+    () async {
+      final store = testStore(points: 4, penaltyPoints: 20);
+      await store.load();
+      expect(store.penaltyPoints, 20);
+
+      await store.addStrike();
+      await store.addStrike();
+      final result = await store.addStrike();
+      expect(result.penaltyHit, isTrue);
+      expect(result.applied, -4);
+      expect(store.totalPoints, 0);
+      expect(store.strikes, 0);
+    },
+  );
+
+  test('parent can change penalty points and clear strikes', () async {
+    final store = testStore(points: 30, strikes: 2);
+    await store.load();
+
+    await store.setPenaltyPoints(7);
+    expect(store.penaltyPoints, 7);
+    await store.setPenaltyPoints(0);
+    expect(store.penaltyPoints, 7);
+
+    await store.clearStrikes();
+    expect(store.strikes, 0);
+  });
+
+  test('backup round-trips strikes and penalty points', () async {
+    final source = testStore(points: 40, strikes: 2, penaltyPoints: 15);
+    await source.load();
+    final snapshot = source.exportBackup();
+    expect(snapshot.strikes, 2);
+    expect(snapshot.penaltyPoints, 15);
+
+    final encoded = snapshot.encode();
+    final restored = BackupSnapshot.fromJson(
+      jsonDecode(encoded) as Map<String, dynamic>,
+    );
+    expect(restored.strikes, 2);
+    expect(restored.penaltyPoints, 15);
+
+    final old = BackupSnapshot.fromJson({
+      'app': 'axo',
+      'format': 1,
+      'exportedAt': '2026-08-29T00:00:00.000Z',
+      'data': {
+        'points': 10,
+        'onboardingComplete': true,
+        'tasks': TaskSnapshot(day: todayStamp(), tasks: const []).toJson(),
+        'goals': <dynamic>[],
+        'history': const DayHistory().toJson(),
+        'gamePlays': GamePlaysSnapshot.empty().toJson(),
+      },
+    });
+    expect(old.strikes, 0);
+    expect(old.penaltyPoints, AppConfig.defaultPenaltyPoints);
+
+    final target = testStore(points: 1, strikes: 0, penaltyPoints: 10);
+    await target.load();
+    await target.importBackup(snapshot);
+    expect(target.strikes, 2);
+    expect(target.penaltyPoints, 15);
+  });
+
   test('parents can add or take points, never below zero', () async {
     final store = testStore(points: 20);
     await store.load();
@@ -563,9 +669,7 @@ void main() {
       HabitScope(
         store: store,
         child: const MaterialApp(
-          home: Scaffold(
-            body: GamePlaysBanner(gameId: 'english'),
-          ),
+          home: Scaffold(body: GamePlaysBanner(gameId: 'english')),
         ),
       ),
     );
@@ -583,7 +687,10 @@ void main() {
 
     expect(await store.tryAwardGamePlay('english'), 5);
     await tester.pump();
-    expect(find.text('Сьогодні балів більше немає — граємо для тренування'), findsOneWidget);
+    expect(
+      find.text('Сьогодні балів більше немає — граємо для тренування'),
+      findsOneWidget,
+    );
     expect(store.playsUsed('english'), 3);
   });
 
@@ -609,7 +716,10 @@ void main() {
     expect(find.text('Щоденні завдання'), findsOneWidget);
     expect(find.text('Застелити ліжко'), findsOneWidget);
     expect(find.text('Цілі'), findsOneWidget);
-    expect(find.text('Поки немає цілей — додайте щось смачненьке.'), findsOneWidget);
+    expect(
+      find.text('Поки немає цілей — додайте щось смачненьке.'),
+      findsOneWidget,
+    );
     await tester.scrollUntilVisible(
       find.text('Бонус і штраф'),
       200,
@@ -834,7 +944,10 @@ void main() {
     expect(store.activeGoals, isEmpty);
     expect(store.completedGoals.single.id, 'ice');
     expect(find.text('Ціль отримано!'), findsOneWidget);
-    expect(find.text('Поки немає цілей — додайте щось смачненьке.'), findsOneWidget);
+    expect(
+      find.text('Поки немає цілей — додайте щось смачненьке.'),
+      findsOneWidget,
+    );
 
     tester
         .state<ScrollableState>(find.byType(Scrollable).first)
@@ -1096,6 +1209,110 @@ void main() {
     expect(find.text('Нараховано 8 балів'), findsAtLeastNWidgets(1));
   });
 
+  testWidgets('home shows strikes and parent can add one after password', (
+    tester,
+  ) async {
+    final store = testStore(points: 30);
+    await store.load();
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('add-strike')),
+      300,
+      scrollable: find.byType(Scrollable),
+    );
+    expect(find.text('Страйки'), findsOneWidget);
+    expect(find.text('0 з 3'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('add-strike')));
+    await tester.pump();
+    expect(find.text('Введи пароль, щоб дати страйк'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), '4826');
+    await tester.tap(find.text('Перевірити'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(store.strikes, 1);
+    expect(find.text('1 з 3'), findsOneWidget);
+    expect(find.text('Страйк 1 з 3'), findsAtLeastNWidgets(1));
+  });
+
+  testWidgets('third home strike applies the penalty', (tester) async {
+    final store = testStore(points: 30, strikes: 2);
+    await store.load();
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('add-strike')),
+      300,
+      scrollable: find.byType(Scrollable),
+    );
+    expect(find.text('2 з 3'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('add-strike')));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), '4826');
+    await tester.tap(find.text('Перевірити'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(store.strikes, 0);
+    expect(store.totalPoints, 20);
+    expect(find.text('0 з 3'), findsOneWidget);
+    expect(find.text('Три страйки! Знято 10 балів'), findsAtLeastNWidgets(1));
+  });
+
+  testWidgets('parent settings can change penalty amount and clear strikes', (
+    tester,
+  ) async {
+    final store = testStore(points: 20, strikes: 2, penaltyPoints: 10);
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      HabitScope(
+        store: store,
+        child: MaterialApp(
+          theme: AppTheme.cute,
+          home: const ParentSettingsScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.scrollUntilVisible(
+      find.text('Штраф за страйки'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Штраф за страйки'), findsOneWidget);
+    expect(find.text('Страйки: 2 з 3'), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('penalty-amount')), '15');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('save-penalty')));
+    await tester.pump();
+    expect(store.penaltyPoints, 15);
+    expect(find.text('Штраф збережено'), findsAtLeastNWidgets(1));
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('clear-strikes')),
+      100,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('clear-strikes')));
+    await tester.pump();
+    expect(store.strikes, 0);
+    expect(find.text('Страйки скинуто'), findsAtLeastNWidgets(1));
+  });
+
   testWidgets('home can add a today-only task after parent approval', (
     tester,
   ) async {
@@ -1238,7 +1455,9 @@ void main() {
     expect(await sizeFor(AxolotlMood.celebrate), slot);
   });
 
-  testWidgets('game field keeps focus after the keyboard opens', (tester) async {
+  testWidgets('game field keeps focus after the keyboard opens', (
+    tester,
+  ) async {
     final focus = FocusNode();
     addTearDown(focus.dispose);
 
