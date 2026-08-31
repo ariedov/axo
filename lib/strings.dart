@@ -109,7 +109,7 @@ class S {
   static const strikePrompt = 'Введи пароль, щоб дати страйк';
   static const penaltySettings = 'Штраф за страйки';
   static const penaltySettingsHint =
-      'Після трьох страйків бали знімаються автоматично, а лічильник обнуляється.';
+      'Один страйк на день. Після трьох страйків бали знімаються, а 3 з 3 лишається до наступного дня.';
   static const penaltyPoints = 'Штраф у балах';
   static const penaltySaved = 'Штраф збережено';
   static const clearStrikes = 'Скинути страйки';
@@ -124,6 +124,12 @@ class S {
     if (applied == 0) return 'Три страйки! $noPointsToRemove';
     return 'Три страйки! ${pointsAdjusted(applied)}';
   }
+
+  static const strikePenaltyTitle = 'Третій страйк';
+  static const continueAction = 'Продовжити';
+
+  static String strikePenaltyConfirm(int n) =>
+      'Це зніме ${pointsWord(n)} у дитини. Продовжити?';
 
   static const backup = 'Резервна копія';
   static const backupHint =

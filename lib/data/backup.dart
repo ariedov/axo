@@ -17,6 +17,7 @@ class BackupSnapshot {
     required this.history,
     required this.plays,
     this.strikes = 0,
+    this.strikeDay,
     this.penaltyPoints = AppConfig.defaultPenaltyPoints,
   });
 
@@ -31,6 +32,7 @@ class BackupSnapshot {
   final DayHistory history;
   final GamePlaysSnapshot plays;
   final int strikes;
+  final String? strikeDay;
   final int penaltyPoints;
 
   String get fileName => 'axo-${todayStamp(exportedAt)}.json';
@@ -47,6 +49,7 @@ class BackupSnapshot {
       'history': history.toJson(),
       'gamePlays': plays.toJson(),
       'strikes': strikes,
+      'strikeDay': strikeDay,
       'penaltyPoints': penaltyPoints,
     },
   };
@@ -79,6 +82,7 @@ class BackupSnapshot {
         data['gamePlays'] as Map<String, dynamic>,
       ),
       strikes: (data['strikes'] as num?)?.toInt() ?? 0,
+      strikeDay: data['strikeDay'] as String?,
       penaltyPoints:
           (data['penaltyPoints'] as num?)?.toInt() ??
           AppConfig.defaultPenaltyPoints,

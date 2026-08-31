@@ -50,7 +50,11 @@ class HabitStore extends ChangeNotifier {
   GamePlaysSnapshot plays = GamePlaysSnapshot.empty();
   DayHistory history = const DayHistory();
   int strikes = 0;
+  String? strikeDay;
   int penaltyPoints = AppConfig.defaultPenaltyPoints;
+
+  bool get canStrike =>
+      strikes < AppConfig.strikesToPenalty && strikeDay != todayStamp(now());
 
   bool get needsOnboarding => !onboardingComplete;
 
@@ -96,8 +100,7 @@ class HabitStore extends ChangeNotifier {
     }
     plays = await gamePlays.loadToday();
     history = await historyRepo.load();
-    strikes = await strikesRepo.fetchStrikes();
-    penaltyPoints = await strikesRepo.fetchPenaltyPoints();
+    await _loadStrikes();
     if (todayLoad.previous != null) {
       await _recordSnapshot(todayLoad.previous!);
     }
@@ -144,28 +147,61 @@ class HabitStore extends ChangeNotifier {
   }
 
   Future<({int applied, bool penaltyHit})> addStrike() async {
+    if (!canStrike) return (applied: 0, penaltyHit: false);
     final next = strikes + 1;
+    final today = todayStamp(now());
     if (next < AppConfig.strikesToPenalty) {
-      strikes = await strikesRepo.setStrikes(next);
+      strikes = next;
+      strikeDay = today;
+      await _persistStrikes();
       notifyListeners();
       return (applied: 0, penaltyHit: false);
     }
     final applied = await adjustPoints(-penaltyPoints);
-    strikes = await strikesRepo.setStrikes(0);
+    strikes = AppConfig.strikesToPenalty;
+    strikeDay = today;
+    await _persistStrikes();
     notifyListeners();
     return (applied: applied, penaltyHit: true);
   }
 
   Future<void> clearStrikes() async {
     if (strikes == 0) return;
-    strikes = await strikesRepo.setStrikes(0);
+    strikes = 0;
+    await _persistStrikes();
     notifyListeners();
   }
 
   Future<void> setPenaltyPoints(int amount) async {
     if (amount < 1) return;
-    penaltyPoints = await strikesRepo.setPenaltyPoints(amount);
+    penaltyPoints = amount;
+    await _persistStrikes();
     notifyListeners();
+  }
+
+  Future<void> _loadStrikes() async {
+    final snapshot = await strikesRepo.load();
+    penaltyPoints = snapshot.penaltyPoints;
+    final today = todayStamp(now());
+    if (snapshot.count >= AppConfig.strikesToPenalty &&
+        snapshot.day != today) {
+      strikes = 0;
+      strikeDay = snapshot.day;
+      await _persistStrikes();
+      return;
+    }
+    strikes = snapshot.count;
+    strikeDay = snapshot.day;
+  }
+
+  Future<void> _persistStrikes() {
+    return strikesRepo.save(
+      StrikeSnapshot(
+        count: strikes,
+        day: strikeDay,
+        penaltyPoints: penaltyPoints,
+      ),
+    );
   }
 
   Future<bool> changePassword({
@@ -364,6 +400,7 @@ class HabitStore extends ChangeNotifier {
       history: history,
       plays: plays,
       strikes: strikes,
+      strikeDay: strikeDay,
       penaltyPoints: penaltyPoints,
     );
   }
@@ -375,8 +412,13 @@ class HabitStore extends ChangeNotifier {
     await historyRepo.save(snapshot.history);
     await gamePlays.save(snapshot.plays);
     await onboardingFlags.setComplete(snapshot.onboardingComplete);
-    await strikesRepo.setStrikes(snapshot.strikes);
-    await strikesRepo.setPenaltyPoints(snapshot.penaltyPoints);
+    await strikesRepo.save(
+      StrikeSnapshot(
+        count: snapshot.strikes,
+        day: snapshot.strikeDay,
+        penaltyPoints: snapshot.penaltyPoints,
+      ),
+    );
     await load();
   }
 

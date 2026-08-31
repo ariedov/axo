@@ -36,22 +36,28 @@ HabitStore testStore({
   List<RewardGoal> goals = const [],
   String? password = '4826',
   int strikes = 0,
+  String? strikeDay,
   int penaltyPoints = AppConfig.defaultPenaltyPoints,
+  DateTime Function()? now,
 }) {
   return HabitStore(
     pointsRepo: InMemoryPointsRepository(points),
     taskRepo: InMemoryTaskRepository(
-      TaskSnapshot(day: todayStamp(), tasks: tasks),
+      TaskSnapshot(day: todayStamp(now?.call()), tasks: tasks),
     ),
     parentAuth: InMemoryParentAuth(password),
     gamePlays: InMemoryGamePlaysRepository(),
     goalRepo: InMemoryGoalRepository([...goals]),
     historyRepo: InMemoryDayHistoryRepository(),
     strikesRepo: InMemoryStrikesRepository(
-      strikes: strikes,
-      penaltyPoints: penaltyPoints,
+      StrikeSnapshot(
+        count: strikes,
+        day: strikeDay,
+        penaltyPoints: penaltyPoints,
+      ),
     ),
     celebrateFor: Duration.zero,
+    now: now,
   );
 }
 
@@ -505,40 +511,63 @@ void main() {
     expect(store.progressFor(todayStamp())?.completed, 2);
   });
 
-  test('three strikes apply the penalty and reset the counter', () async {
-    final store = testStore(points: 25);
+  test('three strikes apply the penalty and stay until the next day', () async {
+    var clock = DateTime(2026, 8, 29);
+    final store = testStore(points: 25, now: () => clock);
     await store.load();
 
     var result = await store.addStrike();
     expect(result.penaltyHit, isFalse);
     expect(store.strikes, 1);
     expect(store.totalPoints, 25);
+    expect(store.canStrike, isFalse);
 
+    result = await store.addStrike();
+    expect(result.penaltyHit, isFalse);
+    expect(store.strikes, 1);
+
+    clock = DateTime(2026, 8, 30);
     result = await store.addStrike();
     expect(result.penaltyHit, isFalse);
     expect(store.strikes, 2);
 
+    clock = DateTime(2026, 8, 31);
     result = await store.addStrike();
     expect(result.penaltyHit, isTrue);
     expect(result.applied, -10);
+    expect(store.strikes, 3);
+    expect(store.canStrike, isFalse);
+    expect(store.totalPoints, 15);
+
+    result = await store.addStrike();
+    expect(result.penaltyHit, isFalse);
+    expect(store.strikes, 3);
+    expect(store.totalPoints, 15);
+
+    clock = DateTime(2026, 9, 1);
+    await store.load();
     expect(store.strikes, 0);
+    expect(store.canStrike, isTrue);
     expect(store.totalPoints, 15);
   });
 
   test(
     'strike penalty uses the parent amount and never goes below zero',
     () async {
-      final store = testStore(points: 4, penaltyPoints: 20);
+      var clock = DateTime(2026, 8, 29);
+      final store = testStore(points: 4, penaltyPoints: 20, now: () => clock);
       await store.load();
       expect(store.penaltyPoints, 20);
 
       await store.addStrike();
+      clock = DateTime(2026, 8, 30);
       await store.addStrike();
+      clock = DateTime(2026, 8, 31);
       final result = await store.addStrike();
       expect(result.penaltyHit, isTrue);
       expect(result.applied, -4);
       expect(store.totalPoints, 0);
-      expect(store.strikes, 0);
+      expect(store.strikes, 3);
     },
   );
 
@@ -1260,10 +1289,34 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(store.strikes, 0);
+    expect(find.text('Третій страйк'), findsOneWidget);
+    expect(
+      find.text('Це зніме 10 балів у дитини. Продовжити?'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Скасувати'));
+    await tester.pump();
+    expect(store.strikes, 2);
+    expect(store.totalPoints, 30);
+
+    await tester.tap(find.byKey(const Key('add-strike')));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), '4826');
+    await tester.tap(find.text('Перевірити'));
+    await tester.pump();
+    await tester.pump();
+    await tester.tap(find.text('Продовжити'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(store.strikes, 3);
     expect(store.totalPoints, 20);
-    expect(find.text('0 з 3'), findsOneWidget);
+    expect(find.text('3 з 3'), findsOneWidget);
     expect(find.text('Три страйки! Знято 10 балів'), findsAtLeastNWidgets(1));
+    expect(
+      tester.widget<FilledButton>(find.byKey(const Key('add-strike'))).onPressed,
+      isNull,
+    );
   });
 
   testWidgets('parent settings can change penalty amount and clear strikes', (

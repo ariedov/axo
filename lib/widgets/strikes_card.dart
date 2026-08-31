@@ -63,7 +63,7 @@ class StrikesCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 FilledButton(
                   key: const Key('add-strike'),
-                  onPressed: () => _addStrike(context),
+                  onPressed: store.canStrike ? () => _addStrike(context) : null,
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.pinkDark,
                     visualDensity: VisualDensity.compact,
@@ -104,8 +104,14 @@ class StrikesCard extends StatelessWidget {
   Future<void> _addStrike(BuildContext context) async {
     if (!await askParent(context, message: S.strikePrompt)) return;
     if (!context.mounted) return;
-    HapticFeedback.mediumImpact();
     final store = HabitScope.of(context);
+    if (store.strikes >= AppConfig.strikesToPenalty - 1) {
+      if (!await showStrikePenaltyDialog(context, store.penaltyPoints)) {
+        return;
+      }
+      if (!context.mounted) return;
+    }
+    HapticFeedback.mediumImpact();
     final result = await store.addStrike();
     if (!context.mounted) return;
     final text = result.penaltyHit
@@ -113,4 +119,28 @@ class StrikesCard extends StatelessWidget {
         : S.strikeGiven(store.strikes, AppConfig.strikesToPenalty);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
+}
+
+Future<bool> showStrikePenaltyDialog(BuildContext context, int points) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      title: const Text(S.strikePenaltyTitle),
+      content: Text(S.strikePenaltyConfirm(points)),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text(S.cancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: FilledButton.styleFrom(backgroundColor: AppColors.pinkDark),
+          child: const Text(S.continueAction),
+        ),
+      ],
+    ),
+  );
+  return confirmed == true;
 }

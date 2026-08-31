@@ -72,9 +72,9 @@ Future<void> main() async {
       },
     ),
     strikesRepo: LocalStrikesRepository(
-      (key, fallback) async => prefs.getInt(key) ?? fallback,
+      (key) async => prefs.getString(key),
       (key, value) async {
-        await prefs.setInt(key, value);
+        await prefs.setString(key, value);
       },
     ),
   );

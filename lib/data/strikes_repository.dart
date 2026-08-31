@@ -1,65 +1,71 @@
+import 'dart:convert';
+
 import '../config.dart';
 
+class StrikeSnapshot {
+  const StrikeSnapshot({
+    this.count = 0,
+    this.day,
+    this.penaltyPoints = AppConfig.defaultPenaltyPoints,
+  });
+
+  final int count;
+  final String? day;
+  final int penaltyPoints;
+
+  Map<String, dynamic> toJson() => {
+    'count': count,
+    'day': day,
+    'penaltyPoints': penaltyPoints,
+  };
+
+  factory StrikeSnapshot.fromJson(Map<String, dynamic> json) {
+    return StrikeSnapshot(
+      count: (json['count'] as num?)?.toInt() ?? 0,
+      day: json['day'] as String?,
+      penaltyPoints:
+          (json['penaltyPoints'] as num?)?.toInt() ??
+          AppConfig.defaultPenaltyPoints,
+    );
+  }
+}
+
 abstract class StrikesRepository {
-  Future<int> fetchStrikes();
-  Future<int> setStrikes(int count);
-  Future<int> fetchPenaltyPoints();
-  Future<int> setPenaltyPoints(int amount);
+  Future<StrikeSnapshot> load();
+  Future<void> save(StrikeSnapshot snapshot);
 }
 
 class LocalStrikesRepository implements StrikesRepository {
   LocalStrikesRepository(this._read, this._write);
 
-  static const strikesKey = 'strikes_count';
-  static const penaltyKey = 'penalty_points';
+  static const _key = 'strikes_state';
 
-  final Future<int> Function(String key, int fallback) _read;
-  final Future<void> Function(String key, int value) _write;
-
-  @override
-  Future<int> fetchStrikes() => _read(strikesKey, 0);
+  final Future<String?> Function(String key) _read;
+  final Future<void> Function(String key, String value) _write;
 
   @override
-  Future<int> setStrikes(int count) async {
-    await _write(strikesKey, count);
-    return count;
+  Future<StrikeSnapshot> load() async {
+    final raw = await _read(_key);
+    if (raw == null) return const StrikeSnapshot();
+    return StrikeSnapshot.fromJson(jsonDecode(raw) as Map<String, dynamic>);
   }
 
   @override
-  Future<int> fetchPenaltyPoints() =>
-      _read(penaltyKey, AppConfig.defaultPenaltyPoints);
-
-  @override
-  Future<int> setPenaltyPoints(int amount) async {
-    await _write(penaltyKey, amount);
-    return amount;
+  Future<void> save(StrikeSnapshot snapshot) {
+    return _write(_key, jsonEncode(snapshot.toJson()));
   }
 }
 
 class InMemoryStrikesRepository implements StrikesRepository {
-  InMemoryStrikesRepository({
-    this.strikes = 0,
-    this.penaltyPoints = AppConfig.defaultPenaltyPoints,
-  });
+  InMemoryStrikesRepository([this.snapshot = const StrikeSnapshot()]);
 
-  int strikes;
-  int penaltyPoints;
+  StrikeSnapshot snapshot;
 
   @override
-  Future<int> fetchStrikes() async => strikes;
+  Future<StrikeSnapshot> load() async => snapshot;
 
   @override
-  Future<int> setStrikes(int count) async {
-    strikes = count;
-    return strikes;
-  }
-
-  @override
-  Future<int> fetchPenaltyPoints() async => penaltyPoints;
-
-  @override
-  Future<int> setPenaltyPoints(int amount) async {
-    penaltyPoints = amount;
-    return penaltyPoints;
+  Future<void> save(StrikeSnapshot snapshot) async {
+    this.snapshot = snapshot;
   }
 }
