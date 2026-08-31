@@ -153,6 +153,8 @@ class S {
   static const dailyTasksHint =
       'Ці завдання з’являються щоранку. Бали дитина отримує лише після вашої перевірки.';
   static const optionalTasks = 'Додаткові завдання';
+  static const optionalTasksHint =
+      'Щоб заробити ще балів. Мама чи тато можуть додати справу на сьогодні.';
   static const dailyOptionalTasks = 'Щоденні додаткові завдання';
   static const dailyOptionalTasksHint =
       'Ці завдання теж з’являються щоранку, але їх не обов’язково виконувати.';

@@ -128,7 +128,9 @@ class HomeScreen extends StatelessWidget {
                   SliverToBoxAdapter(
                     child: _SectionTitle(
                       title: S.optionalTasks,
-                      subtitle: store.extraPossiblePoints == 0
+                      subtitle: store.extraTasks.isEmpty
+                          ? S.optionalTasksHint
+                          : store.extraPossiblePoints == 0
                           ? null
                           : S.todayTaskPoints(
                               store.extraEarnedPoints,
@@ -149,10 +151,10 @@ class HomeScreen extends StatelessWidget {
                       );
                     },
                   ),
+                  const SliverToBoxAdapter(child: _GamesSection()),
                   const SliverToBoxAdapter(
                     child: StrikesCard(key: Key('strikes-card')),
                   ),
-                  const SliverToBoxAdapter(child: _GamesSection()),
                   const SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.only(top: 20),

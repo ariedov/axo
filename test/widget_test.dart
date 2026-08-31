@@ -1689,7 +1689,31 @@ void main() {
     );
     expect(find.text('Додаткові завдання'), findsOneWidget);
     expect(find.text('Допомогти вдома'), findsOneWidget);
+    expect(find.text(S.optionalTasksHint), findsNothing);
     expect(find.byKey(const Key('add-today-task')), findsOneWidget);
+  });
+
+  testWidgets('home explains extra tasks when the list is empty', (tester) async {
+    final store = testStore(
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+      ],
+    );
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+    await tester.scrollUntilVisible(
+      find.text(S.optionalTasksHint),
+      300,
+      scrollable: find.byType(Scrollable),
+    );
+    expect(find.text('Додаткові завдання'), findsOneWidget);
+    expect(find.text(S.optionalTasksHint), findsOneWidget);
   });
 
   testWidgets('home can add a today-only task after parent approval', (
