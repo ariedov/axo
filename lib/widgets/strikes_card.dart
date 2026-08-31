@@ -19,7 +19,7 @@ class StrikesCard extends StatelessWidget {
     final hot = strikes >= max - 1;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
       child: Container(
         padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
         decoration: BoxDecoration(

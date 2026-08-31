@@ -55,7 +55,7 @@ class _TaskCalendarState extends State<TaskCalendar> {
     final selected = _selected == null ? null : store.progressFor(_selected!);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: AppColors.card,
