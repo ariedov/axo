@@ -47,7 +47,8 @@ class S {
   static const practiceOnly =
       'Перші 3 раунди (по 10 завдань) дають бали. Далі можна грати скільки завгодно.';
   static const gamePointsLeft = 'Раунди з балами сьогодні';
-  static const gamePointsGone = 'Сьогодні балів більше немає — граємо для тренування';
+  static const gamePointsGone =
+      'Сьогодні балів більше немає — граємо для тренування';
 
   static String gameRoundsProgress(int used, int max) => '$used/$max';
   static const plusGamePoints = 'балів за гру';
@@ -103,6 +104,33 @@ class S {
   }
 
   static const noPointsToRemove = 'Немає балів, щоб зняти';
+  static const strikes = 'Страйки';
+  static const strike = 'Страйк';
+  static const strikePrompt = 'Введи пароль, щоб дати страйк';
+  static const penaltySettings = 'Штраф за страйки';
+  static const penaltySettingsHint =
+      'Один страйк на день. Після трьох страйків бали знімаються, а 3 з 3 лишається до наступного дня.';
+  static const penaltyPoints = 'Штраф у балах';
+  static const penaltySaved = 'Штраф збережено';
+  static const clearStrikes = 'Скинути страйки';
+  static const strikesCleared = 'Страйки скинуто';
+  static const invalidPenalty = 'Вкажіть ціле число балів';
+
+  static String strikesProgress(int n, int max) => '$n з $max';
+
+  static String strikeGiven(int n, int max) => 'Страйк $n з $max';
+
+  static String penaltyHit(int applied) {
+    if (applied == 0) return 'Три страйки! $noPointsToRemove';
+    return 'Три страйки! ${pointsAdjusted(applied)}';
+  }
+
+  static const strikePenaltyTitle = 'Третій страйк';
+  static const continueAction = 'Продовжити';
+
+  static String strikePenaltyConfirm(int n) =>
+      'Це зніме ${pointsWord(n)} у дитини. Продовжити?';
+
   static const backup = 'Резервна копія';
   static const backupHint =
       'Збережіть дані на випадок зміни телефону. Пароль у файл не потрапляє.';
@@ -143,8 +171,7 @@ class S {
       'Видати «$title» і списати бали?';
   static const noGoalsYet = 'Поки немає цілей — додайте щось смачненьке.';
   static const completedGoals = 'Видані цілі';
-  static const completedGoalsHint =
-      'Цілі, які вже видали дитині.';
+  static const completedGoalsHint = 'Цілі, які вже видали дитині.';
   static const noCompletedGoals = 'Поки немає виданих цілей.';
 
   static String completedGoalOn(String iso) {
@@ -154,6 +181,7 @@ class S {
     final month = date.month.toString().padLeft(2, '0');
     return 'Видано $day.$month.${date.year}';
   }
+
   static const calendar = 'Календар';
   static const previousMonth = 'Попередній місяць';
   static const nextMonth = 'Наступний місяць';

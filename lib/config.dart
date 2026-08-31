@@ -4,6 +4,8 @@ class AppConfig {
   static const mascotName = 'Аксо';
   static const minPasswordLength = 4;
   static const defaultStartingPoints = 50;
+  static const strikesToPenalty = 3;
+  static const defaultPenaltyPoints = 10;
 
   static const timesTablesMin = 1;
   static const timesTablesMax = 10;

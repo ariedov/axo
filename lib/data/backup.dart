@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../config.dart';
 import 'day_history_repository.dart';
 import 'game_plays.dart';
 import 'models.dart';
@@ -15,6 +16,9 @@ class BackupSnapshot {
     required this.goals,
     required this.history,
     required this.plays,
+    this.strikes = 0,
+    this.strikeDay,
+    this.penaltyPoints = AppConfig.defaultPenaltyPoints,
   });
 
   static const appId = 'axo';
@@ -27,6 +31,9 @@ class BackupSnapshot {
   final List<RewardGoal> goals;
   final DayHistory history;
   final GamePlaysSnapshot plays;
+  final int strikes;
+  final String? strikeDay;
+  final int penaltyPoints;
 
   String get fileName => 'axo-${todayStamp(exportedAt)}.json';
 
@@ -41,6 +48,9 @@ class BackupSnapshot {
       'goals': [for (final goal in goals) goal.toJson()],
       'history': history.toJson(),
       'gamePlays': plays.toJson(),
+      'strikes': strikes,
+      'strikeDay': strikeDay,
+      'penaltyPoints': penaltyPoints,
     },
   };
 
@@ -71,6 +81,11 @@ class BackupSnapshot {
       plays: GamePlaysSnapshot.fromJson(
         data['gamePlays'] as Map<String, dynamic>,
       ),
+      strikes: (data['strikes'] as num?)?.toInt() ?? 0,
+      strikeDay: data['strikeDay'] as String?,
+      penaltyPoints:
+          (data['penaltyPoints'] as num?)?.toInt() ??
+          AppConfig.defaultPenaltyPoints,
     );
   }
 }
