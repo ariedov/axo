@@ -100,13 +100,12 @@ class HomeScreen extends StatelessWidget {
                               store.todayEarnedPoints,
                               store.todayPossiblePoints,
                             ),
-                      onAdd: () => _addTodayTask(context),
                     ),
                   ),
                   SliverList.builder(
-                    itemCount: store.tasks.length,
+                    itemCount: store.dailyTasks.length,
                     itemBuilder: (context, index) {
-                      final task = store.tasks[index];
+                      final task = store.dailyTasks[index];
                       return TaskTile(
                         task: task,
                         onSubmit: () => store.submit(task.id),
@@ -126,6 +125,30 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
                     ),
+                  SliverToBoxAdapter(
+                    child: _SectionTitle(
+                      title: S.optionalTasks,
+                      subtitle: store.extraPossiblePoints == 0
+                          ? null
+                          : S.todayTaskPoints(
+                              store.extraEarnedPoints,
+                              store.extraPossiblePoints,
+                            ),
+                      onAdd: () => _addTodayTask(context),
+                    ),
+                  ),
+                  SliverList.builder(
+                    itemCount: store.extraTasks.length,
+                    itemBuilder: (context, index) {
+                      final task = store.extraTasks[index];
+                      return TaskTile(
+                        task: task,
+                        onSubmit: () => store.submit(task.id),
+                        onUnsubmit: () => store.unsubmit(task.id),
+                        onVerify: () => _verify(context, task),
+                      );
+                    },
+                  ),
                   const SliverToBoxAdapter(
                     child: StrikesCard(key: Key('strikes-card')),
                   ),
@@ -162,7 +185,11 @@ class HomeScreen extends StatelessWidget {
   Future<void> _addTodayTask(BuildContext context) async {
     if (!await askParent(context, message: S.addTodayTaskPrompt)) return;
     if (!context.mounted) return;
-    final result = await editTaskDialog(context, todayOnly: true);
+    final result = await editTaskDialog(
+      context,
+      todayOnly: true,
+      optional: true,
+    );
     final task = result?.task;
     if (task == null || !context.mounted) return;
     await HabitScope.of(context).upsertTask(task);

@@ -8,6 +8,7 @@ class HabitTask {
     required this.icon,
     this.status = TaskStatus.pending,
     this.todayOnly = false,
+    this.optional = false,
   });
 
   final String id;
@@ -16,10 +17,12 @@ class HabitTask {
   final String icon;
   final TaskStatus status;
   final bool todayOnly;
+  final bool optional;
 
   bool get isPending => status == TaskStatus.pending;
   bool get isSubmitted => status == TaskStatus.submitted;
   bool get isVerified => status == TaskStatus.verified;
+  bool get isMandatory => !optional && !todayOnly;
 
   HabitTask copyWith({
     String? title,
@@ -27,6 +30,7 @@ class HabitTask {
     String? icon,
     TaskStatus? status,
     bool? todayOnly,
+    bool? optional,
   }) {
     return HabitTask(
       id: id,
@@ -35,6 +39,7 @@ class HabitTask {
       icon: icon ?? this.icon,
       status: status ?? this.status,
       todayOnly: todayOnly ?? this.todayOnly,
+      optional: optional ?? this.optional,
     );
   }
 
@@ -45,6 +50,7 @@ class HabitTask {
     'icon': icon,
     'status': status.name,
     'todayOnly': todayOnly,
+    'optional': optional,
   };
 
   factory HabitTask.fromJson(Map<String, dynamic> json) {
@@ -58,6 +64,7 @@ class HabitTask {
         orElse: () => TaskStatus.pending,
       ),
       todayOnly: json['todayOnly'] == true,
+      optional: json['optional'] == true,
     );
   }
 }
@@ -178,10 +185,14 @@ class DayProgress {
   bool get isPartial => completed > 0 && completed < total;
 
   factory DayProgress.fromTasks(String day, List<HabitTask> tasks) {
+    final counted = [
+      for (final task in tasks)
+        if (task.isMandatory) task,
+    ];
     return DayProgress(
       day: day,
-      completed: tasks.where((task) => task.isVerified).length,
-      total: tasks.length,
+      completed: counted.where((task) => task.isVerified).length,
+      total: counted.length,
     );
   }
 

@@ -36,8 +36,12 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
     super.dispose();
   }
 
-  Future<void> _edit(HabitTask? existing) async {
-    final result = await editTaskDialog(context, existing: existing);
+  Future<void> _edit(HabitTask? existing, {bool optional = false}) async {
+    final result = await editTaskDialog(
+      context,
+      existing: existing,
+      optional: existing?.optional ?? optional,
+    );
     if (result == null || !mounted) return;
     final store = HabitScope.of(context);
     if (result.delete && existing != null) {
@@ -167,10 +171,91 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
     );
   }
 
+  List<Widget> _taskSlivers({
+    required String title,
+    required String hint,
+    required List<HabitTask> tasks,
+    required void Function(int oldIndex, int newIndex) onReorder,
+    required VoidCallback onAdd,
+    required void Function(HabitTask task) onEdit,
+    Key? addKey,
+  }) {
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+        sliver: SliverToBoxAdapter(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 20,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    key: addKey,
+                    tooltip: S.addTask,
+                    onPressed: onAdd,
+                    icon: const Icon(Icons.add_circle_rounded),
+                    color: AppColors.pinkDark,
+                  ),
+                ],
+              ),
+              Text(
+                hint,
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                S.reorderTasksHint,
+                style: TextStyle(
+                  color: AppColors.muted,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
+      SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        sliver: SliverReorderableList(
+          itemCount: tasks.length,
+          onReorderItem: onReorder,
+          proxyDecorator: _proxyDecorator,
+          itemBuilder: (context, index) {
+            final task = tasks[index];
+            return Padding(
+              key: ValueKey(task.id),
+              padding: const EdgeInsets.only(bottom: 10),
+              child: ReorderableDelayedDragStartListener(
+                index: index,
+                child: _DailyTaskRow(
+                  task: task,
+                  index: index,
+                  onTap: () => onEdit(task),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final store = HabitScope.of(context);
-    final daily = store.dailyTasks;
 
     return Scaffold(
       appBar: AppBar(title: const Text(S.parentSection)),
@@ -179,73 +264,22 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
           constraints: const BoxConstraints(maxWidth: 440),
           child: CustomScrollView(
             slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                sliver: SliverToBoxAdapter(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              S.dailyTasks,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w900,
-                                fontSize: 20,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            tooltip: S.addTask,
-                            onPressed: () => _edit(null),
-                            icon: const Icon(Icons.add_circle_rounded),
-                            color: AppColors.pinkDark,
-                          ),
-                        ],
-                      ),
-                      const Text(
-                        S.dailyTasksHint,
-                        style: TextStyle(
-                          color: AppColors.muted,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        S.reorderTasksHint,
-                        style: TextStyle(
-                          color: AppColors.muted,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                  ),
-                ),
+              ..._taskSlivers(
+                title: S.dailyTasks,
+                hint: S.dailyTasksHint,
+                tasks: store.dailyTasks,
+                onReorder: store.reorderDailyTasks,
+                onAdd: () => _edit(null),
+                onEdit: (task) => _edit(task),
               ),
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                sliver: SliverReorderableList(
-                  itemCount: daily.length,
-                  onReorderItem: store.reorderDailyTasks,
-                  proxyDecorator: _proxyDecorator,
-                  itemBuilder: (context, index) {
-                    final task = daily[index];
-                    return Padding(
-                      key: ValueKey(task.id),
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: ReorderableDelayedDragStartListener(
-                        index: index,
-                        child: _DailyTaskRow(
-                          task: task,
-                          index: index,
-                          onTap: () => _edit(task),
-                        ),
-                      ),
-                    );
-                  },
-                ),
+              ..._taskSlivers(
+                title: S.dailyOptionalTasks,
+                hint: S.dailyOptionalTasksHint,
+                tasks: store.dailyOptionalTasks,
+                onReorder: store.reorderDailyOptionalTasks,
+                onAdd: () => _edit(null, optional: true),
+                onEdit: (task) => _edit(task, optional: true),
+                addKey: const Key('add-daily-optional-task'),
               ),
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),

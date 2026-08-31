@@ -18,21 +18,28 @@ Future<TaskEditResult?> editTaskDialog(
   BuildContext context, {
   HabitTask? existing,
   bool todayOnly = false,
+  bool optional = false,
 }) {
   return showDialog<TaskEditResult>(
     context: context,
     builder: (context) => _TaskEditor(
       existing: existing,
       todayOnly: existing?.todayOnly ?? todayOnly,
+      optional: existing?.optional ?? optional,
     ),
   );
 }
 
 class _TaskEditor extends StatefulWidget {
-  const _TaskEditor({this.existing, this.todayOnly = false});
+  const _TaskEditor({
+    this.existing,
+    this.todayOnly = false,
+    this.optional = false,
+  });
 
   final HabitTask? existing;
   final bool todayOnly;
+  final bool optional;
 
   @override
   State<_TaskEditor> createState() => _TaskEditorState();
@@ -74,6 +81,7 @@ class _TaskEditorState extends State<_TaskEditor> {
           icon: _icon,
           status: widget.existing?.status ?? TaskStatus.pending,
           todayOnly: widget.todayOnly,
+          optional: widget.optional,
         ),
       ),
     );
