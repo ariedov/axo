@@ -60,17 +60,30 @@ class HabitStore extends ChangeNotifier {
 
   bool checkPassword(String value) => value.trim() == parentPassword;
 
-  int get pendingCount => tasks.where((task) => task.isPending).length;
-  int get waitingCount => tasks.where((task) => task.isSubmitted).length;
-  int get verifiedCount => tasks.where((task) => task.isVerified).length;
-  int get todayEarnedPoints => tasks
+  int get pendingCount => dailyTasks.where((task) => task.isPending).length;
+  int get waitingCount => dailyTasks.where((task) => task.isSubmitted).length;
+  int get verifiedCount => dailyTasks.where((task) => task.isVerified).length;
+  int get todayEarnedPoints => dailyTasks
       .where((task) => task.isVerified)
       .fold(0, (sum, task) => sum + task.points);
   int get todayPossiblePoints =>
-      tasks.fold(0, (sum, task) => sum + task.points);
+      dailyTasks.fold(0, (sum, task) => sum + task.points);
+  int get extraEarnedPoints => extraTasks
+      .where((task) => task.isVerified)
+      .fold(0, (sum, task) => sum + task.points);
+  int get extraPossiblePoints =>
+      extraTasks.fold(0, (sum, task) => sum + task.points);
   List<HabitTask> get dailyTasks => [
     for (final task in tasks)
-      if (!task.todayOnly) task,
+      if (task.isMandatory) task,
+  ];
+  List<HabitTask> get dailyOptionalTasks => [
+    for (final task in tasks)
+      if (task.optional && !task.todayOnly) task,
+  ];
+  List<HabitTask> get extraTasks => [
+    for (final task in tasks)
+      if (task.optional || task.todayOnly) task,
   ];
   List<RewardGoal> get activeGoals => [
     for (final goal in goals)
@@ -309,7 +322,21 @@ class HabitStore extends ChangeNotifier {
     var index = 0;
     tasks = [
       for (final task in tasks)
-        if (task.todayOnly) task else daily[index++],
+        if (task.isMandatory) daily[index++] else task,
+    ];
+    notifyListeners();
+    await _persist();
+  }
+
+  Future<void> reorderDailyOptionalTasks(int oldIndex, int newIndex) async {
+    if (oldIndex == newIndex) return;
+    final optional = dailyOptionalTasks;
+    final moved = optional.removeAt(oldIndex);
+    optional.insert(newIndex, moved);
+    var index = 0;
+    tasks = [
+      for (final task in tasks)
+        if (task.optional && !task.todayOnly) optional[index++] else task,
     ];
     notifyListeners();
     await _persist();
@@ -317,12 +344,23 @@ class HabitStore extends ChangeNotifier {
 
   List<HabitTask> _insertTask(HabitTask task) {
     if (task.todayOnly) return [...tasks, task];
-    final extrasStart = tasks.indexWhere((item) => item.todayOnly);
-    if (extrasStart == -1) return [...tasks, task];
+    if (task.optional) {
+      final extrasStart = tasks.indexWhere((item) => item.todayOnly);
+      if (extrasStart == -1) return [...tasks, task];
+      return [
+        ...tasks.sublist(0, extrasStart),
+        task,
+        ...tasks.sublist(extrasStart),
+      ];
+    }
+    final restStart = tasks.indexWhere(
+      (item) => item.optional || item.todayOnly,
+    );
+    if (restStart == -1) return [...tasks, task];
     return [
-      ...tasks.sublist(0, extrasStart),
+      ...tasks.sublist(0, restStart),
       task,
-      ...tasks.sublist(extrasStart),
+      ...tasks.sublist(restStart),
     ];
   }
 

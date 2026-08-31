@@ -242,6 +242,83 @@ void main() {
     expect(store.tasks.map((task) => task.id), ['teeth', 'bed', 'park']);
   });
 
+  test('optional daily tasks stay off the mandatory list', () async {
+    final store = testStore(
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+      ],
+    );
+    await store.load();
+    await store.upsertTask(
+      const HabitTask(
+        id: 'help',
+        title: 'Допомогти',
+        points: 8,
+        icon: 'star',
+        optional: true,
+      ),
+    );
+    await store.upsertTask(
+      const HabitTask(
+        id: 'park',
+        title: 'Прогулянка',
+        points: 15,
+        icon: 'walk',
+        todayOnly: true,
+        optional: true,
+      ),
+    );
+
+    expect(store.tasks.map((task) => task.id), ['bed', 'help', 'park']);
+    expect(store.dailyTasks.map((task) => task.id), ['bed']);
+    expect(store.dailyOptionalTasks.map((task) => task.id), ['help']);
+    expect(store.extraTasks.map((task) => task.id), ['help', 'park']);
+    expect(store.todayPossiblePoints, 10);
+    expect(store.extraPossiblePoints, 23);
+    expect(store.pendingCount, 1);
+
+    await store.upsertTask(
+      const HabitTask(id: 'teeth', title: 'Зуби', points: 5, icon: 'hygiene'),
+    );
+    expect(store.tasks.map((task) => task.id), ['bed', 'teeth', 'help', 'park']);
+
+    await store.reorderDailyOptionalTasks(0, 0);
+    await store.upsertTask(
+      const HabitTask(
+        id: 'read',
+        title: 'Почитати',
+        points: 5,
+        icon: 'book',
+        optional: true,
+      ),
+    );
+    expect(store.dailyOptionalTasks.map((task) => task.id), ['help', 'read']);
+    await store.reorderDailyOptionalTasks(0, 1);
+    expect(store.dailyOptionalTasks.map((task) => task.id), ['read', 'help']);
+    expect(store.dailyTasks.map((task) => task.id), ['bed', 'teeth']);
+    expect(store.tasks.map((task) => task.id), [
+      'bed',
+      'teeth',
+      'read',
+      'help',
+      'park',
+    ]);
+  });
+
+  test('legacy json without optional is mandatory', () {
+    final task = HabitTask.fromJson({
+      'id': 'bed',
+      'title': 'Застелити ліжко',
+      'points': 10,
+      'icon': 'bed',
+      'status': 'pending',
+      'todayOnly': false,
+    });
+    expect(task.optional, isFalse);
+    expect(task.isMandatory, isTrue);
+    expect(task.toJson()['optional'], isFalse);
+  });
+
   test('goals can be saved, reordered, and spent', () async {
     final store = testStore(
       points: 80,
@@ -320,6 +397,7 @@ void main() {
     );
     expect(restored.points, 40);
     expect(restored.tasks.tasks.single.id, 'bed');
+    expect(restored.tasks.tasks.single.optional, isFalse);
     expect(restored.goals.single.isCompleted, isTrue);
     expect(restored.onboardingComplete, isTrue);
 
@@ -377,6 +455,56 @@ void main() {
     expect(target.onboardingComplete, isTrue);
     expect(target.strikes, 0);
     expect(target.penaltyPoints, AppConfig.defaultPenaltyPoints);
+  });
+
+  test('backup keeps optional flags and imports old files without them', () async {
+    final source = testStore(
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+        HabitTask(
+          id: 'help',
+          title: 'Допомогти',
+          points: 8,
+          icon: 'star',
+          optional: true,
+        ),
+      ],
+    );
+    await source.load();
+    final encoded = source.exportBackup().encode();
+    expect(encoded.contains('"optional": true'), isTrue);
+
+    final restored = BackupSnapshot.fromJson(
+      jsonDecode(encoded) as Map<String, dynamic>,
+    );
+    expect(restored.tasks.tasks.map((task) => task.optional), [false, true]);
+
+    final legacy = BackupSnapshot.fromJson({
+      'app': 'axo',
+      'format': 1,
+      'exportedAt': '2026-08-29T00:00:00.000Z',
+      'data': {
+        'points': 0,
+        'onboardingComplete': true,
+        'tasks': {
+          'day': '2026-08-29',
+          'tasks': [
+            {
+              'id': 'bed',
+              'title': 'Застелити ліжко',
+              'points': 10,
+              'icon': 'bed',
+              'status': 'pending',
+              'todayOnly': false,
+            },
+          ],
+        },
+        'goals': <Map<String, dynamic>>[],
+        'history': <String, dynamic>{},
+        'gamePlays': {'day': '2026-08-29', 'counts': <String, dynamic>{}},
+      },
+    });
+    expect(legacy.tasks.tasks.single.optional, isFalse);
   });
 
   test('a new day resets progress but keeps the task list', () async {
@@ -442,6 +570,53 @@ void main() {
     expect(loaded.current.tasks.single.id, 'bed');
     expect(loaded.current.tasks.single.isPending, isTrue);
     expect(loaded.previous?.tasks, hasLength(2));
+  });
+
+  test('optional daily tasks reset the next day', () async {
+    final memory = <String, String>{};
+    memory['tasks_snapshot'] = jsonEncode(
+      TaskSnapshot(
+        day: '2026-08-26',
+        tasks: const [
+          HabitTask(
+            id: 'bed',
+            title: 'Застелити ліжко',
+            points: 10,
+            icon: 'bed',
+            status: TaskStatus.verified,
+          ),
+          HabitTask(
+            id: 'help',
+            title: 'Допомогти',
+            points: 8,
+            icon: 'star',
+            optional: true,
+            status: TaskStatus.verified,
+          ),
+          HabitTask(
+            id: 'park',
+            title: 'Прогулянка',
+            points: 15,
+            icon: 'walk',
+            todayOnly: true,
+            optional: true,
+            status: TaskStatus.verified,
+          ),
+        ],
+      ).toJson(),
+    );
+
+    final repo = LocalTaskRepository(
+      (key) async => memory[key],
+      (key, value) async => memory[key] = value,
+      now: () => DateTime(2026, 8, 27),
+    );
+
+    final loaded = await repo.loadToday();
+    expect(loaded.current.tasks.map((task) => task.id), ['bed', 'help']);
+    expect(loaded.current.tasks.every((task) => task.isPending), isTrue);
+    expect(loaded.current.tasks.last.optional, isTrue);
+    expect(loaded.previous?.tasks, hasLength(3));
   });
 
   test('yesterday progress is saved when the day rolls over', () async {
@@ -744,6 +919,12 @@ void main() {
 
     expect(find.text('Щоденні завдання'), findsOneWidget);
     expect(find.text('Застелити ліжко'), findsOneWidget);
+    expect(find.text('Щоденні додаткові завдання'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Цілі'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Цілі'), findsOneWidget);
     expect(
       find.text('Поки немає цілей — додайте щось смачненьке.'),
@@ -853,7 +1034,65 @@ void main() {
     await tester.pump();
 
     expect(find.text('Застелити ліжко'), findsOneWidget);
+    expect(find.text('Щоденні додаткові завдання'), findsOneWidget);
     expect(find.text('Прогулянка'), findsNothing);
+  });
+
+  testWidgets('parent settings can add a daily optional task', (tester) async {
+    final store = testStore(
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+      ],
+    );
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      HabitScope(
+        store: store,
+        child: MaterialApp(
+          theme: AppTheme.cute,
+          home: const ParentSettingsScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('add-daily-optional-task')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('add-daily-optional-task')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Додати завдання'), findsOneWidget);
+    await tester.enterText(
+      find
+          .descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byType(TextField),
+          )
+          .first,
+      'Допомогти вдома',
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Зберегти'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Допомогти вдома'), findsOneWidget);
+    expect(store.dailyOptionalTasks, hasLength(1));
+    expect(store.dailyOptionalTasks.single.title, 'Допомогти вдома');
+    expect(store.dailyOptionalTasks.single.optional, isTrue);
+    expect(store.dailyOptionalTasks.single.todayOnly, isFalse);
+    expect(store.dailyTasks, hasLength(1));
   });
 
   testWidgets('parent settings can add and remove points', (tester) async {
@@ -1098,16 +1337,20 @@ void main() {
       ],
     );
     await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(AxolotlApp(store: store));
     await tester.pump();
+    final now = DateTime.now();
     await tester.scrollUntilVisible(
-      find.text('Календар'),
+      find.text(S.monthTitle(now.year, now.month)),
       300,
       scrollable: find.byType(Scrollable),
     );
 
-    final now = DateTime.now();
     expect(find.text(S.monthTitle(now.year, now.month)), findsOneWidget);
     expect(find.text('Усі завдання'), findsOneWidget);
     expect(find.text('Частина'), findsOneWidget);
@@ -1243,6 +1486,10 @@ void main() {
   ) async {
     final store = testStore(points: 30);
     await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(AxolotlApp(store: store));
     await tester.pump();
@@ -1272,6 +1519,10 @@ void main() {
   testWidgets('third home strike applies the penalty', (tester) async {
     final store = testStore(points: 30, strikes: 2);
     await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(AxolotlApp(store: store));
     await tester.pump();
@@ -1366,6 +1617,40 @@ void main() {
     expect(find.text('Страйки скинуто'), findsAtLeastNWidgets(1));
   });
 
+  testWidgets('home splits mandatory and optional tasks', (tester) async {
+    final store = testStore(
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+        HabitTask(
+          id: 'help',
+          title: 'Допомогти вдома',
+          points: 8,
+          icon: 'star',
+          optional: true,
+        ),
+      ],
+    );
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+
+    expect(find.text('Завдання на сьогодні'), findsOneWidget);
+    expect(find.text('Застелити ліжко'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Додаткові завдання'),
+      300,
+      scrollable: find.byType(Scrollable),
+    );
+    expect(find.text('Додаткові завдання'), findsOneWidget);
+    expect(find.text('Допомогти вдома'), findsOneWidget);
+    expect(find.byKey(const Key('add-today-task')), findsOneWidget);
+  });
+
   testWidgets('home can add a today-only task after parent approval', (
     tester,
   ) async {
@@ -1413,10 +1698,13 @@ void main() {
     await tester.pump();
 
     expect(find.text('Прогулянка'), findsOneWidget);
+    expect(find.text('Додаткові завдання'), findsOneWidget);
     expect(store.tasks, hasLength(2));
     expect(store.tasks.last.title, 'Прогулянка');
     expect(store.tasks.last.todayOnly, isTrue);
+    expect(store.tasks.last.optional, isTrue);
     expect(store.dailyTasks, hasLength(1));
+    expect(store.extraTasks, hasLength(1));
   });
 
   testWidgets('answer flash appears then fades away', (tester) async {

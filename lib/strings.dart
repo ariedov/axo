@@ -152,6 +152,10 @@ class S {
   static const dailyTasks = 'Щоденні завдання';
   static const dailyTasksHint =
       'Ці завдання з’являються щоранку. Бали дитина отримує лише після вашої перевірки.';
+  static const optionalTasks = 'Додаткові завдання';
+  static const dailyOptionalTasks = 'Щоденні додаткові завдання';
+  static const dailyOptionalTasksHint =
+      'Ці завдання теж з’являються щоранку, але їх не обов’язково виконувати.';
   static const reorderTasksHint =
       'Потягніть за смужки зліва, щоб змінити порядок.';
   static const goals = 'Цілі';
