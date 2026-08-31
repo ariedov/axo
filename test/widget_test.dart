@@ -686,6 +686,47 @@ void main() {
     expect(store.progressFor(todayStamp())?.completed, 2);
   });
 
+  test('optional tasks do not affect calendar completion', () async {
+    final store = testStore(
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+        HabitTask(
+          id: 'help',
+          title: 'Допомогти вдома',
+          points: 8,
+          icon: 'star',
+          optional: true,
+        ),
+        HabitTask(
+          id: 'park',
+          title: 'Прогулянка',
+          points: 15,
+          icon: 'walk',
+          todayOnly: true,
+          optional: true,
+        ),
+      ],
+    );
+    await store.load();
+    expect(store.progressFor(todayStamp())?.total, 1);
+    expect(store.progressFor(todayStamp())?.completed, 0);
+    expect(store.progressFor(todayStamp())?.isFull, isFalse);
+    expect(store.progressFor(todayStamp())?.isPartial, isFalse);
+
+    await store.submit('help');
+    await store.verify('help');
+    expect(store.progressFor(todayStamp())?.completed, 0);
+    expect(store.progressFor(todayStamp())?.isFull, isFalse);
+    expect(store.progressFor(todayStamp())?.isPartial, isFalse);
+
+    await store.submit('bed');
+    await store.verify('bed');
+    expect(store.progressFor(todayStamp())?.completed, 1);
+    expect(store.progressFor(todayStamp())?.total, 1);
+    expect(store.progressFor(todayStamp())?.isFull, isTrue);
+    expect(store.progressFor(todayStamp())?.isPartial, isFalse);
+  });
+
   test('three strikes apply the penalty and stay until the next day', () async {
     var clock = DateTime(2026, 8, 29);
     final store = testStore(points: 25, now: () => clock);
