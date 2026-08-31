@@ -736,18 +736,13 @@ void main() {
     expect(result.penaltyHit, isFalse);
     expect(store.strikes, 1);
     expect(store.totalPoints, 25);
-    expect(store.canStrike, isFalse);
+    expect(store.canStrike, isTrue);
 
-    result = await store.addStrike();
-    expect(result.penaltyHit, isFalse);
-    expect(store.strikes, 1);
-
-    clock = DateTime(2026, 8, 30);
     result = await store.addStrike();
     expect(result.penaltyHit, isFalse);
     expect(store.strikes, 2);
+    expect(store.canStrike, isTrue);
 
-    clock = DateTime(2026, 8, 31);
     result = await store.addStrike();
     expect(result.penaltyHit, isTrue);
     expect(result.applied, -10);
@@ -776,9 +771,7 @@ void main() {
       expect(store.penaltyPoints, 20);
 
       await store.addStrike();
-      clock = DateTime(2026, 8, 30);
       await store.addStrike();
-      clock = DateTime(2026, 8, 31);
       final result = await store.addStrike();
       expect(result.penaltyHit, isTrue);
       expect(result.applied, -4);

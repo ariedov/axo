@@ -109,7 +109,7 @@ class S {
   static const strikePrompt = 'Введи пароль, щоб дати страйк';
   static const penaltySettings = 'Штраф за страйки';
   static const penaltySettingsHint =
-      'Один страйк на день. Після трьох страйків бали знімаються, а 3 з 3 лишається до наступного дня.';
+      'Після трьох страйків бали знімаються, а 3 з 3 лишається до наступного дня.';
   static const penaltyPoints = 'Штраф у балах';
   static const penaltySaved = 'Штраф збережено';
   static const clearStrikes = 'Скинути страйки';
