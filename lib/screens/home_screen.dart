@@ -153,15 +153,15 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const SliverToBoxAdapter(child: _GamesSection()),
                   const SliverToBoxAdapter(
-                    child: StrikesCard(key: Key('strikes-card')),
-                  ),
-                  const SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.only(top: 20),
                       child: _SectionTitle(title: S.calendar),
                     ),
                   ),
                   const SliverToBoxAdapter(child: TaskCalendar()),
+                  const SliverToBoxAdapter(
+                    child: StrikesCard(key: Key('strikes-card')),
+                  ),
                   const SliverToBoxAdapter(child: _ParentSection()),
                   const SliverToBoxAdapter(child: SizedBox(height: 28)),
                 ],
