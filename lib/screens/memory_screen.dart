@@ -199,36 +199,19 @@ class _PairProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mid = (faces.length / 2).ceil();
-    return Column(
+    return GridView.count(
       key: const Key('memory-progress'),
-      children: [
-        _PairRow(faces: faces.sublist(0, mid), matched: matched),
-        if (mid < faces.length) ...[
-          const SizedBox(height: 6),
-          _PairRow(faces: faces.sublist(mid), matched: matched),
-        ],
-      ],
-    );
-  }
-}
-
-class _PairRow extends StatelessWidget {
-  const _PairRow({required this.faces, required this.matched});
-
-  final List<int> faces;
-  final Set<int> matched;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 4,
+      mainAxisSpacing: 6,
+      crossAxisSpacing: 6,
+      childAspectRatio: 2.2,
       children: [
         for (final faceIndex in faces)
-          Expanded(
-            child: _PairMark(
-              face: MemoryDeck.faces[faceIndex],
-              found: matched.contains(faceIndex),
-            ),
+          _PairMark(
+            face: MemoryDeck.faces[faceIndex],
+            found: matched.contains(faceIndex),
           ),
       ],
     );
@@ -245,8 +228,6 @@ class _PairMark extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
-      margin: const EdgeInsets.symmetric(horizontal: 3),
-      height: 40,
       decoration: BoxDecoration(
         color: found ? Colors.white : AppColors.blush,
         borderRadius: BorderRadius.circular(14),
@@ -255,6 +236,7 @@ class _PairMark extends StatelessWidget {
           width: 2,
         ),
       ),
+      alignment: Alignment.center,
       child: Icon(
         face.icon,
         size: 22,
