@@ -944,6 +944,26 @@ void main() {
     expect(store.windowUsed, 2);
   });
 
+  test('three rounds in a window start a full 30-minute cooldown', () async {
+    var clock = DateTime(2026, 9, 1, 12);
+    final store = testStore(now: () => clock);
+    await store.load();
+
+    expect(await store.tryAwardGamePlay('english'), 5);
+    clock = clock.add(const Duration(minutes: 10));
+    expect(await store.tryAwardGamePlay('spelling'), 5);
+    clock = clock.add(const Duration(minutes: 10));
+    expect(await store.tryAwardGamePlay('memory'), 5);
+    expect(store.gamesLocked, isTrue);
+    expect(store.playsCooldown, AppConfig.playLimitWindow);
+
+    clock = clock.add(const Duration(minutes: 29));
+    expect(store.gamesLocked, isTrue);
+
+    clock = clock.add(const Duration(minutes: 1));
+    expect(store.gamesLocked, isFalse);
+  });
+
   test('per-game point caps stay after the cooldown', () async {
     var clock = DateTime(2026, 9, 1, 12);
     final store = testStore(now: () => clock);

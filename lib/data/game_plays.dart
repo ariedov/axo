@@ -49,14 +49,23 @@ class GamePlaysSnapshot {
     return n;
   }
 
-  DateTime? unlocksAt(DateTime now) {
-    final recent = inWindow(now);
-    if (recent.length < AppConfig.rewardedPlays) return null;
-    var oldest = recent.first.at;
-    for (final play in recent) {
+  DateTime? unlocksAt(
+    DateTime now, {
+    Duration window = AppConfig.playLimitWindow,
+    int cap = AppConfig.rewardedPlays,
+  }) {
+    if (rounds.length < cap) return null;
+    final last = rounds.sublist(rounds.length - cap);
+    var oldest = last.first.at;
+    var newest = last.first.at;
+    for (final play in last) {
       if (play.at.isBefore(oldest)) oldest = play.at;
+      if (play.at.isAfter(newest)) newest = play.at;
     }
-    return oldest.add(AppConfig.playLimitWindow);
+    if (newest.difference(oldest) >= window) return null;
+    final until = newest.add(window);
+    if (!now.isBefore(until)) return null;
+    return until;
   }
 
   GamePlaysSnapshot increment(String gameId, DateTime at) {

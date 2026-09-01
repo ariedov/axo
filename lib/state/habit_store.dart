@@ -240,16 +240,21 @@ class HabitStore extends ChangeNotifier {
     return left < 0 ? 0 : left;
   }
 
-  int get windowUsed => plays.used(now());
+  int get windowUsed {
+    if (gamesLocked) return AppConfig.rewardedPlays;
+    final n = plays.used(now());
+    return n > AppConfig.rewardedPlays ? AppConfig.rewardedPlays : n;
+  }
 
   int get windowLeft {
-    final left = AppConfig.rewardedPlays - windowUsed;
+    if (gamesLocked) return 0;
+    final left = AppConfig.rewardedPlays - plays.used(now());
     return left < 0 ? 0 : left;
   }
 
-  bool get gamesLocked => windowLeft <= 0;
-
   DateTime? get playsUnlocksAt => plays.unlocksAt(now());
+
+  bool get gamesLocked => playsUnlocksAt != null;
 
   Duration get playsCooldown {
     final at = playsUnlocksAt;

@@ -65,11 +65,22 @@ class GamePlaysBanner extends StatelessWidget {
       builder: (context) {
         final store = HabitScope.of(context);
         if (compact && store.gamesLocked) {
-          return Text(
-            S.nextRoundsAt(store.playsCooldown),
-            style: const TextStyle(
-              color: AppColors.muted,
-              fontWeight: FontWeight.w700,
+          return Text.rich(
+            TextSpan(
+              text: S.nextRoundsLabel,
+              style: const TextStyle(
+                color: AppColors.muted,
+                fontWeight: FontWeight.w700,
+              ),
+              children: [
+                TextSpan(
+                  text: S.countdown(store.playsCooldown),
+                  style: const TextStyle(
+                    color: AppColors.goldDeep,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
             ),
           );
         }

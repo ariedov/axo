@@ -63,8 +63,9 @@ class S {
     return '$m:${s.toString().padLeft(2, '0')}';
   }
 
-  static String nextRoundsAt(Duration d) =>
-      'Наступні 3 раунди: ${countdown(d)}';
+  static const nextRoundsLabel = 'Наступні 3 раунди: ';
+
+  static String nextRoundsAt(Duration d) => '$nextRoundsLabel${countdown(d)}';
 
   static const plusGamePoints = 'балів за гру';
   static const roundDone = 'Раунд завершено!';
