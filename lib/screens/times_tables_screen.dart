@@ -28,7 +28,7 @@ class TimesTablesScreen extends StatefulWidget {
 class _TimesTablesScreenState extends State<TimesTablesScreen> {
   final _random = Random();
   final _round = GameRound();
-  late ShuffledDeck<TimesTablesProblem> _deck;
+  ShuffledDeck<TimesTablesProblem>? _deck;
   var _min = AppConfig.timesTablesMin;
   var _max = AppConfig.timesTablesMax;
   var _a = 2;
@@ -61,7 +61,8 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
   }
 
   void _next() {
-    final problem = _deck.next();
+    final problem =
+        _deck?.next() ?? TimesTablesProblem.generate(_random, _min, _max);
     setState(() {
       _a = problem.a;
       _b = problem.b;
@@ -77,10 +78,12 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
     _roundPoints = 0;
     _showSummary = false;
     _playing = true;
-    _deck = ShuffledDeck(
-      items: TimesTablesProblem.all(_min, _max),
-      random: _random,
-    );
+    _deck = _infinite
+        ? null
+        : ShuffledDeck(
+            items: TimesTablesProblem.all(_min, _max),
+            random: _random,
+          );
     _next();
   }
 

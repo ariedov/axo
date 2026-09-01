@@ -30,7 +30,7 @@ class DivisionScreen extends StatefulWidget {
 class _DivisionScreenState extends State<DivisionScreen> {
   late final Random _random = widget.random ?? Random();
   final _round = GameRound();
-  late ShuffledDeck<DivisionProblem> _deck;
+  ShuffledDeck<DivisionProblem>? _deck;
   var _min = AppConfig.timesTablesMin;
   var _max = AppConfig.timesTablesMax;
   var _dividend = 6;
@@ -62,7 +62,8 @@ class _DivisionScreenState extends State<DivisionScreen> {
   }
 
   void _next() {
-    final problem = _deck.next();
+    final problem =
+        _deck?.next() ?? DivisionProblem.generate(_random, _min, _max);
     setState(() {
       _dividend = problem.dividend;
       _divisor = problem.divisor;
@@ -79,10 +80,9 @@ class _DivisionScreenState extends State<DivisionScreen> {
     _roundPoints = 0;
     _showSummary = false;
     _playing = true;
-    _deck = ShuffledDeck(
-      items: DivisionProblem.all(_min, _max),
-      random: _random,
-    );
+    _deck = _infinite
+        ? null
+        : ShuffledDeck(items: DivisionProblem.all(_min, _max), random: _random);
     _next();
   }
 

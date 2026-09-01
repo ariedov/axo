@@ -1,3 +1,5 @@
+import 'dart:math';
+
 class TimesTablesProblem {
   const TimesTablesProblem(this.a, this.b);
 
@@ -5,6 +7,12 @@ class TimesTablesProblem {
   final int b;
 
   int get answer => a * b;
+
+  factory TimesTablesProblem.generate(Random random, int min, int max) {
+    final a = min + random.nextInt(max - min + 1);
+    final b = min + random.nextInt(max - min + 1);
+    return TimesTablesProblem(a, b);
+  }
 
   static List<TimesTablesProblem> all(int min, int max) {
     return [
