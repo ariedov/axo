@@ -2,6 +2,7 @@ class S {
   static const hello = 'Привіт!';
   static const todaysTasks = 'Завдання на сьогодні';
   static const miniGames = 'Міні-ігри';
+  static const allGames = 'Усі ігри';
   static const timesTables = 'Множення';
   static const timesTablesHint = 'Порахуй';
   static const spelling = 'Правопис';

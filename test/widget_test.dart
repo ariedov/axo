@@ -5,7 +5,9 @@ import 'package:app/config.dart';
 import 'package:app/data/answer.dart';
 import 'package:app/data/backup.dart';
 import 'package:app/data/day_history_repository.dart';
+import 'package:app/data/game_catalog.dart';
 import 'package:app/data/game_plays.dart';
+import 'package:app/data/game_recents.dart';
 import 'package:app/data/game_round.dart';
 import 'package:app/data/goal_repository.dart';
 import 'package:app/data/models.dart';
@@ -16,6 +18,7 @@ import 'package:app/data/strikes_repository.dart';
 import 'package:app/data/task_repository.dart';
 import 'package:app/data/today.dart';
 import 'package:app/main.dart';
+import 'package:app/screens/games_screen.dart';
 import 'package:app/screens/parent_settings_screen.dart';
 import 'package:app/state/habit_scope.dart';
 import 'package:app/state/habit_store.dart';
@@ -38,6 +41,7 @@ HabitStore testStore({
   int strikes = 0,
   String? strikeDay,
   int penaltyPoints = AppConfig.defaultPenaltyPoints,
+  GameRecentsRepository? gameRecents,
   DateTime Function()? now,
 }) {
   return HabitStore(
@@ -47,6 +51,7 @@ HabitStore testStore({
     ),
     parentAuth: InMemoryParentAuth(password),
     gamePlays: InMemoryGamePlaysRepository(),
+    gameRecents: gameRecents,
     goalRepo: InMemoryGoalRepository([...goals]),
     historyRepo: InMemoryDayHistoryRepository(),
     strikesRepo: InMemoryStrikesRepository(
@@ -932,6 +937,92 @@ void main() {
     expect(store.playsUsed('english'), 3);
   });
 
+  test('home recents fill from the catalog then last played', () {
+    expect(pickRecentMiniGames(const []).map((game) => game.id), [
+      AppConfig.timesTablesGame,
+      AppConfig.spellingGame,
+    ]);
+    expect(
+      pickRecentMiniGames(const [AppConfig.englishGame]).map((game) => game.id),
+      [AppConfig.englishGame, AppConfig.timesTablesGame],
+    );
+    expect(
+      pickRecentMiniGames(const [
+        AppConfig.englishGame,
+        AppConfig.spellingGame,
+      ]).map((game) => game.id),
+      [AppConfig.englishGame, AppConfig.spellingGame],
+    );
+  });
+
+  test('last played games stay first after a reload', () async {
+    final recents = InMemoryGameRecentsRepository();
+    final store = testStore(gameRecents: recents);
+    await store.load();
+    await store.markGamePlayed(AppConfig.englishGame);
+    await store.markGamePlayed(AppConfig.spellingGame);
+    expect(store.recentGameIds, [
+      AppConfig.spellingGame,
+      AppConfig.englishGame,
+    ]);
+
+    final reopened = testStore(gameRecents: recents);
+    await reopened.load();
+    expect(reopened.recentGameIds, [
+      AppConfig.spellingGame,
+      AppConfig.englishGame,
+    ]);
+  });
+
+  testWidgets('home shows two games and opens the full list', (tester) async {
+    final store = testStore();
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('all-games')),
+      300,
+      scrollable: find.byType(Scrollable),
+    );
+
+    expect(find.text(S.timesTables), findsOneWidget);
+    expect(find.text(S.spelling), findsOneWidget);
+    expect(find.text(S.english), findsNothing);
+
+    await tester.tap(find.byKey(const Key('all-games')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(GamesScreen), findsOneWidget);
+    expect(find.text(S.english), findsOneWidget);
+  });
+
+  testWidgets('a recently played game replaces a card on home', (tester) async {
+    final store = testStore();
+    await store.load();
+    await store.markGamePlayed(AppConfig.englishGame);
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('all-games')),
+      300,
+      scrollable: find.byType(Scrollable),
+    );
+
+    expect(find.text(S.english), findsOneWidget);
+    expect(find.text(S.timesTables), findsOneWidget);
+    expect(find.text(S.spelling), findsNothing);
+  });
+
   testWidgets('parent settings lists daily tasks', (tester) async {
     final store = testStore(
       tasks: const [
@@ -1481,7 +1572,8 @@ void main() {
     );
     expect(find.text('Множення'), findsOneWidget);
     expect(find.text('Правопис'), findsOneWidget);
-    expect(find.text('Англійська'), findsOneWidget);
+    expect(find.text('Англійська'), findsNothing);
+    expect(find.byKey(const Key('all-games')), findsOneWidget);
   });
 
   testWidgets('home points label opens bonus screen after parent password', (

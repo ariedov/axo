@@ -4,6 +4,7 @@ import '../config.dart';
 import '../data/backup.dart';
 import '../data/day_history_repository.dart';
 import '../data/game_plays.dart';
+import '../data/game_recents.dart';
 import '../data/goal_repository.dart';
 import '../data/models.dart';
 import '../data/onboarding_flags.dart';
@@ -23,10 +24,12 @@ class HabitStore extends ChangeNotifier {
     required this.historyRepo,
     OnboardingFlags? onboardingFlags,
     StrikesRepository? strikesRepo,
+    GameRecentsRepository? gameRecents,
     this.celebrateFor = const Duration(seconds: 3),
     DateTime Function()? now,
   }) : onboardingFlags = onboardingFlags ?? InMemoryOnboardingFlags(),
        strikesRepo = strikesRepo ?? InMemoryStrikesRepository(),
+       gameRecents = gameRecents ?? InMemoryGameRecentsRepository(),
        now = now ?? DateTime.now;
 
   final PointsRepository pointsRepo;
@@ -37,6 +40,7 @@ class HabitStore extends ChangeNotifier {
   final DayHistoryRepository historyRepo;
   final OnboardingFlags onboardingFlags;
   final StrikesRepository strikesRepo;
+  final GameRecentsRepository gameRecents;
   final Duration celebrateFor;
   final DateTime Function() now;
 
@@ -48,6 +52,7 @@ class HabitStore extends ChangeNotifier {
   String? parentPassword;
   bool onboardingComplete = false;
   GamePlaysSnapshot plays = GamePlaysSnapshot.empty();
+  List<String> recentGameIds = const [];
   DayHistory history = const DayHistory();
   int strikes = 0;
   String? strikeDay;
@@ -111,6 +116,7 @@ class HabitStore extends ChangeNotifier {
       await onboardingFlags.markComplete();
     }
     plays = await gamePlays.loadToday();
+    recentGameIds = await gameRecents.load();
     history = await historyRepo.load();
     await _loadStrikes();
     if (todayLoad.previous != null) {
@@ -226,6 +232,16 @@ class HabitStore extends ChangeNotifier {
   }
 
   int playsUsed(String gameId) => plays.used(gameId);
+
+  Future<void> markGamePlayed(String gameId) async {
+    recentGameIds = [
+      gameId,
+      for (final id in recentGameIds)
+        if (id != gameId) id,
+    ];
+    await gameRecents.save(recentGameIds);
+    notifyListeners();
+  }
 
   int playsLeft(String gameId) {
     final left = AppConfig.rewardedPlaysPerGame - playsUsed(gameId);
