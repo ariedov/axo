@@ -230,14 +230,24 @@ class HabitStore extends ChangeNotifier {
     return true;
   }
 
-  int get playsUsed => plays.used(now());
+  int playsUsed(String gameId) {
+    final used = plays.usedToday(gameId, now());
+    return used > AppConfig.rewardedPlays ? AppConfig.rewardedPlays : used;
+  }
 
-  int get playsLeft {
-    final left = AppConfig.rewardedPlays - playsUsed;
+  int playsLeft(String gameId) {
+    final left = AppConfig.rewardedPlays - playsUsed(gameId);
     return left < 0 ? 0 : left;
   }
 
-  bool get gamesLocked => playsLeft <= 0;
+  int get windowUsed => plays.used(now());
+
+  int get windowLeft {
+    final left = AppConfig.rewardedPlays - windowUsed;
+    return left < 0 ? 0 : left;
+  }
+
+  bool get gamesLocked => windowLeft <= 0;
 
   DateTime? get playsUnlocksAt => plays.unlocksAt(now());
 
@@ -258,19 +268,24 @@ class HabitStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Awards once per completed round. Returns 0 when the 30-minute cap is reached.
+  /// Records the round for the 30-minute play window. Points only if this game
+  /// still has daily rewarded plays left.
   Future<int> tryAwardGamePlay(String gameId, {int? points}) async {
-    if (playsLeft <= 0) return 0;
-    final amount = points ?? AppConfig.gamePlayPoints;
+    if (windowLeft <= 0) return 0;
+    final award = playsLeft(gameId) <= 0
+        ? 0
+        : (points ?? AppConfig.gamePlayPoints);
 
     plays = plays.increment(gameId, now()).pruned(now());
     await gamePlays.save(plays);
-    totalPoints = await pointsRepo.award(
-      amount: amount,
-      taskId: 'game:$gameId',
-    );
+    if (award > 0) {
+      totalPoints = await pointsRepo.award(
+        amount: award,
+        taskId: 'game:$gameId',
+      );
+    }
     notifyListeners();
-    return amount;
+    return award;
   }
 
   Future<void> submit(String taskId) {

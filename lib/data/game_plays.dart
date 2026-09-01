@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../config.dart';
+import 'today.dart';
 
 class GamePlay {
   const GamePlay({required this.gameId, required this.at});
@@ -26,28 +27,36 @@ class GamePlaysSnapshot {
 
   final List<GamePlay> rounds;
 
-  List<GamePlay> currentBatch(
+  List<GamePlay> inWindow(
     DateTime now, {
     Duration window = AppConfig.playLimitWindow,
-    int cap = AppConfig.rewardedPlays,
   }) {
-    var remaining = rounds;
-    while (remaining.length >= cap) {
-      final unlock = remaining[cap - 1].at.add(window);
-      if (now.isBefore(unlock)) {
-        return remaining.sublist(0, cap);
-      }
-      remaining = remaining.sublist(cap);
-    }
-    return remaining;
+    final start = now.subtract(window);
+    return [
+      for (final play in rounds)
+        if (play.at.isAfter(start)) play,
+    ];
   }
 
-  int used(DateTime now) => currentBatch(now).length;
+  int used(DateTime now) => inWindow(now).length;
+
+  int usedToday(String gameId, DateTime now) {
+    final day = todayStamp(now);
+    var n = 0;
+    for (final play in rounds) {
+      if (play.gameId == gameId && todayStamp(play.at.toLocal()) == day) n++;
+    }
+    return n;
+  }
 
   DateTime? unlocksAt(DateTime now) {
-    final batch = currentBatch(now);
-    if (batch.length < AppConfig.rewardedPlays) return null;
-    return batch.last.at.add(AppConfig.playLimitWindow);
+    final recent = inWindow(now);
+    if (recent.length < AppConfig.rewardedPlays) return null;
+    var oldest = recent.first.at;
+    for (final play in recent) {
+      if (play.at.isBefore(oldest)) oldest = play.at;
+    }
+    return oldest.add(AppConfig.playLimitWindow);
   }
 
   GamePlaysSnapshot increment(String gameId, DateTime at) {
@@ -60,7 +69,15 @@ class GamePlaysSnapshot {
   }
 
   GamePlaysSnapshot pruned(DateTime now) {
-    return GamePlaysSnapshot(rounds: currentBatch(now));
+    final day = todayStamp(now);
+    final cutoff = now.subtract(AppConfig.playLimitWindow);
+    return GamePlaysSnapshot(
+      rounds: [
+        for (final play in rounds)
+          if (todayStamp(play.at.toLocal()) == day || !play.at.isBefore(cutoff))
+            play,
+      ],
+    );
   }
 
   Map<String, dynamic> toJson() => {

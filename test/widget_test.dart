@@ -468,7 +468,7 @@ void main() {
     expect(target.tasks.single.id, 'bed');
     expect(target.goals.single.id, 'ice');
     expect(target.goals.single.isCompleted, isTrue);
-    expect(target.playsUsed, 1);
+    expect(target.playsUsed(AppConfig.timesTablesGame), 1);
     expect(target.onboardingComplete, isTrue);
     expect(target.strikes, 0);
     expect(target.penaltyPoints, AppConfig.defaultPenaltyPoints);
@@ -903,7 +903,9 @@ void main() {
     expect(await store.tryAwardGamePlay('english'), 5);
     expect(await store.tryAwardGamePlay('english'), 0);
     expect(store.totalPoints, 15);
-    expect(store.playsLeft, 0);
+    expect(store.playsUsed('english'), 3);
+    expect(store.playsLeft('english'), 0);
+    expect(store.gamesLocked, isTrue);
     expect(await store.tryAwardGamePlay('spelling'), 0);
   });
 
@@ -915,16 +917,52 @@ void main() {
     expect(await store.tryAwardGamePlay('english'), 5);
     expect(await store.tryAwardGamePlay('spelling'), 5);
     expect(await store.tryAwardGamePlay('memory'), 5);
-    expect(store.playsLeft, 0);
+    expect(store.windowLeft, 0);
     expect(store.gamesLocked, isTrue);
 
     clock = clock.add(const Duration(minutes: 29));
-    expect(store.playsLeft, 0);
+    expect(store.windowLeft, 0);
 
     clock = clock.add(const Duration(minutes: 1));
-    expect(store.playsLeft, 3);
+    expect(store.windowLeft, 3);
     expect(store.gamesLocked, isFalse);
     expect(await store.tryAwardGamePlay('english'), 5);
+  });
+
+  test('cooldown only starts if three rounds fall in 30 minutes', () async {
+    var clock = DateTime(2026, 9, 1, 12);
+    final store = testStore(now: () => clock);
+    await store.load();
+
+    expect(await store.tryAwardGamePlay('english'), 5);
+    expect(store.gamesLocked, isFalse);
+
+    clock = clock.add(AppConfig.playLimitWindow);
+    expect(await store.tryAwardGamePlay('spelling'), 5);
+    expect(await store.tryAwardGamePlay('memory'), 5);
+    expect(store.gamesLocked, isFalse);
+    expect(store.windowUsed, 2);
+  });
+
+  test('per-game point caps stay after the cooldown', () async {
+    var clock = DateTime(2026, 9, 1, 12);
+    final store = testStore(now: () => clock);
+    await store.load();
+
+    expect(await store.tryAwardGamePlay('english'), 5);
+    expect(await store.tryAwardGamePlay('english'), 5);
+    expect(await store.tryAwardGamePlay('english'), 5);
+    expect(store.playsUsed('english'), 3);
+    expect(store.playsUsed('spelling'), 0);
+    expect(store.gamesLocked, isTrue);
+
+    clock = clock.add(AppConfig.playLimitWindow);
+    expect(store.gamesLocked, isFalse);
+    expect(store.playsUsed('english'), 3);
+    expect(await store.tryAwardGamePlay('english'), 0);
+    expect(await store.tryAwardGamePlay('spelling'), 5);
+    expect(store.playsUsed('spelling'), 1);
+    expect(store.playsUsed('english'), 3);
   });
 
   test('old daily play counts start a fresh window', () {
@@ -976,7 +1014,8 @@ void main() {
     await tester.pump();
     expect(find.text('Наступні 3 раунди через'), findsOneWidget);
     expect(find.text('30:00'), findsOneWidget);
-    expect(store.playsUsed, 3);
+    expect(store.windowUsed, 3);
+    expect(store.playsUsed('english'), 3);
   });
 
   test('home recents fill from the catalog then last played', () {
@@ -1214,7 +1253,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(store.playsUsed, 1);
+    expect(store.playsUsed(AppConfig.memoryGame), 1);
     expect(store.totalPoints, AppConfig.memoryRoundPoints);
     expect(find.text(S.correct), findsOneWidget);
     expect(find.text(S.wrongCount), findsNothing);

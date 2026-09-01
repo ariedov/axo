@@ -58,7 +58,7 @@ class GameCardsRow extends StatelessWidget {
                     ? GameCard(
                         key: Key('game-${games[i].id}'),
                         game: games[i],
-                        used: store.playsUsed,
+                        used: store.playsUsed(games[i].id),
                         onTap: () => openMiniGame(context, games[i]),
                       )
                     : const SizedBox.shrink(),

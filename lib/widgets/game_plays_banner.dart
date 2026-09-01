@@ -120,7 +120,7 @@ class GamePlaysBanner extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                S.gameRoundsProgress(store.playsUsed, AppConfig.rewardedPlays),
+                S.gameRoundsProgress(store.windowUsed, AppConfig.rewardedPlays),
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontWeight: FontWeight.w900,
