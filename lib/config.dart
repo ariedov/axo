@@ -30,6 +30,6 @@ class AppConfig {
   static const memoryPairs = 8;
   static const simonGame = 'simon';
   static const simonStartLength = 2;
-  static const simonEasyPads = 3;
-  static const simonNormalPads = 4;
+  static const simonPads = 4;
+  static const simonRoundPoints = 3;
 }

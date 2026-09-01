@@ -17,8 +17,6 @@ import '../widgets/game_scaffold.dart';
 import '../widgets/game_score_bar.dart';
 import '../widgets/game_setup_body.dart';
 
-enum _SimonMode { easy, normal, hard }
-
 class SimonScreen extends StatefulWidget {
   const SimonScreen({
     super.key,
@@ -52,9 +50,8 @@ class SimonScreen extends StatefulWidget {
 class _SimonScreenState extends State<SimonScreen> {
   late final Random _random = widget.random ?? Random();
   final _round = GameRound();
-  var _mode = _SimonMode.normal;
   var _sequence = <int>[];
-  var _activePads = AppConfig.simonNormalPads;
+  var _activePads = AppConfig.simonPads;
   var _step = 0;
   var _lit = -1;
   var _demoId = 0;
@@ -66,40 +63,14 @@ class _SimonScreenState extends State<SimonScreen> {
 
   bool get _infinite => HabitScope.of(context).gamesLocked;
 
-  int get _pads =>
-      widget.pads ??
-      (_mode == _SimonMode.easy
-          ? AppConfig.simonEasyPads
-          : AppConfig.simonNormalPads);
+  int get _pads => widget.pads ?? AppConfig.simonPads;
 
   int get _columns => _activePads == 4 ? 2 : _activePads;
 
   Duration get _stepHold =>
-      widget.stepHold ??
-      switch (_mode) {
-        _SimonMode.easy => const Duration(milliseconds: 420),
-        _SimonMode.normal => const Duration(milliseconds: 340),
-        _SimonMode.hard => const Duration(milliseconds: 220),
-      };
+      widget.stepHold ?? const Duration(milliseconds: 220);
 
-  Duration get _gapHold =>
-      widget.gapHold ??
-      switch (_mode) {
-        _SimonMode.easy => const Duration(milliseconds: 200),
-        _SimonMode.normal => const Duration(milliseconds: 140),
-        _SimonMode.hard => const Duration(milliseconds: 80),
-      };
-
-  int get _roundReward => switch (_mode) {
-    _SimonMode.easy => AppConfig.timesTablesEasyPoints,
-    _SimonMode.normal => AppConfig.timesTablesNormalPoints,
-    _SimonMode.hard => AppConfig.timesTablesHardPoints,
-  };
-
-  void _setMode(_SimonMode mode) {
-    if (mode == _mode) return;
-    setState(() => _mode = mode);
-  }
+  Duration get _gapHold => widget.gapHold ?? const Duration(milliseconds: 80);
 
   void _start() {
     if (HabitScope.of(context).gamesLocked) return;
@@ -174,8 +145,10 @@ class _SimonScreenState extends State<SimonScreen> {
   Future<void> _finishItem(bool success) async {
     _round.record(success);
     if (!_infinite && _round.answered >= widget.turns) {
-      _roundPoints = await HabitScope.of(context)
-          .tryAwardGamePlay(AppConfig.simonGame, points: _roundReward);
+      _roundPoints = await HabitScope.of(context).tryAwardGamePlay(
+        AppConfig.simonGame,
+        points: AppConfig.simonRoundPoints,
+      );
       if (!mounted) return;
       setState(() {
         _showSummary = true;
@@ -262,31 +235,7 @@ class _SimonScreenState extends State<SimonScreen> {
           : !_playing
           ? GameSetupBody(
               onStart: _start,
-              options: [
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  children: [
-                    GameModeChip(
-                      selected: _mode == _SimonMode.easy,
-                      onTap: () => _setMode(_SimonMode.easy),
-                      points: AppConfig.timesTablesEasyPoints,
-                      child: const Text(S.easy),
-                    ),
-                    GameModeChip(
-                      selected: _mode == _SimonMode.normal,
-                      onTap: () => _setMode(_SimonMode.normal),
-                      points: AppConfig.timesTablesNormalPoints,
-                      child: const Text(S.normal),
-                    ),
-                    GameModeChip(
-                      selected: _mode == _SimonMode.hard,
-                      onTap: () => _setMode(_SimonMode.hard),
-                      points: AppConfig.timesTablesHardPoints,
-                      child: const Text(S.hard),
-                    ),
-                  ],
-                ),
-              ],
+              rewardHint: S.pointsPerRound(AppConfig.simonRoundPoints),
             )
           : Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),

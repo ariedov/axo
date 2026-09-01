@@ -1327,7 +1327,7 @@ void main() {
     await tester.pump();
 
     expect(store.playsUsed(AppConfig.simonGame), 1);
-    expect(store.totalPoints, AppConfig.timesTablesNormalPoints);
+    expect(store.totalPoints, AppConfig.simonRoundPoints);
     expect(find.text(S.roundDone), findsOneWidget);
     expect(find.text(S.correctCount), findsOneWidget);
   });
@@ -1367,7 +1367,7 @@ void main() {
     await tester.pump();
 
     expect(store.playsUsed(AppConfig.simonGame), 1);
-    expect(store.totalPoints, AppConfig.timesTablesNormalPoints);
+    expect(store.totalPoints, AppConfig.simonRoundPoints);
     expect(find.text(S.roundDone), findsOneWidget);
     expect(find.text('0'), findsWidgets);
     expect(find.text('1'), findsWidgets);
