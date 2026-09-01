@@ -23,4 +23,8 @@ class AppConfig {
   static const timesTablesGame = 'times_tables';
   static const spellingGame = 'spelling';
   static const englishGame = 'english';
+  static const divisionGame = 'division';
+  static const memoryGame = 'memory';
+  static const memoryRoundPoints = 3;
+  static const memoryPairs = 8;
 }

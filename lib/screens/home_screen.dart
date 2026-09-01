@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../config.dart';
+import '../data/game_catalog.dart';
 import '../data/models.dart';
 import '../screens/bonus_points_screen.dart';
-import '../screens/english_screen.dart';
+import '../screens/games_screen.dart';
 import '../screens/parent_settings_screen.dart';
-import '../screens/spelling_screen.dart';
-import '../screens/times_tables_screen.dart';
 import '../state/habit_scope.dart';
 import '../strings.dart';
 import '../theme.dart';
 import '../widgets/axolotl_mascot.dart';
+import '../widgets/game_card.dart';
 import '../widgets/goal_tile.dart';
 import '../widgets/parent_gate.dart';
 import '../widgets/points_hero.dart';
@@ -151,7 +151,37 @@ class HomeScreen extends StatelessWidget {
                       );
                     },
                   ),
-                  const SliverToBoxAdapter(child: _GamesSection()),
+                  SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _SectionTitle(
+                          title: S.miniGames,
+                          onMore: () => Navigator.push<void>(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) => const GamesScreen(),
+                            ),
+                          ),
+                          moreTooltip: S.allGames,
+                          moreKey: const Key('all-games'),
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
+                          child: Text(
+                            S.practiceOnly,
+                            style: TextStyle(
+                              color: AppColors.muted,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        GameCardsRow(
+                          games: pickRecentMiniGames(store.recentGameIds),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.only(top: 20),
@@ -219,11 +249,21 @@ class HomeScreen extends StatelessWidget {
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title, this.subtitle, this.onAdd});
+  const _SectionTitle({
+    required this.title,
+    this.subtitle,
+    this.onAdd,
+    this.onMore,
+    this.moreTooltip,
+    this.moreKey,
+  });
 
   final String title;
   final String? subtitle;
   final VoidCallback? onAdd;
+  final VoidCallback? onMore;
+  final String? moreTooltip;
+  final Key? moreKey;
 
   @override
   Widget build(BuildContext context) {
@@ -265,194 +305,15 @@ class _SectionTitle extends StatelessWidget {
               icon: const Icon(Icons.add_circle_rounded),
               color: AppColors.pinkDark,
             ),
+          if (onMore != null)
+            IconButton(
+              key: moreKey,
+              tooltip: moreTooltip,
+              onPressed: onMore,
+              icon: const Icon(Icons.chevron_right_rounded),
+              color: AppColors.pinkDark,
+            ),
         ],
-      ),
-    );
-  }
-}
-
-class _GamesSection extends StatelessWidget {
-  const _GamesSection();
-
-  @override
-  Widget build(BuildContext context) {
-    final store = HabitScope.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            S.miniGames,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            S.practiceOnly,
-            style: TextStyle(color: AppColors.muted, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 168,
-            child: Row(
-              children: [
-                Expanded(
-                  child: _GameCard(
-                    icon: Icons.calculate_rounded,
-                    title: S.timesTables,
-                    subtitle: S.timesTablesHint,
-                    color: AppColors.teal,
-                    used: store.playsUsed(AppConfig.timesTablesGame),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder: (_) => const TimesTablesScreen(),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _GameCard(
-                    icon: Icons.spellcheck_rounded,
-                    title: S.spelling,
-                    subtitle: S.spellingHint,
-                    color: AppColors.pink,
-                    used: store.playsUsed(AppConfig.spellingGame),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder: (_) => const SpellingScreen(),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 168,
-            child: Row(
-              children: [
-                Expanded(
-                  child: _GameCard(
-                    icon: Icons.translate_rounded,
-                    title: S.english,
-                    subtitle: S.englishHint,
-                    color: AppColors.goldDeep,
-                    used: store.playsUsed(AppConfig.englishGame),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder: (_) => const EnglishScreen(),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                const Expanded(child: SizedBox.shrink()),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GameCard extends StatelessWidget {
-  const _GameCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.color,
-    required this.used,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color color;
-  final int used;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(22),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
-        child: Ink(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: color.withValues(alpha: 0.45), width: 2),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(8, 12, 8, 10),
-            child: Column(
-              children: [
-                Icon(icon, size: 32, color: color),
-                const SizedBox(height: 6),
-                SizedBox(
-                  height: 40,
-                  child: Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  height: 32,
-                  child: Text(
-                    subtitle,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.star_rounded,
-                      size: 16,
-                      color: used < AppConfig.rewardedPlaysPerGame
-                          ? AppColors.goldDeep
-                          : AppColors.muted,
-                    ),
-                    const SizedBox(width: 2),
-                    Text(
-                      S.gameRoundsProgress(used, AppConfig.rewardedPlaysPerGame),
-                      style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        color: used < AppConfig.rewardedPlaysPerGame
-                            ? AppColors.goldDeep
-                            : AppColors.muted,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

@@ -2,12 +2,17 @@ class S {
   static const hello = 'Привіт!';
   static const todaysTasks = 'Завдання на сьогодні';
   static const miniGames = 'Міні-ігри';
+  static const allGames = 'Усі ігри';
   static const timesTables = 'Множення';
   static const timesTablesHint = 'Порахуй';
   static const spelling = 'Правопис';
   static const spellingHint = 'Напиши слово';
   static const english = 'Англійська';
   static const englishHint = 'Переклади';
+  static const division = 'Ділення';
+  static const divisionHint = 'Поділи';
+  static const memory = 'Пам\'ять';
+  static const memoryHint = 'Знайди пару';
   static const translateToUk = 'Як українською?';
   static const translateToEn = 'Як англійською?';
   static const bothWays = 'Обидва';

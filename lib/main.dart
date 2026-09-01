@@ -10,6 +10,7 @@ import 'data/onboarding_flags.dart';
 import 'data/parent_auth.dart';
 import 'data/points_repository.dart';
 import 'data/game_plays.dart';
+import 'data/game_recents.dart';
 import 'data/strikes_repository.dart';
 import 'data/task_repository.dart';
 import 'screens/home_screen.dart';
@@ -48,6 +49,12 @@ Future<void> main() async {
       },
     ),
     gamePlays: LocalGamePlaysRepository(
+      (key) async => prefs.getString(key),
+      (key, value) async {
+        await prefs.setString(key, value);
+      },
+    ),
+    gameRecents: LocalGameRecentsRepository(
       (key) async => prefs.getString(key),
       (key, value) async {
         await prefs.setString(key, value);
