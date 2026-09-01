@@ -30,6 +30,7 @@ class SimonScreen extends StatefulWidget {
     this.stepHold,
     this.gapHold,
     this.missHold = const Duration(milliseconds: 500),
+    this.tapHold = const Duration(milliseconds: 200),
     this.flashHold,
   });
 
@@ -41,6 +42,7 @@ class SimonScreen extends StatefulWidget {
   final Duration? stepHold;
   final Duration? gapHold;
   final Duration missHold;
+  final Duration tapHold;
   final Duration? flashHold;
 
   @override
@@ -207,18 +209,23 @@ class _SimonScreenState extends State<SimonScreen> {
     );
   }
 
+  Future<void> _pulse(int pad, Duration hold) async {
+    setState(() => _lit = pad);
+    await _wait(hold);
+    if (!mounted) return;
+    setState(() => _lit = -1);
+  }
+
   Future<void> _pick(int pad) async {
-    if (_busy || _showSummary) return;
+    if (_busy || _showSummary || _lit != -1) return;
     if (pad != _sequence[_step]) {
       HapticFeedback.heavyImpact();
       setState(() {
         _busy = true;
         _mood = AxolotlMood.cheer;
-        _lit = pad;
       });
-      await _wait(widget.missHold);
+      await _pulse(pad, widget.missHold);
       if (!mounted) return;
-      setState(() => _lit = -1);
       await _finishItem(false);
       return;
     }
@@ -226,21 +233,16 @@ class _SimonScreenState extends State<SimonScreen> {
     HapticFeedback.selectionClick();
     final next = _step + 1;
     if (next < _sequence.length) {
-      setState(() {
-        _step = next;
-        _lit = pad;
-      });
+      setState(() => _step = next);
+      await _pulse(pad, widget.tapHold);
       return;
     }
 
     HapticFeedback.mediumImpact();
-    setState(() {
-      _busy = true;
-      _mood = AxolotlMood.celebrate;
-      _lit = pad;
-    });
-    await _wait(_gapHold);
+    setState(() => _mood = AxolotlMood.celebrate);
+    await _pulse(pad, widget.tapHold);
     if (!mounted) return;
+    setState(() => _busy = true);
     await _finishItem(true);
   }
 
@@ -387,9 +389,12 @@ class _Pad extends StatelessWidget {
       child: InkWell(
         key: Key('simon-$index'),
         onTap: onTap,
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+        hoverColor: Colors.transparent,
         borderRadius: BorderRadius.circular(24),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
+          duration: const Duration(milliseconds: 120),
           decoration: BoxDecoration(
             color: lit ? face.color : Colors.white,
             borderRadius: BorderRadius.circular(24),

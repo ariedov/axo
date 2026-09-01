@@ -1313,6 +1313,7 @@ void main() {
             stepHold: Duration.zero,
             gapHold: Duration.zero,
             missHold: Duration.zero,
+            tapHold: Duration.zero,
           ),
         ),
       ),
@@ -1353,6 +1354,7 @@ void main() {
             stepHold: Duration.zero,
             gapHold: Duration.zero,
             missHold: Duration.zero,
+            tapHold: Duration.zero,
           ),
         ),
       ),
@@ -1391,6 +1393,7 @@ void main() {
             stepHold: Duration.zero,
             gapHold: Duration.zero,
             missHold: Duration.zero,
+            tapHold: Duration.zero,
           ),
         ),
       ),
@@ -1431,6 +1434,7 @@ void main() {
             stepHold: Duration.zero,
             gapHold: Duration.zero,
             missHold: Duration.zero,
+            tapHold: Duration.zero,
           ),
         ),
       ),
@@ -1447,6 +1451,65 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 1200));
     await tester.pump();
+  });
+
+  testWidgets('simon fills a pad only briefly after a tap', (tester) async {
+    final store = testStore();
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    Color padColor() {
+      final container = tester.widget<AnimatedContainer>(
+        find.descendant(
+          of: find.byKey(const Key('simon-0')),
+          matching: find.byType(AnimatedContainer),
+        ),
+      );
+      return (container.decoration! as BoxDecoration).color!;
+    }
+
+    await tester.pumpWidget(
+      HabitScope(
+        store: store,
+        child: MaterialApp(
+          theme: AppTheme.cute,
+          home: SimonScreen(
+            startLength: 2,
+            turns: 1,
+            sequence: const [0, 0],
+            stepHold: Duration.zero,
+            gapHold: Duration.zero,
+            missHold: Duration.zero,
+            tapHold: const Duration(milliseconds: 200),
+            flashHold: Duration.zero,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text(S.letsGo));
+    await tester.pump();
+
+    expect(padColor(), Colors.white);
+
+    await tester.tap(find.byKey(const Key('simon-0')));
+    await tester.pump();
+    expect(padColor(), AppColors.pinkDark);
+
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump();
+    expect(padColor(), Colors.white);
+
+    await tester.tap(find.byKey(const Key('simon-0')));
+    await tester.pump();
+    expect(padColor(), AppColors.pinkDark);
+
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump();
+    expect(find.text(S.roundDone), findsOneWidget);
   });
 
   testWidgets('parent settings lists daily tasks', (tester) async {
