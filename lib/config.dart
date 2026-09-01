@@ -28,4 +28,8 @@ class AppConfig {
   static const memoryGame = 'memory';
   static const memoryRoundPoints = 3;
   static const memoryPairs = 8;
+  static const simonGame = 'simon';
+  static const simonStartLength = 2;
+  static const simonPads = 4;
+  static const simonRoundPoints = 3;
 }

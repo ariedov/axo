@@ -13,6 +13,7 @@ import 'package:app/data/game_recents.dart';
 import 'package:app/data/game_round.dart';
 import 'package:app/data/memory_deck.dart';
 import 'package:app/data/shuffled_deck.dart';
+import 'package:app/data/simon_sequence.dart';
 import 'package:app/data/times_tables_problem.dart';
 import 'package:app/data/goal_repository.dart';
 import 'package:app/data/models.dart';
@@ -27,6 +28,7 @@ import 'package:app/screens/division_screen.dart';
 import 'package:app/screens/games_screen.dart';
 import 'package:app/screens/memory_screen.dart';
 import 'package:app/screens/parent_settings_screen.dart';
+import 'package:app/screens/simon_screen.dart';
 import 'package:app/state/habit_scope.dart';
 import 'package:app/state/habit_store.dart';
 import 'package:app/strings.dart';
@@ -1100,6 +1102,7 @@ void main() {
     expect(find.text(S.english), findsOneWidget);
     expect(find.text(S.division), findsOneWidget);
     expect(find.text(S.memory), findsOneWidget);
+    expect(find.text(S.simon), findsOneWidget);
   });
 
   testWidgets('a recently played game replaces a card on home', (tester) async {
@@ -1277,6 +1280,236 @@ void main() {
     expect(store.totalPoints, AppConfig.memoryRoundPoints);
     expect(find.text(S.correct), findsOneWidget);
     expect(find.text(S.wrongCount), findsNothing);
+  });
+
+  test('simon sequence stays in range and grows by one', () {
+    final random = Random(1);
+    final first = SimonSequence.ofLength(2, random, pads: 4);
+    expect(first, hasLength(2));
+    expect(first.every((i) => i >= 0 && i < 4), isTrue);
+    final grown = SimonSequence.grow(first, random, pads: 4);
+    expect(grown, hasLength(3));
+    expect(grown.sublist(0, 2), first);
+    expect(grown.last, inInclusiveRange(0, 3));
+  });
+
+  testWidgets('simon repeats the sequence and awards a round', (tester) async {
+    final store = testStore();
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      HabitScope(
+        store: store,
+        child: MaterialApp(
+          theme: AppTheme.cute,
+          home: SimonScreen(
+            startLength: 1,
+            turns: 1,
+            sequence: const [0],
+            stepHold: Duration.zero,
+            gapHold: Duration.zero,
+            missHold: Duration.zero,
+            tapHold: Duration.zero,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text(S.letsGo));
+    await tester.pump();
+
+    expect(find.byKey(const Key('simon-0')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('simon-0')));
+    await tester.pump();
+
+    expect(store.playsUsed(AppConfig.simonGame), 1);
+    expect(store.totalPoints, AppConfig.simonRoundPoints);
+    expect(find.text(S.roundDone), findsOneWidget);
+    expect(find.text(S.correctCount), findsOneWidget);
+  });
+
+  testWidgets('simon counts a miss and still finishes the round', (
+    tester,
+  ) async {
+    final store = testStore();
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      HabitScope(
+        store: store,
+        child: MaterialApp(
+          theme: AppTheme.cute,
+          home: SimonScreen(
+            startLength: 1,
+            turns: 1,
+            sequence: const [0],
+            stepHold: Duration.zero,
+            gapHold: Duration.zero,
+            missHold: Duration.zero,
+            tapHold: Duration.zero,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text(S.letsGo));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('simon-1')));
+    await tester.pump();
+
+    expect(store.playsUsed(AppConfig.simonGame), 1);
+    expect(store.totalPoints, AppConfig.simonRoundPoints);
+    expect(find.text(S.roundDone), findsOneWidget);
+    expect(find.text('0'), findsWidgets);
+    expect(find.text('1'), findsWidgets);
+  });
+
+  testWidgets('simon cheers before the next sequence', (tester) async {
+    final store = testStore();
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      HabitScope(
+        store: store,
+        child: MaterialApp(
+          theme: AppTheme.cute,
+          home: SimonScreen(
+            startLength: 1,
+            turns: 2,
+            sequence: const [0],
+            stepHold: Duration.zero,
+            gapHold: Duration.zero,
+            missHold: Duration.zero,
+            tapHold: Duration.zero,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text(S.letsGo));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('simon-0')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text(S.correct), findsOneWidget);
+    expect(find.text(S.roundDone), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 1200));
+    await tester.pump();
+  });
+
+  testWidgets('simon keeps going after a miss before the next sequence', (
+    tester,
+  ) async {
+    final store = testStore();
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      HabitScope(
+        store: store,
+        child: MaterialApp(
+          theme: AppTheme.cute,
+          home: SimonScreen(
+            startLength: 1,
+            turns: 2,
+            sequence: const [0],
+            stepHold: Duration.zero,
+            gapHold: Duration.zero,
+            missHold: Duration.zero,
+            tapHold: Duration.zero,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text(S.letsGo));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('simon-1')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text(S.keepGoing), findsOneWidget);
+    expect(find.text(S.roundDone), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 1200));
+    await tester.pump();
+  });
+
+  testWidgets('simon fills a pad only briefly after a tap', (tester) async {
+    final store = testStore();
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    Color padColor() {
+      final container = tester.widget<AnimatedContainer>(
+        find.descendant(
+          of: find.byKey(const Key('simon-0')),
+          matching: find.byType(AnimatedContainer),
+        ),
+      );
+      return (container.decoration! as BoxDecoration).color!;
+    }
+
+    await tester.pumpWidget(
+      HabitScope(
+        store: store,
+        child: MaterialApp(
+          theme: AppTheme.cute,
+          home: SimonScreen(
+            startLength: 2,
+            turns: 1,
+            sequence: const [0, 0],
+            stepHold: Duration.zero,
+            gapHold: Duration.zero,
+            missHold: Duration.zero,
+            tapHold: const Duration(milliseconds: 200),
+            flashHold: Duration.zero,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text(S.letsGo));
+    await tester.pump();
+
+    expect(padColor(), Colors.white);
+
+    await tester.tap(find.byKey(const Key('simon-0')));
+    await tester.pump();
+    expect(padColor(), AppColors.pinkDark);
+
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump();
+    expect(padColor(), Colors.white);
+
+    await tester.tap(find.byKey(const Key('simon-0')));
+    await tester.pump();
+    expect(padColor(), AppColors.pinkDark);
+
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump();
+    expect(find.text(S.roundDone), findsOneWidget);
   });
 
   testWidgets('parent settings lists daily tasks', (tester) async {
