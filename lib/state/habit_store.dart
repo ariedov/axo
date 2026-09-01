@@ -51,7 +51,7 @@ class HabitStore extends ChangeNotifier {
   bool celebrating = false;
   String? parentPassword;
   bool onboardingComplete = false;
-  GamePlaysSnapshot plays = GamePlaysSnapshot.empty();
+  GamePlaysSnapshot plays = const GamePlaysSnapshot();
   List<String> recentGameIds = const [];
   DayHistory history = const DayHistory();
   int strikes = 0;
@@ -115,7 +115,7 @@ class HabitStore extends ChangeNotifier {
       onboardingComplete = true;
       await onboardingFlags.markComplete();
     }
-    plays = await gamePlays.loadToday();
+    plays = await gamePlays.load();
     recentGameIds = await gameRecents.load();
     history = await historyRepo.load();
     await _loadStrikes();
@@ -201,8 +201,7 @@ class HabitStore extends ChangeNotifier {
     final snapshot = await strikesRepo.load();
     penaltyPoints = snapshot.penaltyPoints;
     final today = todayStamp(now());
-    if (snapshot.count >= AppConfig.strikesToPenalty &&
-        snapshot.day != today) {
+    if (snapshot.count >= AppConfig.strikesToPenalty && snapshot.day != today) {
       strikes = 0;
       strikeDay = snapshot.day;
       await _persistStrikes();
@@ -231,7 +230,23 @@ class HabitStore extends ChangeNotifier {
     return true;
   }
 
-  int playsUsed(String gameId) => plays.used(gameId);
+  int get playsUsed => plays.used(now());
+
+  int get playsLeft {
+    final left = AppConfig.rewardedPlays - playsUsed;
+    return left < 0 ? 0 : left;
+  }
+
+  bool get gamesLocked => playsLeft <= 0;
+
+  DateTime? get playsUnlocksAt => plays.unlocksAt(now());
+
+  Duration get playsCooldown {
+    final at = playsUnlocksAt;
+    if (at == null) return Duration.zero;
+    final left = at.difference(now());
+    return left.isNegative ? Duration.zero : left;
+  }
 
   Future<void> markGamePlayed(String gameId) async {
     recentGameIds = [
@@ -243,17 +258,12 @@ class HabitStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  int playsLeft(String gameId) {
-    final left = AppConfig.rewardedPlaysPerGame - playsUsed(gameId);
-    return left < 0 ? 0 : left;
-  }
-
-  /// Awards once per completed round. Returns 0 when the daily cap is reached.
+  /// Awards once per completed round. Returns 0 when the 30-minute cap is reached.
   Future<int> tryAwardGamePlay(String gameId, {int? points}) async {
-    if (playsLeft(gameId) <= 0) return 0;
+    if (playsLeft <= 0) return 0;
     final amount = points ?? AppConfig.gamePlayPoints;
 
-    plays = plays.increment(gameId);
+    plays = plays.increment(gameId, now()).pruned(now());
     await gamePlays.save(plays);
     totalPoints = await pointsRepo.award(
       amount: amount,
@@ -372,11 +382,7 @@ class HabitStore extends ChangeNotifier {
       (item) => item.optional || item.todayOnly,
     );
     if (restStart == -1) return [...tasks, task];
-    return [
-      ...tasks.sublist(0, restStart),
-      task,
-      ...tasks.sublist(restStart),
-    ];
+    return [...tasks.sublist(0, restStart), task, ...tasks.sublist(restStart)];
   }
 
   Future<void> upsertGoal(RewardGoal goal) async {

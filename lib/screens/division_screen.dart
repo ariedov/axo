@@ -44,8 +44,7 @@ class _DivisionScreenState extends State<DivisionScreen> {
   var _roundPoints = 0;
   var _playing = false;
 
-  bool get _infinite =>
-      HabitScope.of(context).playsLeft(AppConfig.divisionGame) <= 0;
+  bool get _infinite => HabitScope.of(context).gamesLocked;
 
   int get _roundReward {
     if (_min == 1 && _max == 5) return AppConfig.timesTablesEasyPoints;
@@ -76,6 +75,7 @@ class _DivisionScreenState extends State<DivisionScreen> {
   }
 
   void _start() {
+    if (HabitScope.of(context).gamesLocked) return;
     _round.reset();
     _roundPoints = 0;
     _showSummary = false;
@@ -182,12 +182,10 @@ class _DivisionScreenState extends State<DivisionScreen> {
               correct: _round.correct,
               wrong: _round.wrong,
               points: _roundPoints,
-              gameId: AppConfig.divisionGame,
               onContinue: _continueAfterRound,
             )
           : !_playing
           ? GameSetupBody(
-              gameId: AppConfig.divisionGame,
               onStart: _start,
               options: [
                 Wrap(

@@ -10,7 +10,8 @@ class AppConfig {
   static const timesTablesMin = 1;
   static const timesTablesMax = 10;
 
-  static const rewardedPlaysPerGame = 3;
+  static const rewardedPlays = 3;
+  static const playLimitWindow = Duration(minutes: 30);
   static const roundLength = 10;
   static const gamePlayPoints = 5;
   static const spellingRoundPoints = 5;

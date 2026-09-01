@@ -29,7 +29,7 @@ Short description: max 80 characters. Long description: max 4000.
 • Коли дитина назбирала на ціль — ви її видаєте
 
 Міні-ігри
-У кожній грі 10 завдань у раунді. Перші 3 раунди на день дають бали, далі можна тренуватися скільки завгодно.
+У кожній грі 10 завдань у раунді. Можна зіграти 3 раунди, далі 30 хвилин перерви.
 • Множення — легко, нормально або складно
 • Правопис — напиши слово українською
 • Англійська — переклад в один бік або в обидва
@@ -66,7 +66,7 @@ For parents
 • When a goal is reached, you mark it as given
 
 Mini-games
-Each game is 10 questions per round. The first 3 rounds per day earn points; after that, practice as much as you like.
+Each game is 10 questions per round. You can play 3 rounds, then wait 30 minutes.
 • Times tables — easy, normal, or hard
 • Spelling — write the Ukrainian word
 • English — translate one way or both ways

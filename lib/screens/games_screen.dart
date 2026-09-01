@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../data/game_catalog.dart';
+import '../state/habit_scope.dart';
 import '../strings.dart';
 import '../theme.dart';
 import '../widgets/game_card.dart';
+import '../widgets/game_plays_banner.dart';
 
 class GamesScreen extends StatelessWidget {
   const GamesScreen({super.key});
@@ -37,6 +39,11 @@ class GamesScreen extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (HabitScope.of(context).gamesLocked)
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
+                      child: GamePlaysBanner(),
+                    ),
                   for (var i = 0; i < miniGames.length; i += 2)
                     GameCardsRow(
                       games: miniGames.sublist(
