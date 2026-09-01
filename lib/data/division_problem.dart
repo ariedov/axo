@@ -12,11 +12,24 @@ class DivisionProblem {
   final int answer;
 
   factory DivisionProblem.generate(Random random, int min, int max) {
-    final a = min + random.nextInt(max - min + 1);
-    final b = min + random.nextInt(max - min + 1);
-    if (random.nextBool()) {
-      return DivisionProblem(dividend: a * b, divisor: a, answer: b);
-    }
-    return DivisionProblem(dividend: a * b, divisor: b, answer: a);
+    final pool = all(min, max);
+    return pool[random.nextInt(pool.length)];
   }
+
+  static List<DivisionProblem> all(int min, int max) {
+    return [
+      for (var a = min; a <= max; a++)
+        for (var b = min; b <= max; b++)
+          DivisionProblem(dividend: a * b, divisor: a, answer: b),
+    ];
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is DivisionProblem &&
+      dividend == other.dividend &&
+      divisor == other.divisor;
+
+  @override
+  int get hashCode => Object.hash(dividend, divisor);
 }

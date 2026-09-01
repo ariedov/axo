@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 
 import '../config.dart';
 import '../data/game_round.dart';
+import '../data/shuffled_deck.dart';
+import '../data/times_tables_problem.dart';
 import '../state/habit_scope.dart';
 import '../strings.dart';
 import '../theme.dart';
@@ -26,6 +28,7 @@ class TimesTablesScreen extends StatefulWidget {
 class _TimesTablesScreenState extends State<TimesTablesScreen> {
   final _random = Random();
   final _round = GameRound();
+  late ShuffledDeck<TimesTablesProblem> _deck;
   var _min = AppConfig.timesTablesMin;
   var _max = AppConfig.timesTablesMax;
   var _a = 2;
@@ -58,9 +61,10 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
   }
 
   void _next() {
+    final problem = _deck.next();
     setState(() {
-      _a = _min + _random.nextInt(_max - _min + 1);
-      _b = _min + _random.nextInt(_max - _min + 1);
+      _a = problem.a;
+      _b = problem.b;
       _input = '';
       _misses = 0;
       _mood = AxolotlMood.happy;
@@ -73,6 +77,10 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
     _roundPoints = 0;
     _showSummary = false;
     _playing = true;
+    _deck = ShuffledDeck(
+      items: TimesTablesProblem.all(_min, _max),
+      random: _random,
+    );
     _next();
   }
 

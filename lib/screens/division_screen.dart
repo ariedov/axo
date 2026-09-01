@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../config.dart';
 import '../data/division_problem.dart';
 import '../data/game_round.dart';
+import '../data/shuffled_deck.dart';
 import '../state/habit_scope.dart';
 import '../strings.dart';
 import '../theme.dart';
@@ -29,6 +30,7 @@ class DivisionScreen extends StatefulWidget {
 class _DivisionScreenState extends State<DivisionScreen> {
   late final Random _random = widget.random ?? Random();
   final _round = GameRound();
+  late ShuffledDeck<DivisionProblem> _deck;
   var _min = AppConfig.timesTablesMin;
   var _max = AppConfig.timesTablesMax;
   var _dividend = 6;
@@ -60,7 +62,7 @@ class _DivisionScreenState extends State<DivisionScreen> {
   }
 
   void _next() {
-    final problem = DivisionProblem.generate(_random, _min, _max);
+    final problem = _deck.next();
     setState(() {
       _dividend = problem.dividend;
       _divisor = problem.divisor;
@@ -77,6 +79,10 @@ class _DivisionScreenState extends State<DivisionScreen> {
     _roundPoints = 0;
     _showSummary = false;
     _playing = true;
+    _deck = ShuffledDeck(
+      items: DivisionProblem.all(_min, _max),
+      random: _random,
+    );
     _next();
   }
 

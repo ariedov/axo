@@ -12,6 +12,8 @@ import 'package:app/data/game_plays.dart';
 import 'package:app/data/game_recents.dart';
 import 'package:app/data/game_round.dart';
 import 'package:app/data/memory_deck.dart';
+import 'package:app/data/shuffled_deck.dart';
+import 'package:app/data/times_tables_problem.dart';
 import 'package:app/data/goal_repository.dart';
 import 'package:app/data/models.dart';
 import 'package:app/data/onboarding_flags.dart';
@@ -1039,6 +1041,31 @@ void main() {
     expect(find.text(S.english), findsOneWidget);
     expect(find.text(S.timesTables), findsOneWidget);
     expect(find.text(S.spelling), findsNothing);
+  });
+
+  test('a math round does not repeat a problem', () {
+    final times = ShuffledDeck(
+      items: TimesTablesProblem.all(1, 5),
+      random: Random(1),
+    );
+    final timesRound = [for (var i = 0; i < 10; i++) times.next()];
+    expect(timesRound.toSet(), hasLength(10));
+
+    final divisions = ShuffledDeck(
+      items: DivisionProblem.all(1, 5),
+      random: Random(2),
+    );
+    final divisionRound = [for (var i = 0; i < 10; i++) divisions.next()];
+    expect(divisionRound.toSet(), hasLength(10));
+  });
+
+  test('math decks reshuffle without repeating the last problem', () {
+    final all = TimesTablesProblem.all(6, 10);
+    expect(all, hasLength(25));
+    final deck = ShuffledDeck(items: all, random: Random(3));
+    final first = [for (var i = 0; i < all.length; i++) deck.next()];
+    expect(first.toSet(), hasLength(all.length));
+    expect(deck.next(), isNot(first.last));
   });
 
   test('division problems always divide evenly', () {
