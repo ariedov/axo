@@ -56,6 +56,13 @@ const miniGames = [
     icon: Icons.grid_view_rounded,
     color: AppColors.pinkDark,
   ),
+  MiniGame(
+    id: AppConfig.simonGame,
+    title: S.simon,
+    hint: S.simonHint,
+    icon: Icons.touch_app_rounded,
+    color: AppColors.gold,
+  ),
 ];
 
 List<MiniGame> pickRecentMiniGames(

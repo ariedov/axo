@@ -5,6 +5,7 @@ import '../data/game_catalog.dart';
 import '../screens/division_screen.dart';
 import '../screens/english_screen.dart';
 import '../screens/memory_screen.dart';
+import '../screens/simon_screen.dart';
 import '../screens/spelling_screen.dart';
 import '../screens/times_tables_screen.dart';
 import '../state/habit_scope.dart';
@@ -23,6 +24,8 @@ Widget miniGameScreen(String id) {
       return const DivisionScreen();
     case AppConfig.memoryGame:
       return const MemoryScreen();
+    case AppConfig.simonGame:
+      return const SimonScreen();
     default:
       throw ArgumentError.value(id, 'id', 'unknown mini-game');
   }
