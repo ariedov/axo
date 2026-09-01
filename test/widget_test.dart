@@ -1164,22 +1164,27 @@ void main() {
     await tester.tap(find.text(S.letsGo));
     await tester.pump();
 
-    expect(find.byIcon(Icons.pets_rounded), findsNothing);
+    Finder boardIcon(IconData icon) => find.descendant(
+      of: find.byKey(const Key('memory-board')),
+      matching: find.byIcon(icon),
+    );
+
+    expect(boardIcon(Icons.pets_rounded), findsNothing);
 
     await tester.tap(find.byKey(const Key('memory-0')));
     await tester.pump();
-    expect(find.byIcon(Icons.pets_rounded), findsOneWidget);
+    expect(boardIcon(Icons.pets_rounded), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('memory-1')));
     await tester.pumpAndSettle();
-    expect(find.byIcon(Icons.pets_rounded), findsNothing);
-    expect(find.byIcon(Icons.star_rounded), findsNothing);
+    expect(boardIcon(Icons.pets_rounded), findsNothing);
+    expect(boardIcon(Icons.star_rounded), findsNothing);
 
     await tester.tap(find.byKey(const Key('memory-0')));
     await tester.pump();
     await tester.tap(find.byKey(const Key('memory-2')));
     await tester.pump();
-    expect(find.byIcon(Icons.pets_rounded), findsNWidgets(2));
+    expect(boardIcon(Icons.pets_rounded), findsNWidgets(2));
 
     await tester.tap(find.byKey(const Key('memory-1')));
     await tester.pump();
@@ -1189,7 +1194,8 @@ void main() {
 
     expect(store.playsUsed(AppConfig.memoryGame), 1);
     expect(store.totalPoints, AppConfig.memoryRoundPoints);
-    expect(find.text(S.roundDone), findsOneWidget);
+    expect(find.text(S.correct), findsOneWidget);
+    expect(find.text(S.wrongCount), findsNothing);
   });
 
   testWidgets('parent settings lists daily tasks', (tester) async {

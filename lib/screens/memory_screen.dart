@@ -47,7 +47,18 @@ class _MemoryScreenState extends State<MemoryScreen> {
 
   int get _columns => widget.pairs <= 4 ? 2 : 4;
 
-  int get _matchedPairs => _tiles.where((tile) => tile.matched).length ~/ 2;
+  List<int> get _pairFaces {
+    final faces = <int>[];
+    for (final tile in _tiles) {
+      if (!faces.contains(tile.faceIndex)) faces.add(tile.faceIndex);
+    }
+    return faces;
+  }
+
+  Set<int> get _matchedFaces => {
+    for (final tile in _tiles)
+      if (tile.matched) tile.faceIndex,
+  };
 
   void _deal() {
     _tiles = widget.tiles != null
@@ -148,6 +159,8 @@ class _MemoryScreenState extends State<MemoryScreen> {
               points: _roundPoints,
               gameId: AppConfig.memoryGame,
               onContinue: _continueAfterRound,
+              title: S.correct,
+              showCounts: false,
             )
           : !_playing
           ? GameSetupBody(
@@ -159,15 +172,11 @@ class _MemoryScreenState extends State<MemoryScreen> {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Column(
                 children: [
-                  Text(
-                    '$_matchedPairs/${widget.pairs}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 18,
-                      color: AppColors.tealDark,
-                    ),
+                  _PairProgress(
+                    faces: _pairFaces,
+                    matched: _matchedFaces,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Expanded(
                     child: _Board(
                       tiles: _tiles,
@@ -178,6 +187,58 @@ class _MemoryScreenState extends State<MemoryScreen> {
                 ],
               ),
             ),
+    );
+  }
+}
+
+class _PairProgress extends StatelessWidget {
+  const _PairProgress({required this.faces, required this.matched});
+
+  final List<int> faces;
+  final Set<int> matched;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      key: const Key('memory-progress'),
+      children: [
+        for (final faceIndex in faces)
+          Expanded(
+            child: _PairMark(
+              face: MemoryDeck.faces[faceIndex],
+              found: matched.contains(faceIndex),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _PairMark extends StatelessWidget {
+  const _PairMark({required this.face, required this.found});
+
+  final MemoryFace face;
+  final bool found;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      margin: const EdgeInsets.symmetric(horizontal: 3),
+      height: 40,
+      decoration: BoxDecoration(
+        color: found ? Colors.white : AppColors.blush,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: found ? face.color.withValues(alpha: 0.7) : AppColors.blush,
+          width: 2,
+        ),
+      ),
+      child: Icon(
+        face.icon,
+        size: 22,
+        color: found ? face.color : AppColors.muted.withValues(alpha: 0.4),
+      ),
     );
   }
 }
@@ -204,6 +265,7 @@ class _Board extends StatelessWidget {
         final size = min(width, height);
         return Center(
           child: SizedBox(
+            key: const Key('memory-board'),
             width: size * columns + gap * (columns - 1),
             height: size * rows + gap * (rows - 1),
             child: GridView.builder(
