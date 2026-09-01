@@ -13,6 +13,10 @@ class S {
   static const divisionHint = 'Поділи';
   static const memory = 'Пам\'ять';
   static const memoryHint = 'Знайди пару';
+  static const simon = 'Повторюй';
+  static const simonHint = 'Запам\'ятай порядок';
+  static const simonWatch = 'Дивись';
+  static const simonYourTurn = 'Твій хід';
   static const translateToUk = 'Як українською?';
   static const translateToEn = 'Як англійською?';
   static const bothWays = 'Обидва';
