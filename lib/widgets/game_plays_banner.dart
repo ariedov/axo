@@ -55,13 +55,25 @@ class _GameLimitClockState extends State<GameLimitClock> {
 }
 
 class GamePlaysBanner extends StatelessWidget {
-  const GamePlaysBanner({super.key});
+  const GamePlaysBanner({super.key, this.compact = false});
+
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     return GameLimitClock(
       builder: (context) {
         final store = HabitScope.of(context);
+        if (compact && store.gamesLocked) {
+          return Text(
+            S.nextRoundsAt(store.playsCooldown),
+            style: const TextStyle(
+              color: AppColors.muted,
+              fontWeight: FontWeight.w700,
+            ),
+          );
+        }
+
         if (store.gamesLocked) {
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),

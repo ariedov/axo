@@ -181,7 +181,7 @@ class HomeScreen extends StatelessWidget {
                         if (store.gamesLocked)
                           const Padding(
                             padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
-                            child: GamePlaysBanner(),
+                            child: GamePlaysBanner(compact: true),
                           ),
                         GameCardsRow(
                           games: pickRecentMiniGames(store.recentGameIds),
