@@ -199,8 +199,29 @@ class _PairProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final mid = (faces.length / 2).ceil();
+    return Column(
       key: const Key('memory-progress'),
+      children: [
+        _PairRow(faces: faces.sublist(0, mid), matched: matched),
+        if (mid < faces.length) ...[
+          const SizedBox(height: 6),
+          _PairRow(faces: faces.sublist(mid), matched: matched),
+        ],
+      ],
+    );
+  }
+}
+
+class _PairRow extends StatelessWidget {
+  const _PairRow({required this.faces, required this.matched});
+
+  final List<int> faces;
+  final Set<int> matched;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
       children: [
         for (final faceIndex in faces)
           Expanded(
