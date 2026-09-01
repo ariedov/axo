@@ -1371,6 +1371,84 @@ void main() {
     expect(find.text('1'), findsWidgets);
   });
 
+  testWidgets('simon cheers before the next sequence', (tester) async {
+    final store = testStore();
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      HabitScope(
+        store: store,
+        child: MaterialApp(
+          theme: AppTheme.cute,
+          home: SimonScreen(
+            startLength: 1,
+            turns: 2,
+            sequence: const [0],
+            stepHold: Duration.zero,
+            gapHold: Duration.zero,
+            missHold: Duration.zero,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text(S.letsGo));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('simon-0')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text(S.correct), findsOneWidget);
+    expect(find.text(S.roundDone), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 1200));
+    await tester.pump();
+  });
+
+  testWidgets('simon keeps going after a miss before the next sequence', (
+    tester,
+  ) async {
+    final store = testStore();
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      HabitScope(
+        store: store,
+        child: MaterialApp(
+          theme: AppTheme.cute,
+          home: SimonScreen(
+            startLength: 1,
+            turns: 2,
+            sequence: const [0],
+            stepHold: Duration.zero,
+            gapHold: Duration.zero,
+            missHold: Duration.zero,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text(S.letsGo));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('simon-1')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text(S.keepGoing), findsOneWidget);
+    expect(find.text(S.roundDone), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 1200));
+    await tester.pump();
+  });
+
   testWidgets('parent settings lists daily tasks', (tester) async {
     final store = testStore(
       tasks: const [

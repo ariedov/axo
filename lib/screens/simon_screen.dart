@@ -10,6 +10,7 @@ import '../data/simon_sequence.dart';
 import '../state/habit_scope.dart';
 import '../strings.dart';
 import '../theme.dart';
+import '../widgets/answer_flash.dart';
 import '../widgets/axolotl_mascot.dart';
 import '../widgets/game_round_summary.dart';
 import '../widgets/game_scaffold.dart';
@@ -29,6 +30,7 @@ class SimonScreen extends StatefulWidget {
     this.stepHold,
     this.gapHold,
     this.missHold = const Duration(milliseconds: 500),
+    this.flashHold,
   });
 
   final Random? random;
@@ -39,6 +41,7 @@ class SimonScreen extends StatefulWidget {
   final Duration? stepHold;
   final Duration? gapHold;
   final Duration missHold;
+  final Duration? flashHold;
 
   @override
   State<SimonScreen> createState() => _SimonScreenState();
@@ -187,7 +190,21 @@ class _SimonScreenState extends State<SimonScreen> {
       _mood = AxolotlMood.cheer;
     }
     _step = 0;
+    setState(() => _lit = -1);
+    await _feedback(success: success);
+    if (!mounted) return;
     await _playDemo();
+  }
+
+  Future<void> _feedback({required bool success}) async {
+    final hold = widget.flashHold;
+    if (hold == Duration.zero) return;
+    await showAnswerFlash(
+      context,
+      message: success ? S.correct : S.keepGoing,
+      success: success,
+      hold: hold ?? const Duration(milliseconds: 900),
+    );
   }
 
   Future<void> _pick(int pad) async {
