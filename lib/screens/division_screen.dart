@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../config.dart';
+import '../data/division_problem.dart';
 import '../data/game_round.dart';
 import '../state/habit_scope.dart';
 import '../strings.dart';
@@ -16,20 +17,23 @@ import '../widgets/game_scaffold.dart';
 import '../widgets/game_score_bar.dart';
 import '../widgets/game_setup_body.dart';
 
-class TimesTablesScreen extends StatefulWidget {
-  const TimesTablesScreen({super.key});
+class DivisionScreen extends StatefulWidget {
+  const DivisionScreen({super.key, this.random});
+
+  final Random? random;
 
   @override
-  State<TimesTablesScreen> createState() => _TimesTablesScreenState();
+  State<DivisionScreen> createState() => _DivisionScreenState();
 }
 
-class _TimesTablesScreenState extends State<TimesTablesScreen> {
-  final _random = Random();
+class _DivisionScreenState extends State<DivisionScreen> {
+  late final Random _random = widget.random ?? Random();
   final _round = GameRound();
   var _min = AppConfig.timesTablesMin;
   var _max = AppConfig.timesTablesMax;
-  var _a = 2;
-  var _b = 3;
+  var _dividend = 6;
+  var _divisor = 2;
+  var _answer = 3;
   var _input = '';
   var _misses = 0;
   var _mood = AxolotlMood.happy;
@@ -38,10 +42,8 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
   var _roundPoints = 0;
   var _playing = false;
 
-  int get _answer => _a * _b;
-
   bool get _infinite =>
-      HabitScope.of(context).playsLeft(AppConfig.timesTablesGame) <= 0;
+      HabitScope.of(context).playsLeft(AppConfig.divisionGame) <= 0;
 
   int get _roundReward {
     if (_min == 1 && _max == 5) return AppConfig.timesTablesEasyPoints;
@@ -58,9 +60,11 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
   }
 
   void _next() {
+    final problem = DivisionProblem.generate(_random, _min, _max);
     setState(() {
-      _a = _min + _random.nextInt(_max - _min + 1);
-      _b = _min + _random.nextInt(_max - _min + 1);
+      _dividend = problem.dividend;
+      _divisor = problem.divisor;
+      _answer = problem.answer;
       _input = '';
       _misses = 0;
       _mood = AxolotlMood.happy;
@@ -89,7 +93,7 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
     _round.record(success);
     if (!_infinite && _round.isComplete) {
       _roundPoints = await HabitScope.of(context)
-          .tryAwardGamePlay(AppConfig.timesTablesGame, points: _roundReward);
+          .tryAwardGamePlay(AppConfig.divisionGame, points: _roundReward);
       if (!mounted) return;
       setState(() {
         _showSummary = true;
@@ -155,7 +159,7 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
   @override
   Widget build(BuildContext context) {
     return GameScaffold(
-      title: S.timesTables,
+      title: S.division,
       mood: _mood,
       footer: !_playing || _showSummary
           ? null
@@ -172,12 +176,12 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
               correct: _round.correct,
               wrong: _round.wrong,
               points: _roundPoints,
-              gameId: AppConfig.timesTablesGame,
+              gameId: AppConfig.divisionGame,
               onContinue: _continueAfterRound,
             )
           : !_playing
           ? GameSetupBody(
-              gameId: AppConfig.timesTablesGame,
+              gameId: AppConfig.divisionGame,
               onStart: _start,
               options: [
                 Wrap(
@@ -211,7 +215,7 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
                 GameScoreBar(round: _round, infinite: _infinite),
                 const SizedBox(height: 12),
                 Text(
-                  '$_a  ×  $_b',
+                  '$_dividend  ÷  $_divisor',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontFamily: 'Nunito',

@@ -1,14 +1,17 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:app/config.dart';
 import 'package:app/data/answer.dart';
 import 'package:app/data/backup.dart';
 import 'package:app/data/day_history_repository.dart';
+import 'package:app/data/division_problem.dart';
 import 'package:app/data/game_catalog.dart';
 import 'package:app/data/game_plays.dart';
 import 'package:app/data/game_recents.dart';
 import 'package:app/data/game_round.dart';
+import 'package:app/data/memory_deck.dart';
 import 'package:app/data/goal_repository.dart';
 import 'package:app/data/models.dart';
 import 'package:app/data/onboarding_flags.dart';
@@ -18,7 +21,9 @@ import 'package:app/data/strikes_repository.dart';
 import 'package:app/data/task_repository.dart';
 import 'package:app/data/today.dart';
 import 'package:app/main.dart';
+import 'package:app/screens/division_screen.dart';
 import 'package:app/screens/games_screen.dart';
+import 'package:app/screens/memory_screen.dart';
 import 'package:app/screens/parent_settings_screen.dart';
 import 'package:app/state/habit_scope.dart';
 import 'package:app/state/habit_store.dart';
@@ -285,7 +290,12 @@ void main() {
     await store.upsertTask(
       const HabitTask(id: 'teeth', title: 'Зуби', points: 5, icon: 'hygiene'),
     );
-    expect(store.tasks.map((task) => task.id), ['bed', 'teeth', 'help', 'park']);
+    expect(store.tasks.map((task) => task.id), [
+      'bed',
+      'teeth',
+      'help',
+      'park',
+    ]);
 
     await store.reorderDailyOptionalTasks(0, 0);
     await store.upsertTask(
@@ -462,55 +472,63 @@ void main() {
     expect(target.penaltyPoints, AppConfig.defaultPenaltyPoints);
   });
 
-  test('backup keeps optional flags and imports old files without them', () async {
-    final source = testStore(
-      tasks: const [
-        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
-        HabitTask(
-          id: 'help',
-          title: 'Допомогти',
-          points: 8,
-          icon: 'star',
-          optional: true,
-        ),
-      ],
-    );
-    await source.load();
-    final encoded = source.exportBackup().encode();
-    expect(encoded.contains('"optional": true'), isTrue);
+  test(
+    'backup keeps optional flags and imports old files without them',
+    () async {
+      final source = testStore(
+        tasks: const [
+          HabitTask(
+            id: 'bed',
+            title: 'Застелити ліжко',
+            points: 10,
+            icon: 'bed',
+          ),
+          HabitTask(
+            id: 'help',
+            title: 'Допомогти',
+            points: 8,
+            icon: 'star',
+            optional: true,
+          ),
+        ],
+      );
+      await source.load();
+      final encoded = source.exportBackup().encode();
+      expect(encoded.contains('"optional": true'), isTrue);
 
-    final restored = BackupSnapshot.fromJson(
-      jsonDecode(encoded) as Map<String, dynamic>,
-    );
-    expect(restored.tasks.tasks.map((task) => task.optional), [false, true]);
+      final restored = BackupSnapshot.fromJson(
+        jsonDecode(encoded) as Map<String, dynamic>,
+      );
+      expect(restored.tasks.tasks.map((task) => task.optional), [false, true]);
 
-    final legacy = BackupSnapshot.fromJson({
-      'app': 'axo',
-      'format': 1,
-      'exportedAt': '2026-08-29T00:00:00.000Z',
-      'data': {
-        'points': 0,
-        'onboardingComplete': true,
-        'tasks': {
-          'day': '2026-08-29',
-          'tasks': [
-            {
-              'id': 'bed',
-              'title': 'Застелити ліжко',
-              'points': 10,
-              'icon': 'bed',
-              'status': 'pending',
-              'todayOnly': false,
-            },
-          ],
+      final legacy = BackupSnapshot.fromJson({
+        'app': 'axo',
+        'format': 1,
+        'exportedAt': '2026-08-29T00:00:00.000Z',
+        'data': {
+          'points': 0,
+          'onboardingComplete': true,
+          'tasks': {
+            'day': '2026-08-29',
+            'tasks': [
+              {
+                'id': 'bed',
+                'title': 'Застелити ліжко',
+                'points': 10,
+                'icon': 'bed',
+                'status': 'pending',
+                'todayOnly': false,
+              },
+            ],
+          },
+          'goals': <Map<String, dynamic>>[],
+          'history': <String, dynamic>{},
+          'gamePlays': {'day': '2026-08-29', 'counts': <String, dynamic>{}},
         },
-        'goals': <Map<String, dynamic>>[],
-        'history': <String, dynamic>{},
-        'gamePlays': {'day': '2026-08-29', 'counts': <String, dynamic>{}},
-      },
-    });
-    expect(legacy.tasks.tasks.single.optional, isFalse);
-  });
+      });
+      expect(legacy.tasks.tasks.single.optional, isFalse);
+    },
+  );
 
   test('a new day resets progress but keeps the task list', () async {
     final memory = <String, String>{};
@@ -947,10 +965,8 @@ void main() {
       [AppConfig.englishGame, AppConfig.timesTablesGame],
     );
     expect(
-      pickRecentMiniGames(const [
-        AppConfig.englishGame,
-        AppConfig.spellingGame,
-      ]).map((game) => game.id),
+      pickRecentMiniGames(const [AppConfig.englishGame, AppConfig.spellingGame])
+          .map((game) => game.id),
       [AppConfig.englishGame, AppConfig.spellingGame],
     );
   });
@@ -999,6 +1015,8 @@ void main() {
 
     expect(find.byType(GamesScreen), findsOneWidget);
     expect(find.text(S.english), findsOneWidget);
+    expect(find.text(S.division), findsOneWidget);
+    expect(find.text(S.memory), findsOneWidget);
   });
 
   testWidgets('a recently played game replaces a card on home', (tester) async {
@@ -1021,6 +1039,130 @@ void main() {
     expect(find.text(S.english), findsOneWidget);
     expect(find.text(S.timesTables), findsOneWidget);
     expect(find.text(S.spelling), findsNothing);
+  });
+
+  test('division problems always divide evenly', () {
+    final random = Random(1);
+    for (var i = 0; i < 200; i++) {
+      final problem = DivisionProblem.generate(random, 1, 10);
+      expect(problem.divisor, greaterThan(0));
+      expect(problem.dividend, problem.divisor * problem.answer);
+      expect(problem.answer, inInclusiveRange(1, 10));
+    }
+  });
+
+  test('memory deck deals matching pairs', () {
+    final tiles = MemoryDeck.deal(Random(2), pairs: 6);
+    expect(tiles, hasLength(12));
+    final counts = <int, int>{};
+    for (final tile in tiles) {
+      counts[tile.faceIndex] = (counts[tile.faceIndex] ?? 0) + 1;
+    }
+    expect(counts.length, 6);
+    expect(counts.values.every((n) => n == 2), isTrue);
+  });
+
+  testWidgets('home keeps the last two played games', (tester) async {
+    final store = testStore();
+    await store.load();
+    await store.markGamePlayed(AppConfig.divisionGame);
+    await store.markGamePlayed(AppConfig.memoryGame);
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('all-games')),
+      300,
+      scrollable: find.byType(Scrollable),
+    );
+
+    expect(find.text(S.memory), findsOneWidget);
+    expect(find.text(S.division), findsOneWidget);
+    expect(find.text(S.timesTables), findsNothing);
+    expect(find.text(S.spelling), findsNothing);
+  });
+
+  testWidgets('division round shows an even problem', (tester) async {
+    final store = testStore();
+    await store.load();
+    await tester.pumpWidget(
+      HabitScope(
+        store: store,
+        child: MaterialApp(
+          theme: AppTheme.cute,
+          home: DivisionScreen(random: Random(1)),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text(S.letsGo));
+    await tester.pump();
+
+    expect(find.textContaining('÷'), findsOneWidget);
+  });
+
+  testWidgets('memory match stays open and mismatch flips back', (
+    tester,
+  ) async {
+    final store = testStore();
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      HabitScope(
+        store: store,
+        child: MaterialApp(
+          theme: AppTheme.cute,
+          home: MemoryScreen(
+            pairs: 2,
+            mismatchHold: Duration.zero,
+            tiles: [
+              MemoryTile(id: 0, faceIndex: 0),
+              MemoryTile(id: 1, faceIndex: 1),
+              MemoryTile(id: 2, faceIndex: 0),
+              MemoryTile(id: 3, faceIndex: 1),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text(S.letsGo));
+    await tester.pump();
+
+    expect(find.byIcon(Icons.pets_rounded), findsNothing);
+
+    await tester.tap(find.byKey(const Key('memory-0')));
+    await tester.pump();
+    expect(find.byIcon(Icons.pets_rounded), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('memory-1')));
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.pets_rounded), findsNothing);
+    expect(find.byIcon(Icons.star_rounded), findsNothing);
+
+    await tester.tap(find.byKey(const Key('memory-0')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('memory-2')));
+    await tester.pump();
+    expect(find.byIcon(Icons.pets_rounded), findsNWidgets(2));
+
+    await tester.tap(find.byKey(const Key('memory-1')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('memory-3')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(store.playsUsed(AppConfig.memoryGame), 1);
+    expect(store.totalPoints, AppConfig.memoryRoundPoints);
+    expect(find.text(S.roundDone), findsOneWidget);
   });
 
   testWidgets('parent settings lists daily tasks', (tester) async {
@@ -1691,7 +1833,9 @@ void main() {
     expect(find.text('3 з 3'), findsOneWidget);
     expect(find.text('Три страйки! Знято 10 балів'), findsAtLeastNWidgets(1));
     expect(
-      tester.widget<FilledButton>(find.byKey(const Key('add-strike'))).onPressed,
+      tester
+          .widget<FilledButton>(find.byKey(const Key('add-strike')))
+          .onPressed,
       isNull,
     );
   });
@@ -1778,7 +1922,9 @@ void main() {
     expect(find.byKey(const Key('add-today-task')), findsOneWidget);
   });
 
-  testWidgets('home explains extra tasks when the list is empty', (tester) async {
+  testWidgets('home explains extra tasks when the list is empty', (
+    tester,
+  ) async {
     final store = testStore(
       tasks: const [
         HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),

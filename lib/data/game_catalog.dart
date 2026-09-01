@@ -42,6 +42,20 @@ const miniGames = [
     icon: Icons.translate_rounded,
     color: AppColors.goldDeep,
   ),
+  MiniGame(
+    id: AppConfig.divisionGame,
+    title: S.division,
+    hint: S.divisionHint,
+    icon: Icons.percent_rounded,
+    color: AppColors.tealDark,
+  ),
+  MiniGame(
+    id: AppConfig.memoryGame,
+    title: S.memory,
+    hint: S.memoryHint,
+    icon: Icons.grid_view_rounded,
+    color: AppColors.pinkDark,
+  ),
 ];
 
 List<MiniGame> pickRecentMiniGames(
