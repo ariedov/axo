@@ -42,8 +42,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
   var _roundPoints = 0;
   var _playing = false;
 
-  bool get _infinite =>
-      HabitScope.of(context).playsLeft(AppConfig.memoryGame) <= 0;
+  bool get _infinite => HabitScope.of(context).gamesLocked;
 
   int get _columns => widget.pairs <= 4 ? 2 : 4;
 
@@ -67,6 +66,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
   }
 
   void _start() {
+    if (HabitScope.of(context).gamesLocked) return;
     _round.reset();
     _roundPoints = 0;
     _showSummary = false;
@@ -157,14 +157,12 @@ class _MemoryScreenState extends State<MemoryScreen> {
               correct: _round.correct,
               wrong: _round.wrong,
               points: _roundPoints,
-              gameId: AppConfig.memoryGame,
               onContinue: _continueAfterRound,
               title: S.correct,
               showCounts: false,
             )
           : !_playing
           ? GameSetupBody(
-              gameId: AppConfig.memoryGame,
               onStart: _start,
               rewardHint: S.pointsPerRound(AppConfig.memoryRoundPoints),
             )
@@ -172,10 +170,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Column(
                 children: [
-                  _PairProgress(
-                    faces: _pairFaces,
-                    matched: _matchedFaces,
-                  ),
+                  _PairProgress(faces: _pairFaces, matched: _matchedFaces),
                   const SizedBox(height: 12),
                   Expanded(
                     child: _Board(

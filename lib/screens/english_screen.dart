@@ -67,8 +67,7 @@ class _EnglishScreenState extends State<EnglishScreen> {
     setState(() => _pairs = pairs);
   }
 
-  bool get _infinite =>
-      HabitScope.of(context).playsLeft(AppConfig.englishGame) <= 0;
+  bool get _infinite => HabitScope.of(context).gamesLocked;
 
   int get _roundReward => _mode == _TranslateMode.both
       ? AppConfig.englishBothWaysPoints
@@ -116,6 +115,7 @@ class _EnglishScreenState extends State<EnglishScreen> {
   }
 
   void _start() {
+    if (HabitScope.of(context).gamesLocked) return;
     _round.reset();
     _roundPoints = 0;
     _showSummary = false;
@@ -135,12 +135,8 @@ class _EnglishScreenState extends State<EnglishScreen> {
   Future<void> _finishItem(bool success) async {
     _round.record(success);
     if (!_infinite && _round.isComplete) {
-      _roundPoints = await HabitScope.of(
-        context,
-      ).tryAwardGamePlay(
-        AppConfig.englishGame,
-        points: _roundReward,
-      );
+      _roundPoints = await HabitScope.of(context)
+          .tryAwardGamePlay(AppConfig.englishGame, points: _roundReward);
       if (!mounted) return;
       setState(() {
         _showSummary = true;
@@ -213,12 +209,10 @@ class _EnglishScreenState extends State<EnglishScreen> {
               correct: _round.correct,
               wrong: _round.wrong,
               points: _roundPoints,
-              gameId: AppConfig.englishGame,
               onContinue: _continueAfterRound,
             )
           : !_playing
           ? GameSetupBody(
-              gameId: AppConfig.englishGame,
               onStart: _start,
               options: [
                 Wrap(
@@ -234,13 +228,19 @@ class _EnglishScreenState extends State<EnglishScreen> {
                       selected: _mode == _TranslateMode.toUk,
                       onTap: () => _setMode(_TranslateMode.toUk),
                       points: AppConfig.englishOneWayPoints,
-                      child: const _DirectionLabel(from: S.enLang, to: S.uaLang),
+                      child: const _DirectionLabel(
+                        from: S.enLang,
+                        to: S.uaLang,
+                      ),
                     ),
                     GameModeChip(
                       selected: _mode == _TranslateMode.toEn,
                       onTap: () => _setMode(_TranslateMode.toEn),
                       points: AppConfig.englishOneWayPoints,
-                      child: const _DirectionLabel(from: S.uaLang, to: S.enLang),
+                      child: const _DirectionLabel(
+                        from: S.uaLang,
+                        to: S.enLang,
+                      ),
                     ),
                   ],
                 ),
@@ -340,4 +340,3 @@ class _DirectionLabel extends StatelessWidget {
     );
   }
 }
-

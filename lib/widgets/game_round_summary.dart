@@ -10,7 +10,6 @@ class GameRoundSummary extends StatelessWidget {
     required this.correct,
     required this.wrong,
     required this.points,
-    required this.gameId,
     required this.onContinue,
     this.title = S.roundDone,
     this.showCounts = true,
@@ -19,7 +18,6 @@ class GameRoundSummary extends StatelessWidget {
   final int correct;
   final int wrong;
   final int points;
-  final String gameId;
   final VoidCallback onContinue;
   final String title;
   final bool showCounts;
@@ -29,13 +27,12 @@ class GameRoundSummary extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
       children: [
-        GamePlaysBanner(gameId: gameId),
+        const GamePlaysBanner(),
         Text(
           title,
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w900,
-          ),
+          style: Theme.of(context).textTheme.headlineSmall
+              ?.copyWith(fontWeight: FontWeight.w900),
         ),
         if (showCounts || points > 0) ...[
           const SizedBox(height: 16),

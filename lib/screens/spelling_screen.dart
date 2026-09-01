@@ -41,8 +41,7 @@ class _SpellingScreenState extends State<SpellingScreen> {
   var _roundPoints = 0;
   var _playing = false;
 
-  bool get _infinite =>
-      HabitScope.of(context).playsLeft(AppConfig.spellingGame) <= 0;
+  bool get _infinite => HabitScope.of(context).gamesLocked;
 
   @override
   void initState() {
@@ -90,6 +89,7 @@ class _SpellingScreenState extends State<SpellingScreen> {
   }
 
   void _start() {
+    if (HabitScope.of(context).gamesLocked) return;
     _round.reset();
     _roundPoints = 0;
     _showSummary = false;
@@ -109,9 +109,7 @@ class _SpellingScreenState extends State<SpellingScreen> {
   Future<void> _finishItem(bool success) async {
     _round.record(success);
     if (!_infinite && _round.isComplete) {
-      _roundPoints = await HabitScope.of(
-        context,
-      ).tryAwardGamePlay(
+      _roundPoints = await HabitScope.of(context).tryAwardGamePlay(
         AppConfig.spellingGame,
         points: AppConfig.spellingRoundPoints,
       );
@@ -158,7 +156,9 @@ class _SpellingScreenState extends State<SpellingScreen> {
     _keepKeyboard();
     await showAnswerFlash(
       context,
-      message: misses >= 2 ? 'Було «${current.word}». ${S.keepGoing}' : S.tryAgain,
+      message: misses >= 2
+          ? 'Було «${current.word}». ${S.keepGoing}'
+          : S.tryAgain,
       success: false,
       hold: Duration(milliseconds: misses >= 2 ? 1100 : 700),
     );
@@ -180,12 +180,10 @@ class _SpellingScreenState extends State<SpellingScreen> {
               correct: _round.correct,
               wrong: _round.wrong,
               points: _roundPoints,
-              gameId: AppConfig.spellingGame,
               onContinue: _continueAfterRound,
             )
           : !_playing
           ? GameSetupBody(
-              gameId: AppConfig.spellingGame,
               onStart: _start,
               rewardHint: S.pointsPerRound(AppConfig.spellingRoundPoints),
             )

@@ -903,8 +903,94 @@ void main() {
     expect(await store.tryAwardGamePlay('english'), 5);
     expect(await store.tryAwardGamePlay('english'), 0);
     expect(store.totalPoints, 15);
+    expect(store.playsUsed('english'), 3);
     expect(store.playsLeft('english'), 0);
+    expect(store.gamesLocked, isTrue);
+    expect(await store.tryAwardGamePlay('spelling'), 0);
+  });
+
+  test('three game rounds unlock again after 30 minutes', () async {
+    var clock = DateTime(2026, 9, 1, 12);
+    final store = testStore(now: () => clock);
+    await store.load();
+
+    expect(await store.tryAwardGamePlay('english'), 5);
     expect(await store.tryAwardGamePlay('spelling'), 5);
+    expect(await store.tryAwardGamePlay('memory'), 5);
+    expect(store.windowLeft, 0);
+    expect(store.gamesLocked, isTrue);
+
+    clock = clock.add(const Duration(minutes: 29));
+    expect(store.windowLeft, 0);
+
+    clock = clock.add(const Duration(minutes: 1));
+    expect(store.windowLeft, 3);
+    expect(store.gamesLocked, isFalse);
+    expect(await store.tryAwardGamePlay('english'), 5);
+  });
+
+  test('cooldown only starts if three rounds fall in 30 minutes', () async {
+    var clock = DateTime(2026, 9, 1, 12);
+    final store = testStore(now: () => clock);
+    await store.load();
+
+    expect(await store.tryAwardGamePlay('english'), 5);
+    expect(store.gamesLocked, isFalse);
+
+    clock = clock.add(AppConfig.playLimitWindow);
+    expect(await store.tryAwardGamePlay('spelling'), 5);
+    expect(await store.tryAwardGamePlay('memory'), 5);
+    expect(store.gamesLocked, isFalse);
+    expect(store.windowUsed, 2);
+  });
+
+  test('three rounds in a window start a full 30-minute cooldown', () async {
+    var clock = DateTime(2026, 9, 1, 12);
+    final store = testStore(now: () => clock);
+    await store.load();
+
+    expect(await store.tryAwardGamePlay('english'), 5);
+    clock = clock.add(const Duration(minutes: 10));
+    expect(await store.tryAwardGamePlay('spelling'), 5);
+    clock = clock.add(const Duration(minutes: 10));
+    expect(await store.tryAwardGamePlay('memory'), 5);
+    expect(store.gamesLocked, isTrue);
+    expect(store.playsCooldown, AppConfig.playLimitWindow);
+
+    clock = clock.add(const Duration(minutes: 29));
+    expect(store.gamesLocked, isTrue);
+
+    clock = clock.add(const Duration(minutes: 1));
+    expect(store.gamesLocked, isFalse);
+  });
+
+  test('per-game point caps stay after the cooldown', () async {
+    var clock = DateTime(2026, 9, 1, 12);
+    final store = testStore(now: () => clock);
+    await store.load();
+
+    expect(await store.tryAwardGamePlay('english'), 5);
+    expect(await store.tryAwardGamePlay('english'), 5);
+    expect(await store.tryAwardGamePlay('english'), 5);
+    expect(store.playsUsed('english'), 3);
+    expect(store.playsUsed('spelling'), 0);
+    expect(store.gamesLocked, isTrue);
+
+    clock = clock.add(AppConfig.playLimitWindow);
+    expect(store.gamesLocked, isFalse);
+    expect(store.playsUsed('english'), 3);
+    expect(await store.tryAwardGamePlay('english'), 0);
+    expect(await store.tryAwardGamePlay('spelling'), 5);
+    expect(store.playsUsed('spelling'), 1);
+    expect(store.playsUsed('english'), 3);
+  });
+
+  test('old daily play counts start a fresh window', () {
+    final snapshot = GamePlaysSnapshot.fromJson({
+      'day': '2026-08-29',
+      'counts': {'english': 3},
+    });
+    expect(snapshot.rounds, isEmpty);
   });
 
   test('game rounds award different points by mode', () async {
@@ -917,27 +1003,23 @@ void main() {
     expect(await store.tryAwardGamePlay('times_tables', points: 5), 5);
     expect(await store.tryAwardGamePlay('times_tables', points: 5), 0);
     expect(store.totalPoints, 9);
-
-    expect(await store.tryAwardGamePlay('english', points: 3), 3);
-    expect(await store.tryAwardGamePlay('spelling', points: 5), 5);
   });
 
   testWidgets('game banner counts scored rounds as used out of three', (
     tester,
   ) async {
-    final store = testStore();
+    var clock = DateTime(2026, 9, 1, 12);
+    final store = testStore(now: () => clock);
     await store.load();
 
     await tester.pumpWidget(
       HabitScope(
         store: store,
-        child: const MaterialApp(
-          home: Scaffold(body: GamePlaysBanner(gameId: 'english')),
-        ),
+        child: const MaterialApp(home: Scaffold(body: GamePlaysBanner())),
       ),
     );
     await tester.pump();
-    expect(find.text('Раунди з балами сьогодні'), findsOneWidget);
+    expect(find.text('Раунди зараз'), findsOneWidget);
     expect(find.text('0/3'), findsOneWidget);
 
     expect(await store.tryAwardGamePlay('english'), 5);
@@ -950,10 +1032,9 @@ void main() {
 
     expect(await store.tryAwardGamePlay('english'), 5);
     await tester.pump();
-    expect(
-      find.text('Сьогодні балів більше немає — граємо для тренування'),
-      findsOneWidget,
-    );
+    expect(find.text('Наступні 3 раунди через'), findsOneWidget);
+    expect(find.text('30:00'), findsOneWidget);
+    expect(store.windowUsed, 3);
     expect(store.playsUsed('english'), 3);
   });
 

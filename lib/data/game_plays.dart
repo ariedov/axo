@@ -1,50 +1,119 @@
 import 'dart:convert';
 
+import '../config.dart';
 import 'today.dart';
 
-class GamePlaysSnapshot {
-  const GamePlaysSnapshot({required this.day, required this.counts});
+class GamePlay {
+  const GamePlay({required this.gameId, required this.at});
 
-  final String day;
-  final Map<String, int> counts;
+  final String gameId;
+  final DateTime at;
 
-  int used(String gameId) => counts[gameId] ?? 0;
+  Map<String, dynamic> toJson() => {
+    'gameId': gameId,
+    'at': at.toUtc().toIso8601String(),
+  };
 
-  GamePlaysSnapshot increment(String gameId) {
-    return GamePlaysSnapshot(
-      day: day,
-      counts: {...counts, gameId: used(gameId) + 1},
+  factory GamePlay.fromJson(Map<String, dynamic> json) {
+    return GamePlay(
+      gameId: json['gameId'] as String,
+      at: DateTime.parse(json['at'] as String),
     );
-  }
-
-  Map<String, dynamic> toJson() => {'day': day, 'counts': counts};
-
-  factory GamePlaysSnapshot.fromJson(Map<String, dynamic> json) {
-    final raw = json['counts'] as Map<String, dynamic>? ?? {};
-    return GamePlaysSnapshot(
-      day: json['day'] as String,
-      counts: {
-        for (final entry in raw.entries) entry.key: (entry.value as num).toInt(),
-      },
-    );
-  }
-
-  factory GamePlaysSnapshot.empty([DateTime? now]) {
-    return GamePlaysSnapshot(day: todayStamp(now), counts: const {});
   }
 }
 
+class GamePlaysSnapshot {
+  const GamePlaysSnapshot({this.rounds = const []});
+
+  final List<GamePlay> rounds;
+
+  List<GamePlay> inWindow(
+    DateTime now, {
+    Duration window = AppConfig.playLimitWindow,
+  }) {
+    final start = now.subtract(window);
+    return [
+      for (final play in rounds)
+        if (play.at.isAfter(start)) play,
+    ];
+  }
+
+  int used(DateTime now) => inWindow(now).length;
+
+  int usedToday(String gameId, DateTime now) {
+    final day = todayStamp(now);
+    var n = 0;
+    for (final play in rounds) {
+      if (play.gameId == gameId && todayStamp(play.at.toLocal()) == day) n++;
+    }
+    return n;
+  }
+
+  DateTime? unlocksAt(
+    DateTime now, {
+    Duration window = AppConfig.playLimitWindow,
+    int cap = AppConfig.rewardedPlays,
+  }) {
+    if (rounds.length < cap) return null;
+    final last = rounds.sublist(rounds.length - cap);
+    var oldest = last.first.at;
+    var newest = last.first.at;
+    for (final play in last) {
+      if (play.at.isBefore(oldest)) oldest = play.at;
+      if (play.at.isAfter(newest)) newest = play.at;
+    }
+    if (newest.difference(oldest) >= window) return null;
+    final until = newest.add(window);
+    if (!now.isBefore(until)) return null;
+    return until;
+  }
+
+  GamePlaysSnapshot increment(String gameId, DateTime at) {
+    return GamePlaysSnapshot(
+      rounds: [
+        ...rounds,
+        GamePlay(gameId: gameId, at: at),
+      ],
+    );
+  }
+
+  GamePlaysSnapshot pruned(DateTime now) {
+    final day = todayStamp(now);
+    final cutoff = now.subtract(AppConfig.playLimitWindow);
+    return GamePlaysSnapshot(
+      rounds: [
+        for (final play in rounds)
+          if (todayStamp(play.at.toLocal()) == day || !play.at.isBefore(cutoff))
+            play,
+      ],
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'rounds': [for (final play in rounds) play.toJson()],
+  };
+
+  factory GamePlaysSnapshot.fromJson(Map<String, dynamic> json) {
+    final raw = json['rounds'];
+    if (raw is! List) return const GamePlaysSnapshot();
+    return GamePlaysSnapshot(
+      rounds: [
+        for (final item in raw) GamePlay.fromJson(item as Map<String, dynamic>),
+      ],
+    );
+  }
+
+  factory GamePlaysSnapshot.empty() => const GamePlaysSnapshot();
+}
+
 abstract class GamePlaysRepository {
-  Future<GamePlaysSnapshot> loadToday();
+  Future<GamePlaysSnapshot> load();
   Future<void> save(GamePlaysSnapshot snapshot);
 }
 
 class LocalGamePlaysRepository implements GamePlaysRepository {
-  LocalGamePlaysRepository(
-    this._read,
-    this._write, {
-    DateTime Function()? now,
-  }) : _now = now ?? DateTime.now;
+  LocalGamePlaysRepository(this._read, this._write, {DateTime Function()? now})
+    : _now = now ?? DateTime.now;
 
   static const _key = 'game_plays';
 
@@ -53,18 +122,18 @@ class LocalGamePlaysRepository implements GamePlaysRepository {
   final DateTime Function() _now;
 
   @override
-  Future<GamePlaysSnapshot> loadToday() async {
-    final today = todayStamp(_now());
+  Future<GamePlaysSnapshot> load() async {
     final raw = await _read(_key);
-    if (raw == null) return GamePlaysSnapshot(day: today, counts: const {});
+    if (raw == null) return const GamePlaysSnapshot();
 
     final saved = GamePlaysSnapshot.fromJson(
       jsonDecode(raw) as Map<String, dynamic>,
     );
-    if (saved.day == today) return saved;
-    final rolled = GamePlaysSnapshot(day: today, counts: const {});
-    await save(rolled);
-    return rolled;
+    final pruned = saved.pruned(_now());
+    if (pruned.rounds.length != saved.rounds.length) {
+      await save(pruned);
+    }
+    return pruned;
   }
 
   @override
@@ -75,12 +144,12 @@ class LocalGamePlaysRepository implements GamePlaysRepository {
 
 class InMemoryGamePlaysRepository implements GamePlaysRepository {
   InMemoryGamePlaysRepository([GamePlaysSnapshot? snapshot])
-    : snapshot = snapshot ?? GamePlaysSnapshot.empty();
+    : snapshot = snapshot ?? const GamePlaysSnapshot();
 
   GamePlaysSnapshot snapshot;
 
   @override
-  Future<GamePlaysSnapshot> loadToday() async => snapshot;
+  Future<GamePlaysSnapshot> load() async => snapshot;
 
   @override
   Future<void> save(GamePlaysSnapshot snapshot) async {

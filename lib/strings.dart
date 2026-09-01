@@ -50,12 +50,23 @@ class S {
   static const hard = 'Складно';
   static const allDone = 'Усі завдання на сьогодні готові!';
   static const practiceOnly =
-      'Перші 3 раунди (по 10 завдань) дають бали. Далі можна грати скільки завгодно.';
-  static const gamePointsLeft = 'Раунди з балами сьогодні';
-  static const gamePointsGone =
-      'Сьогодні балів більше немає — граємо для тренування';
+      'Можна зіграти 3 раунди, далі 30 хвилин перерви. У раунді — 10 завдань.';
+  static const gamePointsLeft = 'Раунди зараз';
+  static const gamePointsGone = 'Наступні 3 раунди через';
 
   static String gameRoundsProgress(int used, int max) => '$used/$max';
+
+  static String countdown(Duration d) {
+    final seconds = d.isNegative ? 0 : d.inSeconds;
+    final m = seconds ~/ 60;
+    final s = seconds % 60;
+    return '$m:${s.toString().padLeft(2, '0')}';
+  }
+
+  static const nextRoundsLabel = 'Наступні 3 раунди: ';
+
+  static String nextRoundsAt(Duration d) => '$nextRoundsLabel${countdown(d)}';
+
   static const plusGamePoints = 'балів за гру';
   static const roundDone = 'Раунд завершено!';
   static const correctCount = 'Правильно';

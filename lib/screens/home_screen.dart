@@ -12,6 +12,7 @@ import '../strings.dart';
 import '../theme.dart';
 import '../widgets/axolotl_mascot.dart';
 import '../widgets/game_card.dart';
+import '../widgets/game_plays_banner.dart';
 import '../widgets/goal_tile.dart';
 import '../widgets/parent_gate.dart';
 import '../widgets/points_hero.dart';
@@ -26,7 +27,8 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final store = HabitScope.of(context);
-    final mood = store.celebrating ||
+    final mood =
+        store.celebrating ||
             (store.pendingCount == 0 &&
                 store.waitingCount == 0 &&
                 store.verifiedCount > 0)
@@ -176,6 +178,11 @@ class HomeScreen extends StatelessWidget {
                             ),
                           ),
                         ),
+                        if (store.gamesLocked)
+                          const Padding(
+                            padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
+                            child: GamePlaysBanner(compact: true),
+                          ),
                         GameCardsRow(
                           games: pickRecentMiniGames(store.recentGameIds),
                         ),
@@ -208,9 +215,7 @@ class HomeScreen extends StatelessWidget {
     if (!context.mounted) return;
     await Navigator.push<void>(
       context,
-      MaterialPageRoute<void>(
-        builder: (_) => const BonusPointsScreen(),
-      ),
+      MaterialPageRoute<void>(builder: (_) => const BonusPointsScreen()),
     );
   }
 
@@ -278,9 +283,8 @@ class _SectionTitle extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
+                  style: Theme.of(context).textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w900),
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 2),

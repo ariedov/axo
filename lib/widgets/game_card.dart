@@ -139,19 +139,16 @@ class GameCard extends StatelessWidget {
                     Icon(
                       Icons.star_rounded,
                       size: 16,
-                      color: used < AppConfig.rewardedPlaysPerGame
+                      color: used < AppConfig.rewardedPlays
                           ? AppColors.goldDeep
                           : AppColors.muted,
                     ),
                     const SizedBox(width: 2),
                     Text(
-                      S.gameRoundsProgress(
-                        used,
-                        AppConfig.rewardedPlaysPerGame,
-                      ),
+                      S.gameRoundsProgress(used, AppConfig.rewardedPlays),
                       style: TextStyle(
                         fontWeight: FontWeight.w900,
-                        color: used < AppConfig.rewardedPlaysPerGame
+                        color: used < AppConfig.rewardedPlays
                             ? AppColors.goldDeep
                             : AppColors.muted,
                       ),
