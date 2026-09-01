@@ -26,5 +26,5 @@ class AppConfig {
   static const divisionGame = 'division';
   static const memoryGame = 'memory';
   static const memoryRoundPoints = 3;
-  static const memoryPairs = 6;
+  static const memoryPairs = 8;
 }

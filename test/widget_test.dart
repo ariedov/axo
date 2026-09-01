@@ -1079,13 +1079,13 @@ void main() {
   });
 
   test('memory deck deals matching pairs', () {
-    final tiles = MemoryDeck.deal(Random(2), pairs: 6);
-    expect(tiles, hasLength(12));
+    final tiles = MemoryDeck.deal(Random(2), pairs: AppConfig.memoryPairs);
+    expect(tiles, hasLength(16));
     final counts = <int, int>{};
     for (final tile in tiles) {
       counts[tile.faceIndex] = (counts[tile.faceIndex] ?? 0) + 1;
     }
-    expect(counts.length, 6);
+    expect(counts.length, 8);
     expect(counts.values.every((n) => n == 2), isTrue);
   });
 
