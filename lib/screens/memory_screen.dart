@@ -42,7 +42,8 @@ class _MemoryScreenState extends State<MemoryScreen> {
   var _roundPoints = 0;
   var _playing = false;
 
-  bool get _infinite => HabitScope.of(context).gamesLocked;
+  bool get _infinite =>
+      HabitScope.of(context).playsLeft(AppConfig.memoryGame) <= 0;
 
   int get _columns => widget.pairs <= 4 ? 2 : 4;
 
@@ -154,6 +155,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
       showMascot: !_playing || _showSummary,
       child: _showSummary
           ? GameRoundSummary(
+              gameId: AppConfig.memoryGame,
               correct: _round.correct,
               wrong: _round.wrong,
               points: _roundPoints,
@@ -163,6 +165,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
             )
           : !_playing
           ? GameSetupBody(
+              gameId: AppConfig.memoryGame,
               onStart: _start,
               rewardHint: S.pointsPerRound(AppConfig.memoryRoundPoints),
             )

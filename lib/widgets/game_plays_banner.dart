@@ -54,9 +54,10 @@ class _GameLimitClockState extends State<GameLimitClock> {
 }
 
 class GamePlaysBanner extends StatelessWidget {
-  const GamePlaysBanner({super.key, this.compact = false});
+  const GamePlaysBanner({super.key, this.compact = false, this.gameId});
 
   final bool compact;
+  final String? gameId;
 
   @override
   Widget build(BuildContext context) {
@@ -115,6 +116,24 @@ class GamePlaysBanner extends StatelessWidget {
           );
         }
 
+        final id = gameId;
+        final used = id == null ? store.windowUsed : store.playsUsed(id);
+        if (id != null && store.playsLeft(id) <= 0) {
+          return const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: Text(
+              S.practiceMode,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 40,
+                height: 1.1,
+                color: AppColors.muted,
+              ),
+            ),
+          );
+        }
+
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
           child: Column(
@@ -130,7 +149,7 @@ class GamePlaysBanner extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                S.gameRoundsProgress(store.windowUsed, store.rewardedPlays),
+                S.gameRoundsProgress(used, store.rewardedPlays),
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontWeight: FontWeight.w900,

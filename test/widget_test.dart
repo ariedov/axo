@@ -39,6 +39,7 @@ import 'package:app/widgets/axolotl_mascot.dart';
 import 'package:app/widgets/game_input_body.dart';
 import 'package:app/widgets/game_plays_banner.dart';
 import 'package:app/widgets/game_scaffold.dart';
+import 'package:app/widgets/game_setup_body.dart';
 import 'package:app/widgets/task_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -1298,18 +1299,49 @@ void main() {
     await tester.pumpWidget(
       HabitScope(
         store: store,
-        child: const MaterialApp(home: Scaffold(body: GamePlaysBanner())),
+        child: const MaterialApp(
+          home: Scaffold(body: GamePlaysBanner(gameId: 'english')),
+        ),
       ),
     );
     await tester.pump();
     expect(find.text('Раунди зараз'), findsOneWidget);
     expect(find.text('0/${AppConfig.rewardedPlays}'), findsOneWidget);
 
+    expect(await store.tryAwardGamePlay('spelling'), 5);
+    await tester.pump();
+    expect(find.text('0/${AppConfig.rewardedPlays}'), findsOneWidget);
+
     expect(await store.tryAwardGamePlay('english'), 5);
     await tester.pump();
     expect(find.text('1/${AppConfig.rewardedPlays}'), findsOneWidget);
+  });
 
-    for (var i = 1; i < AppConfig.rewardedPlays; i++) {
+  testWidgets('game setup shows point rounds then training after the cap', (
+    tester,
+  ) async {
+    var clock = DateTime(2026, 9, 1, 12);
+    final store = testStore(now: () => clock);
+    await store.load();
+
+    await tester.pumpWidget(
+      HabitScope(
+        store: store,
+        child: MaterialApp(
+          home: Scaffold(
+            body: GameSetupBody(gameId: 'english', onStart: () {}),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('0/${AppConfig.rewardedPlays}'), findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      isNotNull,
+    );
+
+    for (var i = 0; i < AppConfig.rewardedPlays; i++) {
       expect(await store.tryAwardGamePlay('english'), 5);
     }
     await tester.pump();
@@ -1317,9 +1349,18 @@ void main() {
       find.text(S.gamePointsGone(AppConfig.rewardedPlays)),
       findsOneWidget,
     );
-    expect(find.text(S.countdown(AppConfig.playLimitWindow)), findsOneWidget);
-    expect(store.windowUsed, AppConfig.rewardedPlays);
-    expect(store.playsUsed('english'), AppConfig.rewardedPlays);
+    expect(
+      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      isNull,
+    );
+
+    clock = clock.add(AppConfig.playLimitWindow);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text(S.practiceMode), findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      isNotNull,
+    );
   });
 
   test('home recents fill from the catalog then last played', () {
