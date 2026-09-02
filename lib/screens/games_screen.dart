@@ -29,11 +29,14 @@ class GamesScreen extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.only(top: 8, bottom: 28),
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
                     child: Text(
-                      S.practiceOnly,
-                      style: TextStyle(
+                      S.practiceOnly(
+                        HabitScope.of(context).rewardedPlays,
+                        HabitScope.of(context).playLimitMinutes,
+                      ),
+                      style: const TextStyle(
                         color: AppColors.muted,
                         fontWeight: FontWeight.w700,
                       ),

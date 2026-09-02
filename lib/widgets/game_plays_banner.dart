@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../config.dart';
 import '../state/habit_scope.dart';
 import '../strings.dart';
 import '../theme.dart';
@@ -67,7 +66,7 @@ class GamePlaysBanner extends StatelessWidget {
         if (compact && store.gamesLocked) {
           return Text.rich(
             TextSpan(
-              text: S.nextRoundsLabel,
+              text: S.nextRoundsLabel(store.rewardedPlays),
               style: const TextStyle(
                 color: AppColors.muted,
                 fontWeight: FontWeight.w700,
@@ -91,7 +90,7 @@ class GamePlaysBanner extends StatelessWidget {
             child: Column(
               children: [
                 Text(
-                  S.gamePointsGone,
+                  S.gamePointsGone(store.rewardedPlays),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
@@ -131,7 +130,7 @@ class GamePlaysBanner extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                S.gameRoundsProgress(store.windowUsed, AppConfig.rewardedPlays),
+                S.gameRoundsProgress(store.windowUsed, store.rewardedPlays),
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontWeight: FontWeight.w900,

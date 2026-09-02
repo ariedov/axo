@@ -62,6 +62,7 @@ class GameCardsRow extends StatelessWidget {
                         key: Key('game-${games[i].id}'),
                         game: games[i],
                         used: store.playsUsed(games[i].id),
+                        max: store.rewardedPlays,
                         onTap: () => openMiniGame(context, games[i]),
                       )
                     : const SizedBox.shrink(),
@@ -79,11 +80,13 @@ class GameCard extends StatelessWidget {
     super.key,
     required this.game,
     required this.used,
+    required this.max,
     required this.onTap,
   });
 
   final MiniGame game;
   final int used;
+  final int max;
   final VoidCallback onTap;
 
   @override
@@ -142,16 +145,14 @@ class GameCard extends StatelessWidget {
                     Icon(
                       Icons.star_rounded,
                       size: 16,
-                      color: used < AppConfig.rewardedPlays
-                          ? AppColors.goldDeep
-                          : AppColors.muted,
+                      color: used < max ? AppColors.goldDeep : AppColors.muted,
                     ),
                     const SizedBox(width: 2),
                     Text(
-                      S.gameRoundsProgress(used, AppConfig.rewardedPlays),
+                      S.gameRoundsProgress(used, max),
                       style: TextStyle(
                         fontWeight: FontWeight.w900,
-                        color: used < AppConfig.rewardedPlays
+                        color: used < max
                             ? AppColors.goldDeep
                             : AppColors.muted,
                       ),

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../config.dart';
 import '../data/backup.dart';
 import '../data/day_history_repository.dart';
+import '../data/game_limit.dart';
 import '../data/game_plays.dart';
 import '../data/game_recents.dart';
 import '../data/goal_repository.dart';
@@ -24,11 +25,13 @@ class HabitStore extends ChangeNotifier {
     required this.historyRepo,
     OnboardingFlags? onboardingFlags,
     StrikesRepository? strikesRepo,
+    GameLimitRepository? gameLimitRepo,
     GameRecentsRepository? gameRecents,
     this.celebrateFor = const Duration(seconds: 3),
     DateTime Function()? now,
   }) : onboardingFlags = onboardingFlags ?? InMemoryOnboardingFlags(),
        strikesRepo = strikesRepo ?? InMemoryStrikesRepository(),
+       gameLimitRepo = gameLimitRepo ?? InMemoryGameLimitRepository(),
        gameRecents = gameRecents ?? InMemoryGameRecentsRepository(),
        now = now ?? DateTime.now;
 
@@ -40,6 +43,7 @@ class HabitStore extends ChangeNotifier {
   final DayHistoryRepository historyRepo;
   final OnboardingFlags onboardingFlags;
   final StrikesRepository strikesRepo;
+  final GameLimitRepository gameLimitRepo;
   final GameRecentsRepository gameRecents;
   final Duration celebrateFor;
   final DateTime Function() now;
@@ -58,6 +62,10 @@ class HabitStore extends ChangeNotifier {
   int strikes = 0;
   String? strikeDay;
   int penaltyPoints = AppConfig.defaultPenaltyPoints;
+  int rewardedPlays = AppConfig.rewardedPlays;
+  int playLimitMinutes = AppConfig.playLimitMinutes;
+
+  Duration get playLimitWindow => Duration(minutes: playLimitMinutes);
 
   bool get canStrike => strikes < AppConfig.strikesToPenalty;
 
@@ -121,6 +129,8 @@ class HabitStore extends ChangeNotifier {
     recentGameIds = await gameRecents.load();
     history = await historyRepo.load();
     await _loadStrikes();
+    await _loadGameLimit();
+    await _prunePlays();
     for (final snapshot in days.values) {
       history = history.withDay(
         DayProgress.fromTasks(snapshot.day, snapshot.tasks),
@@ -202,6 +212,24 @@ class HabitStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setGameLimit({int? rounds, int? restMinutes}) async {
+    if (rounds != null && rounds < 1) return;
+    if (restMinutes != null && restMinutes < 1) return;
+    var changed = false;
+    if (rounds != null && rounds != rewardedPlays) {
+      rewardedPlays = rounds;
+      changed = true;
+    }
+    if (restMinutes != null && restMinutes != playLimitMinutes) {
+      playLimitMinutes = restMinutes;
+      changed = true;
+    }
+    if (!changed) return;
+    await _persistGameLimit();
+    await _prunePlays();
+    notifyListeners();
+  }
+
   Future<void> _loadStrikes() async {
     final snapshot = await strikesRepo.load();
     penaltyPoints = snapshot.penaltyPoints;
@@ -226,6 +254,32 @@ class HabitStore extends ChangeNotifier {
     );
   }
 
+  Future<void> _loadGameLimit() async {
+    final snapshot = await gameLimitRepo.load();
+    rewardedPlays = snapshot.rewardedPlays < 1
+        ? AppConfig.rewardedPlays
+        : snapshot.rewardedPlays;
+    playLimitMinutes = snapshot.playLimitMinutes < 1
+        ? AppConfig.playLimitMinutes
+        : snapshot.playLimitMinutes;
+  }
+
+  Future<void> _persistGameLimit() {
+    return gameLimitRepo.save(
+      GameLimitSnapshot(
+        rewardedPlays: rewardedPlays,
+        playLimitMinutes: playLimitMinutes,
+      ),
+    );
+  }
+
+  Future<void> _prunePlays() async {
+    final pruned = plays.pruned(now(), window: playLimitWindow);
+    if (pruned.rounds.length == plays.rounds.length) return;
+    plays = pruned;
+    await gamePlays.save(plays);
+  }
+
   Future<bool> changePassword({
     required String current,
     required String next,
@@ -237,27 +291,28 @@ class HabitStore extends ChangeNotifier {
 
   int playsUsed(String gameId) {
     final used = plays.usedToday(gameId, now());
-    return used > AppConfig.rewardedPlays ? AppConfig.rewardedPlays : used;
+    return used > rewardedPlays ? rewardedPlays : used;
   }
 
   int playsLeft(String gameId) {
-    final left = AppConfig.rewardedPlays - playsUsed(gameId);
+    final left = rewardedPlays - playsUsed(gameId);
     return left < 0 ? 0 : left;
   }
 
   int get windowUsed {
-    if (gamesLocked) return AppConfig.rewardedPlays;
-    final n = plays.used(now());
-    return n > AppConfig.rewardedPlays ? AppConfig.rewardedPlays : n;
+    if (gamesLocked) return rewardedPlays;
+    final n = plays.used(now(), window: playLimitWindow);
+    return n > rewardedPlays ? rewardedPlays : n;
   }
 
   int get windowLeft {
     if (gamesLocked) return 0;
-    final left = AppConfig.rewardedPlays - plays.used(now());
+    final left = rewardedPlays - plays.used(now(), window: playLimitWindow);
     return left < 0 ? 0 : left;
   }
 
-  DateTime? get playsUnlocksAt => plays.unlocksAt(now());
+  DateTime? get playsUnlocksAt =>
+      plays.unlocksAt(now(), window: playLimitWindow, cap: rewardedPlays);
 
   bool get gamesLocked => playsUnlocksAt != null;
 
@@ -278,15 +333,17 @@ class HabitStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Records the round for the 30-minute play window. Points only if this game
-  /// still has daily rewarded plays left.
+  /// Records the round for the play window. Points only if this game still has
+  /// daily rewarded plays left.
   Future<int> tryAwardGamePlay(String gameId, {int? points}) async {
     if (windowLeft <= 0) return 0;
     final award = playsLeft(gameId) <= 0
         ? 0
         : (points ?? AppConfig.gamePlayPoints);
 
-    plays = plays.increment(gameId, now()).pruned(now());
+    plays = plays
+        .increment(gameId, now())
+        .pruned(now(), window: playLimitWindow);
     await gamePlays.save(plays);
     if (award > 0) {
       totalPoints = await pointsRepo.award(
@@ -508,6 +565,8 @@ class HabitStore extends ChangeNotifier {
       strikes: strikes,
       strikeDay: strikeDay,
       penaltyPoints: penaltyPoints,
+      rewardedPlays: rewardedPlays,
+      playLimitMinutes: playLimitMinutes,
     );
   }
 
@@ -523,6 +582,12 @@ class HabitStore extends ChangeNotifier {
         count: snapshot.strikes,
         day: snapshot.strikeDay,
         penaltyPoints: snapshot.penaltyPoints,
+      ),
+    );
+    await gameLimitRepo.save(
+      GameLimitSnapshot(
+        rewardedPlays: snapshot.rewardedPlays,
+        playLimitMinutes: snapshot.playLimitMinutes,
       ),
     );
     await load();

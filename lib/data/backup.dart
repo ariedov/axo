@@ -20,6 +20,8 @@ class BackupSnapshot {
     this.strikes = 0,
     this.strikeDay,
     this.penaltyPoints = AppConfig.defaultPenaltyPoints,
+    this.rewardedPlays = AppConfig.rewardedPlays,
+    this.playLimitMinutes = AppConfig.playLimitMinutes,
   });
 
   static const appId = 'axo';
@@ -36,6 +38,8 @@ class BackupSnapshot {
   final int strikes;
   final String? strikeDay;
   final int penaltyPoints;
+  final int rewardedPlays;
+  final int playLimitMinutes;
 
   String get fileName => 'axo-${todayStamp(exportedAt)}.json';
 
@@ -59,6 +63,8 @@ class BackupSnapshot {
       'strikes': strikes,
       'strikeDay': strikeDay,
       'penaltyPoints': penaltyPoints,
+      'rewardedPlays': rewardedPlays,
+      'playLimitMinutes': playLimitMinutes,
     },
   };
 
@@ -99,6 +105,11 @@ class BackupSnapshot {
       penaltyPoints:
           (data['penaltyPoints'] as num?)?.toInt() ??
           AppConfig.defaultPenaltyPoints,
+      rewardedPlays:
+          (data['rewardedPlays'] as num?)?.toInt() ?? AppConfig.rewardedPlays,
+      playLimitMinutes:
+          (data['playLimitMinutes'] as num?)?.toInt() ??
+          AppConfig.playLimitMinutes,
     );
   }
 }
