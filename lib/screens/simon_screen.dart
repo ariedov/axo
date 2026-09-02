@@ -61,7 +61,8 @@ class _SimonScreenState extends State<SimonScreen> {
   var _roundPoints = 0;
   var _playing = false;
 
-  bool get _infinite => HabitScope.of(context).gamesLocked;
+  bool get _infinite =>
+      HabitScope.of(context).playsLeft(AppConfig.simonGame) <= 0;
 
   int get _pads => widget.pads ?? AppConfig.simonPads;
 
@@ -227,6 +228,7 @@ class _SimonScreenState extends State<SimonScreen> {
       showMascot: !_playing || _showSummary,
       child: _showSummary
           ? GameRoundSummary(
+              gameId: AppConfig.simonGame,
               correct: _round.correct,
               wrong: _round.wrong,
               points: _roundPoints,
@@ -234,6 +236,7 @@ class _SimonScreenState extends State<SimonScreen> {
             )
           : !_playing
           ? GameSetupBody(
+              gameId: AppConfig.simonGame,
               onStart: _start,
               rewardHint: S.pointsPerRound(AppConfig.simonRoundPoints),
             )

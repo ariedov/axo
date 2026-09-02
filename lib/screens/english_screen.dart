@@ -67,7 +67,8 @@ class _EnglishScreenState extends State<EnglishScreen> {
     setState(() => _pairs = pairs);
   }
 
-  bool get _infinite => HabitScope.of(context).gamesLocked;
+  bool get _infinite =>
+      HabitScope.of(context).playsLeft(AppConfig.englishGame) <= 0;
 
   int get _roundReward => _mode == _TranslateMode.both
       ? AppConfig.englishBothWaysPoints
@@ -206,6 +207,7 @@ class _EnglishScreenState extends State<EnglishScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _showSummary
           ? GameRoundSummary(
+              gameId: AppConfig.englishGame,
               correct: _round.correct,
               wrong: _round.wrong,
               points: _roundPoints,
@@ -213,6 +215,7 @@ class _EnglishScreenState extends State<EnglishScreen> {
             )
           : !_playing
           ? GameSetupBody(
+              gameId: AppConfig.englishGame,
               onStart: _start,
               options: [
                 Wrap(

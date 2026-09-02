@@ -8,11 +8,13 @@ import 'game_plays_banner.dart';
 class GameSetupBody extends StatelessWidget {
   const GameSetupBody({
     super.key,
+    required this.gameId,
     required this.onStart,
     this.options = const [],
     this.rewardHint,
   });
 
+  final String gameId;
   final VoidCallback onStart;
   final List<Widget> options;
   final String? rewardHint;
@@ -21,7 +23,9 @@ class GameSetupBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return GameLimitClock(
       builder: (context) {
-        final canPlay = !HabitScope.of(context).gamesLocked;
+        final store = HabitScope.of(context);
+        final canPlay = !store.gamesLocked;
+        final training = store.playsLeft(gameId) <= 0;
         return LayoutBuilder(
           builder: (context, constraints) {
             return SingleChildScrollView(
@@ -32,8 +36,8 @@ class GameSetupBody extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const GamePlaysBanner(),
-                    if (rewardHint != null) ...[
+                    GamePlaysBanner(gameId: gameId),
+                    if (rewardHint != null && !training) ...[
                       const SizedBox(height: 16),
                       Text(
                         rewardHint!,

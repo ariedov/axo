@@ -41,7 +41,8 @@ class _SpellingScreenState extends State<SpellingScreen> {
   var _roundPoints = 0;
   var _playing = false;
 
-  bool get _infinite => HabitScope.of(context).gamesLocked;
+  bool get _infinite =>
+      HabitScope.of(context).playsLeft(AppConfig.spellingGame) <= 0;
 
   @override
   void initState() {
@@ -177,6 +178,7 @@ class _SpellingScreenState extends State<SpellingScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _showSummary
           ? GameRoundSummary(
+              gameId: AppConfig.spellingGame,
               correct: _round.correct,
               wrong: _round.wrong,
               points: _roundPoints,
@@ -184,6 +186,7 @@ class _SpellingScreenState extends State<SpellingScreen> {
             )
           : !_playing
           ? GameSetupBody(
+              gameId: AppConfig.spellingGame,
               onStart: _start,
               rewardHint: S.pointsPerRound(AppConfig.spellingRoundPoints),
             )

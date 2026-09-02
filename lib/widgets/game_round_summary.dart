@@ -7,6 +7,7 @@ import 'game_plays_banner.dart';
 class GameRoundSummary extends StatelessWidget {
   const GameRoundSummary({
     super.key,
+    required this.gameId,
     required this.correct,
     required this.wrong,
     required this.points,
@@ -15,6 +16,7 @@ class GameRoundSummary extends StatelessWidget {
     this.showCounts = true,
   });
 
+  final String gameId;
   final int correct;
   final int wrong;
   final int points;
@@ -27,7 +29,7 @@ class GameRoundSummary extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
       children: [
-        const GamePlaysBanner(),
+        GamePlaysBanner(gameId: gameId),
         Text(
           title,
           textAlign: TextAlign.center,

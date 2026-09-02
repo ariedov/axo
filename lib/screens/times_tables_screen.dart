@@ -43,7 +43,8 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
 
   int get _answer => _a * _b;
 
-  bool get _infinite => HabitScope.of(context).gamesLocked;
+  bool get _infinite =>
+      HabitScope.of(context).playsLeft(AppConfig.timesTablesGame) <= 0;
 
   int get _roundReward {
     if (_min == 1 && _max == 5) return AppConfig.timesTablesEasyPoints;
@@ -180,6 +181,7 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
             ),
       child: _showSummary
           ? GameRoundSummary(
+              gameId: AppConfig.timesTablesGame,
               correct: _round.correct,
               wrong: _round.wrong,
               points: _roundPoints,
@@ -187,6 +189,7 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
             )
           : !_playing
           ? GameSetupBody(
+              gameId: AppConfig.timesTablesGame,
               onStart: _start,
               options: [
                 Wrap(
