@@ -16,18 +16,20 @@ class BackupSnapshot {
     required this.goals,
     required this.history,
     required this.plays,
+    this.taskDays = const {},
     this.strikes = 0,
     this.strikeDay,
     this.penaltyPoints = AppConfig.defaultPenaltyPoints,
   });
 
   static const appId = 'axo';
-  static const format = 1;
+  static const format = 2;
 
   final DateTime exportedAt;
   final int points;
   final bool onboardingComplete;
   final TaskSnapshot tasks;
+  final Map<String, TaskSnapshot> taskDays;
   final List<RewardGoal> goals;
   final DayHistory history;
   final GamePlaysSnapshot plays;
@@ -37,6 +39,11 @@ class BackupSnapshot {
 
   String get fileName => 'axo-${todayStamp(exportedAt)}.json';
 
+  Map<String, TaskSnapshot> get allTaskDays {
+    if (taskDays.isNotEmpty) return taskDays;
+    return {tasks.day: tasks};
+  }
+
   Map<String, dynamic> toJson() => {
     'app': appId,
     'format': format,
@@ -45,6 +52,7 @@ class BackupSnapshot {
       'points': points,
       'onboardingComplete': onboardingComplete,
       'tasks': tasks.toJson(),
+      'taskDays': taskDaysToJson(allTaskDays),
       'goals': [for (final goal in goals) goal.toJson()],
       'history': history.toJson(),
       'gamePlays': plays.toJson(),
@@ -68,11 +76,16 @@ class BackupSnapshot {
       throw const FormatException('backup is from a newer app version');
     }
     final data = json['data'] as Map<String, dynamic>;
+    final tasks = TaskSnapshot.fromJson(data['tasks'] as Map<String, dynamic>);
+    final rawDays = data['taskDays'] as Map<String, dynamic>?;
     return BackupSnapshot(
       exportedAt: DateTime.parse(json['exportedAt'] as String),
       points: (data['points'] as num).toInt(),
       onboardingComplete: data['onboardingComplete'] == true,
-      tasks: TaskSnapshot.fromJson(data['tasks'] as Map<String, dynamic>),
+      tasks: tasks,
+      taskDays: rawDays == null || rawDays.isEmpty
+          ? {tasks.day: tasks}
+          : taskDaysFromJson(rawDays),
       goals: [
         for (final item in data['goals'] as List)
           RewardGoal.fromJson(item as Map<String, dynamic>),

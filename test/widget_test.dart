@@ -401,6 +401,8 @@ void main() {
     expect(json['data']['points'], 40);
     expect(json['data']['onboardingComplete'], isTrue);
     expect((json['data']['tasks'] as Map)['tasks'], isNotEmpty);
+    expect(json['data']['taskDays'], isA<Map<String, dynamic>>());
+    expect((json['data']['taskDays'] as Map).values, isNotEmpty);
     expect((json['data']['goals'] as List).single['completedOn'], isNotNull);
     expect(json['data']['history'], isA<Map<String, dynamic>>());
     expect(json['data']['gamePlays'], isA<Map<String, dynamic>>());
@@ -416,6 +418,7 @@ void main() {
     );
     expect(restored.points, 40);
     expect(restored.tasks.tasks.single.id, 'bed');
+    expect(restored.taskDays.values.single.tasks.single.id, 'bed');
     expect(restored.tasks.tasks.single.optional, isFalse);
     expect(restored.goals.single.isCompleted, isTrue);
     expect(restored.onboardingComplete, isTrue);
@@ -531,6 +534,7 @@ void main() {
         },
       });
       expect(legacy.tasks.tasks.single.optional, isFalse);
+      expect(legacy.taskDays.keys, ['2026-08-29']);
     },
   );
 
@@ -559,6 +563,7 @@ void main() {
     expect(loaded.current.tasks.single.isPending, isTrue);
     expect(loaded.previous?.day, '2026-08-26');
     expect(loaded.previous?.tasks.single.isVerified, isTrue);
+    expect((await repo.loadDay('2026-08-26'))?.tasks.single.isVerified, isTrue);
   });
 
   test('today-only tasks disappear the next day', () async {
@@ -752,6 +757,122 @@ void main() {
     expect(store.progressFor(todayStamp())?.total, 1);
     expect(store.progressFor(todayStamp())?.isFull, isTrue);
     expect(store.progressFor(todayStamp())?.isPartial, isFalse);
+  });
+
+  test('skipped days keep yesterday and fill the gap as pending', () async {
+    final memory = <String, String>{};
+    memory[LocalTaskRepository.legacyKey] = jsonEncode(
+      TaskSnapshot(
+        day: '2026-08-26',
+        tasks: const [
+          HabitTask(
+            id: 'bed',
+            title: 'Застелити ліжко',
+            points: 10,
+            icon: 'bed',
+            status: TaskStatus.verified,
+          ),
+          HabitTask(
+            id: 'help',
+            title: 'Допомогти',
+            points: 8,
+            icon: 'star',
+            optional: true,
+            status: TaskStatus.verified,
+          ),
+        ],
+      ).toJson(),
+    );
+
+    final repo = LocalTaskRepository(
+      (key) async => memory[key],
+      (key, value) async => memory[key] = value,
+      now: () => DateTime(2026, 8, 28),
+    );
+    final loaded = await repo.loadToday();
+
+    expect(loaded.current.day, '2026-08-28');
+    expect(loaded.days.keys.toList()..sort(), [
+      '2026-08-26',
+      '2026-08-27',
+      '2026-08-28',
+    ]);
+    expect(
+      loaded.days['2026-08-26']!.tasks
+          .singleWhere((t) => t.id == 'bed')
+          .isVerified,
+      isTrue,
+    );
+    expect(loaded.days['2026-08-27']!.tasks.map((task) => task.id), [
+      'bed',
+      'help',
+    ]);
+    expect(
+      loaded.days['2026-08-27']!.tasks.every((task) => task.isPending),
+      isTrue,
+    );
+    expect(loaded.current.tasks.every((task) => task.isPending), isTrue);
+  });
+
+  test('can complete a task from yesterday', () async {
+    final clock = DateTime(2026, 8, 27);
+    final store = HabitStore(
+      pointsRepo: InMemoryPointsRepository(),
+      taskRepo: InMemoryTaskRepository(
+        const TaskSnapshot(
+          day: '2026-08-27',
+          tasks: [
+            HabitTask(
+              id: 'bed',
+              title: 'Застелити ліжко',
+              points: 10,
+              icon: 'bed',
+            ),
+          ],
+        ),
+        days: {
+          '2026-08-26': const TaskSnapshot(
+            day: '2026-08-26',
+            tasks: [
+              HabitTask(
+                id: 'bed',
+                title: 'Застелити ліжко',
+                points: 10,
+                icon: 'bed',
+              ),
+              HabitTask(
+                id: 'help',
+                title: 'Допомогти',
+                points: 8,
+                icon: 'star',
+                optional: true,
+              ),
+            ],
+          ),
+        },
+      ),
+      parentAuth: InMemoryParentAuth('mama'),
+      gamePlays: InMemoryGamePlaysRepository(),
+      goalRepo: InMemoryGoalRepository(),
+      historyRepo: InMemoryDayHistoryRepository(
+        const DayHistory(activatedOn: '2026-08-26'),
+      ),
+      celebrateFor: Duration.zero,
+      now: () => clock,
+    );
+    await store.load();
+
+    expect(store.canCompleteDay('2026-08-26'), isTrue);
+    expect(store.tasksOn('2026-08-26'), hasLength(2));
+    await store.submit('bed', day: '2026-08-26');
+    await store.verify('bed', day: '2026-08-26');
+
+    expect(store.totalPoints, 10);
+    expect(store.tasksOn('2026-08-26').first.isVerified, isTrue);
+    expect(store.tasks.single.isPending, isTrue);
+    expect(store.progressFor('2026-08-26')?.completed, 1);
+    expect(store.progressFor('2026-08-26')?.total, 1);
+    expect(store.celebrating, isFalse);
   });
 
   test('three strikes apply the penalty and stay until the next day', () async {
@@ -1969,6 +2090,76 @@ void main() {
     expect(find.text('Усі завдання'), findsOneWidget);
     expect(find.text('Частина'), findsOneWidget);
     expect(find.byIcon(Icons.check_circle_rounded), findsWidgets);
+  });
+
+  testWidgets('calendar opens yesterday so a missed task can be completed', (
+    tester,
+  ) async {
+    final clock = DateTime(2026, 8, 27);
+    final store = HabitStore(
+      pointsRepo: InMemoryPointsRepository(),
+      taskRepo: InMemoryTaskRepository(
+        const TaskSnapshot(
+          day: '2026-08-27',
+          tasks: [
+            HabitTask(
+              id: 'bed',
+              title: 'Застелити ліжко',
+              points: 10,
+              icon: 'bed',
+            ),
+          ],
+        ),
+        days: {
+          '2026-08-26': const TaskSnapshot(
+            day: '2026-08-26',
+            tasks: [
+              HabitTask(
+                id: 'teeth',
+                title: 'Почистити зуби',
+                points: 10,
+                icon: 'hygiene',
+              ),
+            ],
+          ),
+        },
+      ),
+      parentAuth: InMemoryParentAuth('4826'),
+      gamePlays: InMemoryGamePlaysRepository(),
+      goalRepo: InMemoryGoalRepository(),
+      historyRepo: InMemoryDayHistoryRepository(
+        const DayHistory(activatedOn: '2026-08-26'),
+      ),
+      celebrateFor: Duration.zero,
+      now: () => clock,
+    );
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('cal-2026-08-26')),
+      300,
+      scrollable: find.byType(Scrollable),
+    );
+    await tester.tap(find.byKey(const Key('cal-2026-08-26')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text(S.tasksForDay('2026-08-26')), findsOneWidget);
+    expect(find.text('Почистити зуби'), findsOneWidget);
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('day-tasks-2026-08-26')),
+        matching: find.text(S.done),
+      ),
+    );
+    await tester.pump();
+    expect(store.tasksOn('2026-08-26').single.isSubmitted, isTrue);
   });
 
   testWidgets('home shows goal progress until it can be spent', (tester) async {
