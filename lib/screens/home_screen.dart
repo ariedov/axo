@@ -168,11 +168,14 @@ class HomeScreen extends StatelessWidget {
                           moreTooltip: S.allGames,
                           moreKey: const Key('all-games'),
                         ),
-                        const Padding(
-                          padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
                           child: Text(
-                            S.practiceOnly,
-                            style: TextStyle(
+                            S.practiceOnly(
+                              store.rewardedPlays,
+                              store.playLimitMinutes,
+                            ),
+                            style: const TextStyle(
                               color: AppColors.muted,
                               fontWeight: FontWeight.w700,
                             ),

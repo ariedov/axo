@@ -53,10 +53,12 @@ class S {
   static const normal = 'Нормально';
   static const hard = 'Складно';
   static const allDone = 'Усі завдання на сьогодні готові!';
-  static const practiceOnly =
-      'Можна зіграти 3 раунди, далі 30 хвилин перерви. У раунді — 10 завдань.';
+  static String practiceOnly(int rounds, int minutes) =>
+      'Можна зіграти ${roundsWord(rounds)}, далі ${minutesWord(minutes)} перерви. У раунді — 10 завдань.';
   static const gamePointsLeft = 'Раунди зараз';
-  static const gamePointsGone = 'Наступні 3 раунди через';
+
+  static String gamePointsGone(int rounds) =>
+      'Наступні ${roundsWord(rounds)} через';
 
   static String gameRoundsProgress(int used, int max) => '$used/$max';
 
@@ -67,9 +69,11 @@ class S {
     return '$m:${s.toString().padLeft(2, '0')}';
   }
 
-  static const nextRoundsLabel = 'Наступні 3 раунди: ';
+  static String nextRoundsLabel(int rounds) =>
+      'Наступні ${roundsWord(rounds)}: ';
 
-  static String nextRoundsAt(Duration d) => '$nextRoundsLabel${countdown(d)}';
+  static String nextRoundsAt(int rounds, Duration d) =>
+      '${nextRoundsLabel(rounds)}${countdown(d)}';
 
   static const plusGamePoints = 'балів за гру';
   static const roundDone = 'Раунд завершено!';
@@ -135,6 +139,13 @@ class S {
   static const clearStrikes = 'Скинути страйки';
   static const strikesCleared = 'Страйки скинуто';
   static const invalidPenalty = 'Вкажіть ціле число балів';
+  static const gameLimitSettings = 'Ліміт ігор';
+  static const gameLimitSettingsHint =
+      'Скільки раундів можна зіграти підряд і скільки хвилин відпочинку після цього.';
+  static const gameLimitRounds = 'Раундів підряд';
+  static const gameLimitRest = 'Перерва в хвилинах';
+  static const gameLimitSaved = 'Ліміт ігор збережено';
+  static const invalidGameLimit = 'Вкажіть ціле число більше нуля';
 
   static String strikesProgress(int n, int max) => '$n з $max';
 
@@ -252,6 +263,28 @@ class S {
       return '$n бали';
     }
     return '$n балів';
+  }
+
+  static String roundsWord(int n) {
+    final abs = n.abs();
+    final mod10 = abs % 10;
+    final mod100 = abs % 100;
+    if (mod10 == 1 && mod100 != 11) return '$n раунд';
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+      return '$n раунди';
+    }
+    return '$n раундів';
+  }
+
+  static String minutesWord(int n) {
+    final abs = n.abs();
+    final mod10 = abs % 10;
+    final mod100 = abs % 100;
+    if (mod10 == 1 && mod100 != 11) return '$n хвилина';
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+      return '$n хвилини';
+    }
+    return '$n хвилин';
   }
 
   static String plusPoints(int n) => '+${pointsWord(n)}';

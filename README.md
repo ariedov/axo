@@ -85,7 +85,7 @@ The child does a task and taps Done. A parent confirms with a password — and p
 
 ## Mini-games
 
-Each game is 10 questions per round. You can play 3 rounds, then wait 30 minutes.
+Each game is 10 questions per round. You can play 5 rounds, then wait 15 minutes. Parents can change this.
 
 - **Times tables** — easy, normal, or hard
 - **Spelling** — write the Ukrainian word

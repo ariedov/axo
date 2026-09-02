@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'config.dart';
 import 'data/day_history_repository.dart';
+import 'data/game_limit.dart';
 import 'data/goal_repository.dart';
 import 'data/onboarding_flags.dart';
 import 'data/parent_auth.dart';
@@ -79,6 +80,12 @@ Future<void> main() async {
       },
     ),
     strikesRepo: LocalStrikesRepository(
+      (key) async => prefs.getString(key),
+      (key, value) async {
+        await prefs.setString(key, value);
+      },
+    ),
+    gameLimitRepo: LocalGameLimitRepository(
       (key) async => prefs.getString(key),
       (key, value) async {
         await prefs.setString(key, value);

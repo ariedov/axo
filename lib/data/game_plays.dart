@@ -38,7 +38,8 @@ class GamePlaysSnapshot {
     ];
   }
 
-  int used(DateTime now) => inWindow(now).length;
+  int used(DateTime now, {Duration window = AppConfig.playLimitWindow}) =>
+      inWindow(now, window: window).length;
 
   int usedToday(String gameId, DateTime now) {
     final day = todayStamp(now);
@@ -77,9 +78,12 @@ class GamePlaysSnapshot {
     );
   }
 
-  GamePlaysSnapshot pruned(DateTime now) {
+  GamePlaysSnapshot pruned(
+    DateTime now, {
+    Duration window = AppConfig.playLimitWindow,
+  }) {
     final day = todayStamp(now);
-    final cutoff = now.subtract(AppConfig.playLimitWindow);
+    final cutoff = now.subtract(window);
     return GamePlaysSnapshot(
       rounds: [
         for (final play in rounds)
@@ -112,28 +116,19 @@ abstract class GamePlaysRepository {
 }
 
 class LocalGamePlaysRepository implements GamePlaysRepository {
-  LocalGamePlaysRepository(this._read, this._write, {DateTime Function()? now})
-    : _now = now ?? DateTime.now;
+  LocalGamePlaysRepository(this._read, this._write);
 
   static const _key = 'game_plays';
 
   final Future<String?> Function(String key) _read;
   final Future<void> Function(String key, String value) _write;
-  final DateTime Function() _now;
 
   @override
   Future<GamePlaysSnapshot> load() async {
     final raw = await _read(_key);
     if (raw == null) return const GamePlaysSnapshot();
 
-    final saved = GamePlaysSnapshot.fromJson(
-      jsonDecode(raw) as Map<String, dynamic>,
-    );
-    final pruned = saved.pruned(_now());
-    if (pruned.rounds.length != saved.rounds.length) {
-      await save(pruned);
-    }
-    return pruned;
+    return GamePlaysSnapshot.fromJson(jsonDecode(raw) as Map<String, dynamic>);
   }
 
   @override
