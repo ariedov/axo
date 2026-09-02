@@ -46,6 +46,7 @@ class HabitStore extends ChangeNotifier {
 
   int totalPoints = 0;
   List<HabitTask> tasks = const [];
+  Map<String, TaskSnapshot> days = const {};
   List<RewardGoal> goals = const [];
   bool ready = false;
   bool celebrating = false;
@@ -105,6 +106,7 @@ class HabitStore extends ChangeNotifier {
   Future<void> load() async {
     totalPoints = await pointsRepo.fetchTotal();
     final todayLoad = await taskRepo.loadToday();
+    days = Map.of(todayLoad.days);
     tasks = todayLoad.current.tasks;
     goals = await goalRepo.load();
     parentPassword = await parentAuth.read();
@@ -119,9 +121,12 @@ class HabitStore extends ChangeNotifier {
     recentGameIds = await gameRecents.load();
     history = await historyRepo.load();
     await _loadStrikes();
-    if (todayLoad.previous != null) {
-      await _recordSnapshot(todayLoad.previous!);
+    for (final snapshot in days.values) {
+      history = history.withDay(
+        DayProgress.fromTasks(snapshot.day, snapshot.tasks),
+      );
     }
+    await historyRepo.save(history);
     await _ensureActivated();
     await _syncTodayHistory();
     ready = true;
@@ -293,37 +298,45 @@ class HabitStore extends ChangeNotifier {
     return award;
   }
 
-  Future<void> submit(String taskId) {
+  Future<void> submit(String taskId, {String? day}) {
     return _update(
       taskId,
       (task) =>
           task.isPending ? task.copyWith(status: TaskStatus.submitted) : task,
+      day: day,
     );
   }
 
-  Future<void> unsubmit(String taskId) {
+  Future<void> unsubmit(String taskId, {String? day}) {
     return _update(
       taskId,
       (task) =>
           task.isSubmitted ? task.copyWith(status: TaskStatus.pending) : task,
+      day: day,
     );
   }
 
-  Future<void> verify(String taskId) async {
-    final task = tasks.firstWhere((item) => item.id == taskId);
-    if (!task.isSubmitted) return;
+  Future<void> verify(String taskId, {String? day}) async {
+    final task = _taskOn(taskId, day);
+    if (task == null || !task.isSubmitted) return;
 
     totalPoints = await pointsRepo.award(amount: task.points, taskId: task.id);
-    celebrating = true;
-    await _update(taskId, (item) => item.copyWith(status: TaskStatus.verified));
-    if (celebrateFor > Duration.zero) {
+    final isToday = _isToday(day);
+    celebrating = isToday;
+    await _update(
+      taskId,
+      (item) => item.copyWith(status: TaskStatus.verified),
+      day: day,
+    );
+    if (celebrating && celebrateFor > Duration.zero) {
       await Future<void>.delayed(celebrateFor);
     }
     celebrating = false;
     notifyListeners();
   }
 
-  Future<void> reject(String taskId) => unsubmit(taskId);
+  Future<void> reject(String taskId, {String? day}) =>
+      unsubmit(taskId, day: day);
 
   Future<void> upsertTask(HabitTask task) async {
     final index = tasks.indexWhere((item) => item.id == task.id);
@@ -469,12 +482,26 @@ class HabitStore extends ChangeNotifier {
 
   DayProgress? progressFor(String day) => history[day];
 
+  List<HabitTask> tasksOn(String day) {
+    if (_isToday(day)) return tasks;
+    return days[day]?.tasks ?? const [];
+  }
+
+  bool canCompleteDay(String day) {
+    final today = todayStamp(now());
+    if (day.compareTo(today) > 0) return false;
+    if (day == today) return true;
+    return days.containsKey(day);
+  }
+
   BackupSnapshot exportBackup() {
+    final today = TaskSnapshot(day: todayStamp(now()), tasks: tasks);
     return BackupSnapshot(
       exportedAt: now(),
       points: totalPoints,
       onboardingComplete: onboardingComplete,
-      tasks: TaskSnapshot(day: todayStamp(now()), tasks: tasks),
+      tasks: today,
+      taskDays: {...days, today.day: today},
       goals: goals,
       history: history,
       plays: plays,
@@ -486,7 +513,7 @@ class HabitStore extends ChangeNotifier {
 
   Future<void> importBackup(BackupSnapshot snapshot) async {
     await pointsRepo.setTotal(snapshot.points);
-    await taskRepo.save(snapshot.tasks);
+    await taskRepo.replaceAll(snapshot.allTaskDays);
     await goalRepo.save(snapshot.goals);
     await historyRepo.save(snapshot.history);
     await gamePlays.save(snapshot.plays);
@@ -520,23 +547,54 @@ class HabitStore extends ChangeNotifier {
   }
 
   Future<void> _persist() {
-    return taskRepo.save(TaskSnapshot(day: todayStamp(now()), tasks: tasks));
+    final snapshot = TaskSnapshot(day: todayStamp(now()), tasks: tasks);
+    days = {...days, snapshot.day: snapshot};
+    return taskRepo.save(snapshot);
   }
 
   Future<void> _persistGoals() {
     return goalRepo.save(goals);
   }
 
+  bool _isToday(String? day) {
+    return day == null || day == todayStamp(now());
+  }
+
+  HabitTask? _taskOn(String taskId, String? day) {
+    final list = _isToday(day) ? tasks : days[day]?.tasks ?? const [];
+    for (final task in list) {
+      if (task.id == taskId) return task;
+    }
+    return null;
+  }
+
   Future<void> _update(
     String taskId,
-    HabitTask Function(HabitTask task) change,
-  ) async {
-    tasks = [
-      for (final task in tasks)
-        if (task.id == taskId) change(task) else task,
-    ];
-    await _persist();
-    await _syncTodayHistory();
+    HabitTask Function(HabitTask task) change, {
+    String? day,
+  }) async {
+    if (_isToday(day)) {
+      tasks = [
+        for (final task in tasks)
+          if (task.id == taskId) change(task) else task,
+      ];
+      await _persist();
+      await _syncTodayHistory();
+      notifyListeners();
+      return;
+    }
+    final snapshot = days[day];
+    if (snapshot == null) return;
+    final updated = TaskSnapshot(
+      day: snapshot.day,
+      tasks: [
+        for (final task in snapshot.tasks)
+          if (task.id == taskId) change(task) else task,
+      ],
+    );
+    days = {...days, updated.day: updated};
+    await taskRepo.save(updated);
+    await _recordSnapshot(updated);
     notifyListeners();
   }
 }

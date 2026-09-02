@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import '../data/models.dart';
 import '../data/today.dart';
 import '../state/habit_scope.dart';
+import '../state/habit_store.dart';
 import '../strings.dart';
 import '../theme.dart';
+import 'day_tasks_sheet.dart';
 
 class TaskCalendar extends StatefulWidget {
   const TaskCalendar({super.key});
@@ -16,27 +18,27 @@ class TaskCalendar extends StatefulWidget {
 }
 
 class _TaskCalendarState extends State<TaskCalendar> {
-  late DateTime _month;
+  DateTime? _month;
   String? _selected;
 
   @override
-  void initState() {
-    super.initState();
-    final now = DateTime.now();
-    _month = DateTime(now.year, now.month);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _month ??= _monthOf(_todayOf(HabitScope.of(context)));
   }
 
-  DateTime get _today => dateFromStamp(todayStamp());
+  DateTime _todayOf(HabitStore store) => dateFromStamp(todayStamp(store.now()));
 
-  DateTime _activation(String? stamp) {
-    if (stamp == null) return _today;
+  DateTime _activation(String? stamp, DateTime today) {
+    if (stamp == null) return today;
     return dateFromStamp(stamp);
   }
 
   DateTime _monthOf(DateTime date) => DateTime(date.year, date.month);
 
   void _shift(int delta, DateTime first, DateTime last) {
-    final next = DateTime(_month.year, _month.month + delta);
+    final current = _month ?? first;
+    final next = DateTime(current.year, current.month + delta);
     if (next.isBefore(first) || next.isAfter(last)) return;
     setState(() {
       _month = next;
@@ -47,11 +49,12 @@ class _TaskCalendarState extends State<TaskCalendar> {
   @override
   Widget build(BuildContext context) {
     final store = HabitScope.of(context);
-    final today = _today;
-    final first = _monthOf(_activation(store.history.activatedOn));
+    final today = _todayOf(store);
+    final month = _month ?? _monthOf(today);
+    final first = _monthOf(_activation(store.history.activatedOn, today));
     final last = _monthOf(today);
-    final canPrev = _month.isAfter(first);
-    final canNext = _month.isBefore(last);
+    final canPrev = month.isAfter(first);
+    final canNext = month.isBefore(last);
     final selected = _selected == null ? null : store.progressFor(_selected!);
 
     return Padding(
@@ -76,7 +79,7 @@ class _TaskCalendarState extends State<TaskCalendar> {
                   ),
                   Expanded(
                     child: Text(
-                      S.monthTitle(_month.year, _month.month),
+                      S.monthTitle(month.year, month.month),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontWeight: FontWeight.w900,
@@ -111,12 +114,18 @@ class _TaskCalendarState extends State<TaskCalendar> {
               ),
               const SizedBox(height: 8),
               _Grid(
-                month: _month,
+                month: month,
                 today: today,
-                activation: _activation(store.history.activatedOn),
+                activation: _activation(store.history.activatedOn, today),
                 selected: _selected,
                 progressFor: store.progressFor,
-                onSelect: (day) => setState(() => _selected = day),
+                onSelect: (day) {
+                  setState(() => _selected = day);
+                  if (day != stampFromDate(today) &&
+                      store.canCompleteDay(day)) {
+                    showDayTasksSheet(context, day);
+                  }
+                },
               ),
               const SizedBox(height: 12),
               const Row(
@@ -198,9 +207,7 @@ class _Grid extends StatelessWidget {
           Row(
             children: [
               for (var col = 0; col < 7; col++)
-                Expanded(
-                  child: _cell(row * 7 + col, leading, daysInMonth),
-                ),
+                Expanded(child: _cell(row * 7 + col, leading, daysInMonth)),
             ],
           ),
       ],
@@ -226,6 +233,7 @@ class _Grid extends StatelessWidget {
         color: isSelected ? AppColors.blush : Colors.white,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
+          key: Key('cal-$stamp'),
           onTap: inRange ? () => onSelect(stamp) : null,
           borderRadius: BorderRadius.circular(14),
           child: SizedBox(
@@ -310,13 +318,7 @@ class _HalfCirclePainter extends CustomPainter {
       ..strokeWidth = 1.5;
     final fill = Paint()..color = AppColors.goldDeep;
     canvas.drawCircle(rect.center, size.width / 2 - 1, outline);
-    canvas.drawArc(
-      rect.deflate(1),
-      -math.pi / 2,
-      math.pi,
-      true,
-      fill,
-    );
+    canvas.drawArc(rect.deflate(1), -math.pi / 2, math.pi, true, fill);
   }
 
   @override

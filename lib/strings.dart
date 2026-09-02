@@ -213,6 +213,7 @@ class S {
   static const nextMonth = 'Наступний місяць';
   static const calendarFull = 'Усі завдання';
   static const calendarPartial = 'Частина';
+  static const pastDayHint = 'Можна підтвердити завдання, які зробили раніше.';
   static const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
   static const months = [
     'Січень',
@@ -232,6 +233,12 @@ class S {
   static String monthTitle(int year, int month) => '${months[month - 1]} $year';
 
   static String dayTasksProgress(int done, int total) => '$done з $total';
+
+  static String tasksForDay(String stamp) {
+    final parts = stamp.split('-');
+    if (parts.length != 3) return stamp;
+    return 'Завдання за ${parts[2]}.${parts[1]}.${parts[0]}';
+  }
 
   static String todayTaskPoints(int earned, int possible) =>
       '$earned / ${pointsWord(possible)}';
