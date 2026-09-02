@@ -66,18 +66,11 @@ class PointsHero extends StatelessWidget {
               key: const Key('points-label'),
               onPressed: onLabelTap,
               style: TextButton.styleFrom(
-                foregroundColor: AppColors.goldDeep.withValues(alpha: 0.9),
-                backgroundColor: Colors.white.withValues(alpha: 0.5),
+                foregroundColor: AppColors.goldDeep.withValues(alpha: 0.85),
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 2,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                padding: EdgeInsets.zero,
                 textStyle: const TextStyle(
                   fontFamily: 'Nunito',
                   fontSize: 20,
@@ -87,7 +80,7 @@ class PointsHero extends StatelessWidget {
               child: Text(S.pointsWord(points).split(' ').last),
             ),
           if (streak > 0) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             StreakBadge(key: const Key('streak-badge'), days: streak),
           ],
         ],
