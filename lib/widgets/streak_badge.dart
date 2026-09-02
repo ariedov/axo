@@ -12,16 +12,9 @@ class StreakBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF6D4),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.gold, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.gold.withValues(alpha: 0.35),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: AppColors.done,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.teal, width: 1.5),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -30,16 +23,16 @@ class StreakBadge extends StatelessWidget {
           children: [
             const Icon(
               Icons.local_fire_department_rounded,
-              color: AppColors.goldDeep,
-              size: 20,
+              color: AppColors.tealDark,
+              size: 18,
             ),
             const SizedBox(width: 4),
             Text(
               S.streak(days),
               style: const TextStyle(
                 fontWeight: FontWeight.w900,
-                fontSize: 13,
-                color: AppColors.goldDeep,
+                fontSize: 12,
+                color: AppColors.tealDark,
               ),
             ),
           ],
