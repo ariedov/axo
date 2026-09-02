@@ -16,6 +16,7 @@ import '../widgets/game_plays_banner.dart';
 import '../widgets/goal_tile.dart';
 import '../widgets/parent_gate.dart';
 import '../widgets/points_hero.dart';
+import '../widgets/streak_badge.dart';
 import '../widgets/strikes_card.dart';
 import '../widgets/task_calendar.dart';
 import '../widgets/task_editor.dart';
@@ -66,6 +67,13 @@ class HomeScreen extends StatelessWidget {
                           onLabelTap: () => _openBonus(context),
                         ),
                         AxolotlMascot(mood: mood, size: 128),
+                        if (store.streak > 0) ...[
+                          const SizedBox(height: 4),
+                          StreakBadge(
+                            key: const Key('streak-badge'),
+                            days: store.streak,
+                          ),
+                        ],
                         SpeechBubble(
                           text: S.mascotLine(
                             remaining: store.pendingCount,

@@ -17,3 +17,8 @@ DateTime dateFromStamp(String stamp) {
     int.parse(parts[2]),
   );
 }
+
+String previousStamp(String stamp) {
+  final date = dateFromStamp(stamp);
+  return stampFromDate(DateTime(date.year, date.month, date.day - 1));
+}

@@ -219,6 +219,19 @@ class S {
     return 'Видано $day.$month.${date.year}';
   }
 
+  static String daysWord(int n) {
+    final abs = n.abs();
+    final mod10 = abs % 10;
+    final mod100 = abs % 100;
+    if (mod10 == 1 && mod100 != 11) return '$n день';
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+      return '$n дні';
+    }
+    return '$n днів';
+  }
+
+  static String streak(int n) => '${daysWord(n)} поспіль';
+
   static const calendar = 'Календар';
   static const previousMonth = 'Попередній місяць';
   static const nextMonth = 'Наступний місяць';
