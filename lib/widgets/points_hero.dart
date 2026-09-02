@@ -2,11 +2,18 @@ import 'package:flutter/material.dart';
 
 import '../strings.dart';
 import '../theme.dart';
+import 'streak_badge.dart';
 
 class PointsHero extends StatelessWidget {
-  const PointsHero({super.key, required this.points, this.onLabelTap});
+  const PointsHero({
+    super.key,
+    required this.points,
+    this.streak = 0,
+    this.onLabelTap,
+  });
 
   final int points;
+  final int streak;
   final VoidCallback? onLabelTap;
 
   @override
@@ -59,15 +66,11 @@ class PointsHero extends StatelessWidget {
               key: const Key('points-label'),
               onPressed: onLabelTap,
               style: TextButton.styleFrom(
-                foregroundColor: AppColors.goldDeep.withValues(alpha: 0.9),
-                backgroundColor: Colors.white.withValues(alpha: 0.5),
+                foregroundColor: AppColors.goldDeep.withValues(alpha: 0.85),
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                padding: EdgeInsets.zero,
                 textStyle: const TextStyle(
                   fontFamily: 'Nunito',
                   fontSize: 20,
@@ -76,6 +79,10 @@ class PointsHero extends StatelessWidget {
               ),
               child: Text(S.pointsWord(points).split(' ').last),
             ),
+          if (streak > 0) ...[
+            const SizedBox(height: 6),
+            StreakBadge(key: const Key('streak-badge'), days: streak),
+          ],
         ],
       ),
     );

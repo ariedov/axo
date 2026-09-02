@@ -63,6 +63,7 @@ class HomeScreen extends StatelessWidget {
                         ),
                         PointsHero(
                           points: store.totalPoints,
+                          streak: store.streak,
                           onLabelTap: () => _openBonus(context),
                         ),
                         AxolotlMascot(mood: mood, size: 128),

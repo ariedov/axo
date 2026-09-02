@@ -539,6 +539,8 @@ class HabitStore extends ChangeNotifier {
 
   DayProgress? progressFor(String day) => history[day];
 
+  int get streak => history.currentStreak(todayStamp(now()));
+
   List<HabitTask> tasksOn(String day) {
     if (_isToday(day)) return tasks;
     return days[day]?.tasks ?? const [];

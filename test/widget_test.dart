@@ -54,6 +54,7 @@ HabitStore testStore({
   int rewardedPlays = AppConfig.rewardedPlays,
   int playLimitMinutes = AppConfig.playLimitMinutes,
   GameRecentsRepository? gameRecents,
+  DayHistory? history,
   DateTime Function()? now,
 }) {
   return HabitStore(
@@ -65,7 +66,7 @@ HabitStore testStore({
     gamePlays: InMemoryGamePlaysRepository(),
     gameRecents: gameRecents,
     goalRepo: InMemoryGoalRepository([...goals]),
-    historyRepo: InMemoryDayHistoryRepository(),
+    historyRepo: InMemoryDayHistoryRepository(history ?? const DayHistory()),
     strikesRepo: InMemoryStrikesRepository(
       StrikeSnapshot(
         count: strikes,
@@ -118,6 +119,15 @@ void main() {
     expect(S.pointsWord(5), '5 балів');
     expect(S.pointsWord(11), '11 балів');
     expect(S.pointsWord(21), '21 бал');
+  });
+
+  test('Ukrainian streak pluralization', () {
+    expect(S.daysWord(1), '1 день');
+    expect(S.daysWord(2), '2 дні');
+    expect(S.daysWord(5), '5 днів');
+    expect(S.daysWord(11), '11 днів');
+    expect(S.daysWord(21), '21 день');
+    expect(S.streak(5), '5 днів поспіль');
   });
 
   test('Ukrainian rounds and minutes pluralization', () {
@@ -783,6 +793,62 @@ void main() {
     expect(store.progressFor(todayStamp())?.total, 1);
     expect(store.progressFor(todayStamp())?.isFull, isTrue);
     expect(store.progressFor(todayStamp())?.isPartial, isFalse);
+  });
+
+  test('streak counts consecutive full days and keeps today in progress', () {
+    const history = DayHistory(
+      days: {
+        '2026-08-24': DayProgress(day: '2026-08-24', completed: 1, total: 1),
+        '2026-08-25': DayProgress(day: '2026-08-25', completed: 1, total: 1),
+        '2026-08-26': DayProgress(day: '2026-08-26', completed: 1, total: 1),
+      },
+    );
+    expect(history.currentStreak('2026-08-26'), 3);
+    expect(history.currentStreak('2026-08-27'), 3);
+    expect(history.currentStreak('2026-08-28'), 0);
+  });
+
+  test('a missed day breaks the streak', () {
+    const history = DayHistory(
+      days: {
+        '2026-08-24': DayProgress(day: '2026-08-24', completed: 1, total: 1),
+        '2026-08-25': DayProgress(day: '2026-08-25', completed: 0, total: 1),
+        '2026-08-26': DayProgress(day: '2026-08-26', completed: 1, total: 1),
+      },
+    );
+    expect(history.currentStreak('2026-08-26'), 1);
+  });
+
+  test('streak walks across month boundaries', () {
+    const history = DayHistory(
+      days: {
+        '2026-02-28': DayProgress(day: '2026-02-28', completed: 1, total: 1),
+        '2026-03-01': DayProgress(day: '2026-03-01', completed: 1, total: 1),
+      },
+    );
+    expect(history.currentStreak('2026-03-01'), 2);
+  });
+
+  test('verifying today grows the streak', () async {
+    final clock = DateTime(2026, 8, 27);
+    final store = testStore(
+      now: () => clock,
+      history: const DayHistory(
+        activatedOn: '2026-08-25',
+        days: {
+          '2026-08-26': DayProgress(day: '2026-08-26', completed: 1, total: 1),
+        },
+      ),
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+      ],
+    );
+    await store.load();
+    expect(store.streak, 1);
+
+    await store.submit('bed');
+    await store.verify('bed');
+    expect(store.streak, 2);
   });
 
   test('skipped days keep yesterday and fill the gap as pending', () async {
@@ -2152,6 +2218,57 @@ void main() {
     expect(store.history.activatedOn, todayStamp());
     expect(find.text('Завдання на сьогодні'), findsOneWidget);
     expect(find.text('Морозиво'), findsOneWidget);
+  });
+
+  testWidgets('home shows a streak badge after consecutive full days', (
+    tester,
+  ) async {
+    final clock = DateTime(2026, 8, 27);
+    final store = testStore(
+      now: () => clock,
+      history: const DayHistory(
+        activatedOn: '2026-08-25',
+        days: {
+          '2026-08-26': DayProgress(day: '2026-08-26', completed: 1, total: 1),
+        },
+      ),
+      tasks: const [
+        HabitTask(
+          id: 'bed',
+          title: 'Застелити ліжко',
+          points: 10,
+          icon: 'bed',
+        ),
+      ],
+    );
+    await store.load();
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+
+    expect(find.byKey(const Key('streak-badge')), findsOneWidget);
+    expect(find.text('1 день поспіль'), findsOneWidget);
+  });
+
+  testWidgets('home hides the streak badge when there is no streak', (
+    tester,
+  ) async {
+    final store = testStore(
+      tasks: const [
+        HabitTask(
+          id: 'bed',
+          title: 'Застелити ліжко',
+          points: 10,
+          icon: 'bed',
+        ),
+      ],
+    );
+    await store.load();
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+
+    expect(find.byKey(const Key('streak-badge')), findsNothing);
   });
 
   testWidgets('home calendar shows the current month', (tester) async {

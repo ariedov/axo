@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'models.dart';
+import 'today.dart';
 
 class DayHistory {
   const DayHistory({this.activatedOn, this.days = const {}});
@@ -9,6 +10,16 @@ class DayHistory {
   final Map<String, DayProgress> days;
 
   DayProgress? operator [](String day) => days[day];
+
+  int currentStreak(String today) {
+    var day = this[today]?.isFull == true ? today : previousStamp(today);
+    var streak = 0;
+    while (this[day]?.isFull == true) {
+      streak += 1;
+      day = previousStamp(day);
+    }
+    return streak;
+  }
 
   DayHistory copyWith({
     String? activatedOn,
