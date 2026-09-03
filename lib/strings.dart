@@ -41,7 +41,12 @@ class S {
   static const taskTitle = 'Назва';
   static const taskPoints = 'Бали';
   static const save = 'Зберегти';
+  static const close = 'Закрити';
   static const delete = 'Видалити';
+  static const noneYet = 'Немає';
+  static const off = 'Вимкнено';
+  static const unsavedSettingsTitle = 'Налаштування не збережено';
+  static const unsavedSettingsBody = 'Точно хочете закрити?';
   static const howMany = 'Скільки буде?';
   static const check = 'Перевірити';
   static const correct = 'Молодець!';
@@ -174,6 +179,7 @@ class S {
       'Це зніме ${pointsWord(n)} у дитини. Продовжити?';
 
   static const backup = 'Резервна копія';
+  static const backupSubtitle = 'Експорт і імпорт';
   static const backupHint =
       'Збережіть дані на випадок зміни телефону. Пароль у файл не потрапляє.';
   static const exportBackup = 'Експортувати';
@@ -189,6 +195,7 @@ class S {
   static const importConfirm = 'Замінити';
   static const importDone = 'Дані відновлено';
   static const privacy = 'Приватність';
+  static const privacySubtitle = 'Дані лишаються на цьому телефоні';
   static const privacyBody =
       'Аксо працює лише на цьому телефоні. Завдання, бали, цілі та батьківський пароль зберігаються локально. Ми не збираємо і не надсилаємо дані, не показуємо рекламу і не використовуємо рекламний ідентифікатор.';
   static const dailyTasks = 'Щоденні завдання';

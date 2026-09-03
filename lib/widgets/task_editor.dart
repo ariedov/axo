@@ -4,6 +4,7 @@ import '../data/models.dart';
 import '../strings.dart';
 import '../theme.dart';
 import 'labeled_field.dart';
+import 'settings_sheet.dart';
 import 'task_icons.dart';
 
 class TaskEditResult {
@@ -22,6 +23,7 @@ Future<TaskEditResult?> editTaskDialog(
 }) {
   return showDialog<TaskEditResult>(
     context: context,
+    barrierDismissible: false,
     builder: (context) => _TaskEditor(
       existing: existing,
       todayOnly: existing?.todayOnly ?? todayOnly,
@@ -64,6 +66,20 @@ class _TaskEditorState extends State<_TaskEditor> {
     _points.dispose();
     super.dispose();
   }
+
+  bool get _dirty {
+    final title = _title.text.trim();
+    final points = _points.text.trim();
+    final icon = TaskIcons.canonical(widget.existing?.icon);
+    if (widget.existing == null) {
+      return title.isNotEmpty || points != '10' || _icon != icon;
+    }
+    return title != widget.existing!.title ||
+        points != '${widget.existing!.points}' ||
+        _icon != icon;
+  }
+
+  Future<void> _tryClose() => closeSettings(context, dirty: _dirty);
 
   void _save() {
     final title = _title.text.trim();
@@ -164,7 +180,7 @@ class _TaskEditorState extends State<_TaskEditor> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: _tryClose,
                     child: const Text(S.cancel),
                   ),
                   const SizedBox(width: 8),

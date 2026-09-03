@@ -5,11 +5,56 @@ import '../state/habit_scope.dart';
 import '../strings.dart';
 import '../theme.dart';
 import 'labeled_field.dart';
+import 'settings_sheet.dart';
+
+Future<void> showBonusPointsSheet(BuildContext context) {
+  return showParentSheet(
+    context: context,
+    builder: (context) => const _BonusPointsSheet(),
+  );
+}
+
+class _BonusPointsSheet extends StatefulWidget {
+  const _BonusPointsSheet();
+
+  @override
+  State<_BonusPointsSheet> createState() => _BonusPointsSheetState();
+}
+
+class _BonusPointsSheetState extends State<_BonusPointsSheet> {
+  var _dirty = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return SettingsSheetScaffold(
+      title: S.bonusPoints,
+      hint: S.bonusPointsHint,
+      dirty: _dirty,
+      child: SingleChildScrollView(
+        child: BonusPointsSection(
+          showHeading: false,
+          showHint: false,
+          onDirtyChanged: (value) {
+            if (value == _dirty) return;
+            setState(() => _dirty = value);
+          },
+        ),
+      ),
+    );
+  }
+}
 
 class BonusPointsSection extends StatefulWidget {
-  const BonusPointsSection({super.key, this.showHeading = true});
+  const BonusPointsSection({
+    super.key,
+    this.showHeading = true,
+    this.showHint = true,
+    this.onDirtyChanged,
+  });
 
   final bool showHeading;
+  final bool showHint;
+  final ValueChanged<bool>? onDirtyChanged;
 
   @override
   State<BonusPointsSection> createState() => _BonusPointsSectionState();
@@ -33,6 +78,7 @@ class _BonusPointsSectionState extends State<BonusPointsSection> {
   }
 
   void _refresh() {
+    widget.onDirtyChanged?.call(_canAdjust);
     if (mounted) setState(() {});
   }
 
@@ -48,6 +94,7 @@ class _BonusPointsSectionState extends State<BonusPointsSection> {
       add ? amount : -amount,
     );
     if (!mounted) return;
+    _amount.clear();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -73,14 +120,16 @@ class _BonusPointsSectionState extends State<BonusPointsSection> {
           ),
           const SizedBox(height: 4),
         ],
-        const Text(
-          S.bonusPointsHint,
-          style: TextStyle(
-            color: AppColors.muted,
-            fontWeight: FontWeight.w700,
+        if (widget.showHint) ...[
+          const Text(
+            S.bonusPointsHint,
+            style: TextStyle(
+              color: AppColors.muted,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
+          const SizedBox(height: 12),
+        ],
         Text(
           S.pointsNow(points),
           style: const TextStyle(

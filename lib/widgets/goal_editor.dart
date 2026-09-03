@@ -4,6 +4,7 @@ import '../data/models.dart';
 import '../strings.dart';
 import '../theme.dart';
 import 'labeled_field.dart';
+import 'settings_sheet.dart';
 import 'task_icons.dart';
 
 class GoalEditResult {
@@ -20,6 +21,7 @@ Future<GoalEditResult?> editGoalDialog(
 }) {
   return showDialog<GoalEditResult>(
     context: context,
+    barrierDismissible: false,
     builder: (context) => _GoalEditor(existing: existing),
   );
 }
@@ -52,6 +54,20 @@ class _GoalEditorState extends State<_GoalEditor> {
     _cost.dispose();
     super.dispose();
   }
+
+  bool get _dirty {
+    final title = _title.text.trim();
+    final cost = _cost.text.trim();
+    final icon = TaskIcons.canonical(widget.existing?.icon ?? 'gift');
+    if (widget.existing == null) {
+      return title.isNotEmpty || cost != '50' || _icon != icon;
+    }
+    return title != widget.existing!.title ||
+        cost != '${widget.existing!.cost}' ||
+        _icon != icon;
+  }
+
+  Future<void> _tryClose() => closeSettings(context, dirty: _dirty);
 
   void _save() {
     final title = _title.text.trim();
@@ -149,7 +165,7 @@ class _GoalEditorState extends State<_GoalEditor> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: _tryClose,
                     child: const Text(S.cancel),
                   ),
                   const SizedBox(width: 8),
