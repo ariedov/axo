@@ -1,3 +1,5 @@
+import 'today.dart';
+
 enum TaskStatus { pending, submitted, verified }
 
 class HabitTask {
@@ -9,6 +11,7 @@ class HabitTask {
     this.status = TaskStatus.pending,
     this.todayOnly = false,
     this.optional = false,
+    this.weekdays = const [],
   });
 
   final String id;
@@ -19,10 +22,19 @@ class HabitTask {
   final bool todayOnly;
   final bool optional;
 
+  /// Days of the week the task appears on (1 = Monday … 7 = Sunday).
+  /// Empty means every day.
+  final List<int> weekdays;
+
   bool get isPending => status == TaskStatus.pending;
   bool get isSubmitted => status == TaskStatus.submitted;
   bool get isVerified => status == TaskStatus.verified;
-  bool get isMandatory => !optional && !todayOnly;
+
+  /// Required tasks — including one-off tasks created for today.
+  bool get isMandatory => !optional;
+
+  bool showsOn(DateTime date) =>
+      weekdays.isEmpty || weekdays.contains(date.weekday);
 
   HabitTask copyWith({
     String? title,
@@ -31,6 +43,7 @@ class HabitTask {
     TaskStatus? status,
     bool? todayOnly,
     bool? optional,
+    List<int>? weekdays,
   }) {
     return HabitTask(
       id: id,
@@ -40,6 +53,7 @@ class HabitTask {
       status: status ?? this.status,
       todayOnly: todayOnly ?? this.todayOnly,
       optional: optional ?? this.optional,
+      weekdays: weekdays ?? this.weekdays,
     );
   }
 
@@ -51,6 +65,7 @@ class HabitTask {
     'status': status.name,
     'todayOnly': todayOnly,
     'optional': optional,
+    if (weekdays.isNotEmpty) 'weekdays': weekdays,
   };
 
   factory HabitTask.fromJson(Map<String, dynamic> json) {
@@ -65,7 +80,20 @@ class HabitTask {
       ),
       todayOnly: json['todayOnly'] == true,
       optional: json['optional'] == true,
+      weekdays: _weekdaysFromJson(json['weekdays']),
     );
+  }
+
+  static List<int> _weekdaysFromJson(dynamic raw) {
+    if (raw is! List) return const [];
+    final days = <int>{
+      for (final value in raw)
+        if (value is num &&
+            value >= DateTime.monday &&
+            value <= DateTime.sunday)
+          value.toInt(),
+    }.toList()..sort();
+    return days.isEmpty ? const [] : days;
   }
 }
 
@@ -185,9 +213,10 @@ class DayProgress {
   bool get isPartial => completed > 0 && completed < total;
 
   factory DayProgress.fromTasks(String day, List<HabitTask> tasks) {
+    final date = dateFromStamp(day);
     final counted = [
       for (final task in tasks)
-        if (task.isMandatory) task,
+        if (task.isMandatory && task.showsOn(date)) task,
     ];
     return DayProgress(
       day: day,

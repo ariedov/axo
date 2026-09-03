@@ -103,12 +103,14 @@ class HomeScreen extends StatelessWidget {
                               store.todayEarnedPoints,
                               store.todayPossiblePoints,
                             ),
+                      onAdd: () => _addDailyTask(context),
+                      addKey: const Key('add-daily-task'),
                     ),
                   ),
                   SliverList.builder(
-                    itemCount: store.dailyTasks.length,
+                    itemCount: store.todayDailyTasks.length,
                     itemBuilder: (context, index) {
-                      final task = store.dailyTasks[index];
+                      final task = store.todayDailyTasks[index];
                       return TaskTile(
                         task: task,
                         onSubmit: () => store.submit(task.id),
@@ -140,6 +142,7 @@ class HomeScreen extends StatelessWidget {
                               store.extraPossiblePoints,
                             ),
                       onAdd: () => _addTodayTask(context),
+                      addKey: const Key('add-today-task'),
                     ),
                   ),
                   SliverList.builder(
@@ -223,13 +226,22 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _addDailyTask(BuildContext context) async {
+    if (!await askParent(context, message: S.addDailyTaskPrompt)) return;
+    if (!context.mounted) return;
+    final result = await editTaskDialog(context, oneOffDefault: true);
+    final task = result?.task;
+    if (task == null || !context.mounted) return;
+    await HabitScope.of(context).upsertTask(task);
+  }
+
   Future<void> _addTodayTask(BuildContext context) async {
     if (!await askParent(context, message: S.addTodayTaskPrompt)) return;
     if (!context.mounted) return;
     final result = await editTaskDialog(
       context,
-      todayOnly: true,
       optional: true,
+      oneOffDefault: true,
     );
     final task = result?.task;
     if (task == null || !context.mounted) return;
@@ -254,6 +266,7 @@ class _SectionTitle extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.onAdd,
+    this.addKey,
     this.onMore,
     this.moreTooltip,
     this.moreKey,
@@ -262,6 +275,7 @@ class _SectionTitle extends StatelessWidget {
   final String title;
   final String? subtitle;
   final VoidCallback? onAdd;
+  final Key? addKey;
   final VoidCallback? onMore;
   final String? moreTooltip;
   final Key? moreKey;
@@ -299,7 +313,7 @@ class _SectionTitle extends StatelessWidget {
           ),
           if (onAdd != null)
             IconButton(
-              key: const Key('add-today-task'),
+              key: addKey,
               tooltip: S.addTask,
               onPressed: onAdd,
               icon: const Icon(Icons.add_circle_rounded),

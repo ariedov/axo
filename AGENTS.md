@@ -28,7 +28,7 @@ No PR CI. `.github/workflows/release.yml` runs only on tag push. Always `analyze
 
 Task flow: pending → `submit` → parent `verify` (awards points) or `reject` (back to pending). Parent gate is `askParent()`.
 
-`optional` and `todayOnly` are extras. Calendar completion, pending count, and the all-done bonus count only mandatory daily tasks (`HabitTask.isMandatory`). `todayOnly` does not roll to the next day. `verify` returns the completion-bonus amount (0 if none).
+Tasks are required unless `optional` (`HabitTask.isMandatory`); calendar completion, pending count, and the all-done bonus count only required tasks scheduled that day. `todayOnly` one-offs do not roll to the next day and stay out of the parent task sheets, but count toward their day. The all-done bonus is awarded at most once per day (`DayHistory.bonusDays`). `verify` returns the completion-bonus amount (0 if none). Task editor: main screen defaults to a one-off (no days selected), parent settings to every day; saving with no day selected is blocked outside the main screen.
 
 Games: 10 items per round (`AppConfig.roundLength`). Two caps: a global window (`rewardedPlays` in `playLimitMinutes`) and a per-game daily cap. After the daily cap, practice mode (no points). Award through `tryAwardGamePlay`. New game: id/points in `AppConfig`, catalog entry, screen (follow `GameScaffold` / `GameSetupBody` / `GameRound`), route in `miniGameScreen()`, strings on `S`, tests in `widget_test.dart`.
 

@@ -34,7 +34,7 @@ class DayTasksSheet extends StatelessWidget {
     ];
     final extra = [
       for (final task in tasks)
-        if (task.optional || task.todayOnly) task,
+        if (task.optional) task,
     ];
     final progress = DayProgress.fromTasks(day, tasks);
     final maxHeight = MediaQuery.sizeOf(context).height * 0.8;
