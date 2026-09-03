@@ -229,7 +229,7 @@ class HomeScreen extends StatelessWidget {
   Future<void> _addDailyTask(BuildContext context) async {
     if (!await askParent(context, message: S.addDailyTaskPrompt)) return;
     if (!context.mounted) return;
-    final result = await editTaskDialog(context);
+    final result = await editTaskDialog(context, oneOffDefault: true);
     final task = result?.task;
     if (task == null || !context.mounted) return;
     await HabitScope.of(context).upsertTask(task);
@@ -240,8 +240,8 @@ class HomeScreen extends StatelessWidget {
     if (!context.mounted) return;
     final result = await editTaskDialog(
       context,
-      todayOnly: true,
       optional: true,
+      oneOffDefault: true,
     );
     final task = result?.task;
     if (task == null || !context.mounted) return;

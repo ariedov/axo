@@ -19,16 +19,16 @@ class TaskEditResult {
 Future<TaskEditResult?> editTaskDialog(
   BuildContext context, {
   HabitTask? existing,
-  bool todayOnly = false,
   bool optional = false,
+  bool oneOffDefault = false,
 }) {
   return showDialog<TaskEditResult>(
     context: context,
     barrierDismissible: false,
     builder: (context) => _TaskEditor(
       existing: existing,
-      todayOnly: existing?.todayOnly ?? todayOnly,
       optional: existing?.optional ?? optional,
+      oneOffDefault: oneOffDefault,
     ),
   );
 }
@@ -36,13 +36,16 @@ Future<TaskEditResult?> editTaskDialog(
 class _TaskEditor extends StatefulWidget {
   const _TaskEditor({
     this.existing,
-    this.todayOnly = false,
     this.optional = false,
+    this.oneOffDefault = false,
   });
 
   final HabitTask? existing;
-  final bool todayOnly;
   final bool optional;
+
+  /// New tasks start with no days selected — a one-off for today — instead
+  /// of the every-day default used from the parent settings.
+  final bool oneOffDefault;
 
   @override
   State<_TaskEditor> createState() => _TaskEditorState();
@@ -54,23 +57,29 @@ class _TaskEditorState extends State<_TaskEditor> {
   late String _icon;
   late Set<int> _days;
 
+  static Set<int> _everyDay() => {
+    DateTime.monday,
+    DateTime.tuesday,
+    DateTime.wednesday,
+    DateTime.thursday,
+    DateTime.friday,
+    DateTime.saturday,
+    DateTime.sunday,
+  };
+
   @override
   void initState() {
     super.initState();
     _title = TextEditingController(text: widget.existing?.title ?? '');
     _points = TextEditingController(text: '${widget.existing?.points ?? 10}');
     _icon = TaskIcons.canonical(widget.existing?.icon);
-    _days = {...?widget.existing?.weekdays};
-    if (_days.isEmpty) {
-      _days.addAll([
-        DateTime.monday,
-        DateTime.tuesday,
-        DateTime.wednesday,
-        DateTime.thursday,
-        DateTime.friday,
-        DateTime.saturday,
-        DateTime.sunday,
-      ]);
+    final existing = widget.existing;
+    if (existing == null) {
+      _days = widget.oneOffDefault ? <int>{} : _everyDay();
+    } else if (existing.todayOnly) {
+      _days = <int>{};
+    } else {
+      _days = existing.weekdays.isEmpty ? _everyDay() : {...existing.weekdays};
     }
   }
 
@@ -91,14 +100,19 @@ class _TaskEditorState extends State<_TaskEditor> {
     return days;
   }
 
+  List<int> get _existingDays {
+    final existing = widget.existing;
+    if (existing == null || existing.todayOnly) return const [];
+    final days = existing.weekdays;
+    if (days.isEmpty || days.length == DateTime.sunday) return const [];
+    return days;
+  }
+
   bool get _dirty {
     final title = _title.text.trim();
     final points = _points.text.trim();
     final icon = TaskIcons.canonical(widget.existing?.icon);
-    final daysChanged = !listEquals(
-      _savedDays,
-      widget.existing?.weekdays ?? const <int>[],
-    );
+    final daysChanged = !listEquals(_savedDays, _existingDays);
     if (widget.existing == null) {
       return title.isNotEmpty || points != '10' || _icon != icon || daysChanged;
     }
@@ -125,7 +139,7 @@ class _TaskEditorState extends State<_TaskEditor> {
           points: points,
           icon: _icon,
           status: widget.existing?.status ?? TaskStatus.pending,
-          todayOnly: widget.todayOnly,
+          todayOnly: _days.isEmpty,
           optional: widget.optional,
           weekdays: _savedDays,
         ),

@@ -2641,11 +2641,21 @@ void main() {
     expect(find.text(S.taskDays), findsOneWidget);
     expect(find.byKey(const Key('task-day-1')), findsOneWidget);
     expect(find.byKey(const Key('task-day-7')), findsOneWidget);
+    expect(
+      tester
+          .widget<Text>(
+            find.descendant(
+              of: find.byKey(const Key('task-day-1')),
+              matching: find.byType(Text),
+            ),
+          )
+          .style
+          ?.color,
+      AppColors.muted,
+    );
   });
 
-  testWidgets('home can add a daily task after parent approval', (
-    tester,
-  ) async {
+  testWidgets('home adds one-off tasks unless days are picked', (tester) async {
     final store = testStore();
     await store.load();
     tester.view.physicalSize = const Size(800, 1400);
@@ -2666,14 +2676,50 @@ void main() {
     await tester.pump();
 
     expect(find.text(S.addTask), findsOneWidget);
+    expect(
+      tester
+          .widget<Text>(
+            find.descendant(
+              of: find.byKey(const Key('task-day-1')),
+              matching: find.byType(Text),
+            ),
+          )
+          .style
+          ?.color,
+      AppColors.muted,
+    );
+
     await tester.enterText(find.byType(TextField).first, 'Полити квіти');
     await tester.tap(find.text('Зберегти'));
     await tester.pump();
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
-    expect(store.dailyTasks.single.title, 'Полити квіти');
-    expect(store.todayDailyTasks.single.title, 'Полити квіти');
+    expect(store.tasks.single.todayOnly, isTrue);
+    expect(store.tasks.single.weekdays, isEmpty);
+    expect(store.dailyTasks, isEmpty);
+    expect(store.extraTasks.single.title, 'Полити квіти');
     expect(find.text('Полити квіти'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('add-daily-task')));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), '4826');
+    await tester.tap(find.text('Перевірити'));
+    await tester.pump();
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('task-day-1')));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField).first, 'Кормити кота');
+    await tester.tap(find.text('Зберегти'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final recurring = store.tasks.singleWhere(
+      (task) => task.title == 'Кормити кота',
+    );
+    expect(recurring.todayOnly, isFalse);
+    expect(recurring.weekdays, [DateTime.monday]);
+    expect(store.dailyTasks.single.title, 'Кормити кота');
+    expect(store.extraTasks.single.title, 'Полити квіти');
   });
 
   testWidgets('first launch walks parents through setup once', (tester) async {
