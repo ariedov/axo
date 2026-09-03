@@ -2879,13 +2879,24 @@ void main() {
     expect(store.completionBonusEnabled, isTrue);
     expect(store.completionBonusPoints, 10);
 
-    await tester.tap(find.byKey(const Key('completion-bonus-enabled')));
-    await tester.pump();
+    TextField amountField() {
+      return tester.widget<TextField>(
+        find.descendant(
+          of: find.byKey(const Key('completion-bonus-amount')),
+          matching: find.byType(TextField),
+        ),
+      );
+    }
+
+    expect(amountField().enabled, isTrue);
     await tester.enterText(
       find.byKey(const Key('completion-bonus-amount')),
       '20',
     );
     await tester.pump();
+    await tester.tap(find.byKey(const Key('completion-bonus-enabled')));
+    await tester.pump();
+    expect(amountField().enabled, isFalse);
     await tester.tap(find.byKey(const Key('save-completion-bonus')));
     await tester.pump();
     expect(store.completionBonusEnabled, isFalse);

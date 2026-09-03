@@ -44,12 +44,14 @@ class _CompletionBonusSettingsSectionState
 
   Future<void> _save() async {
     final amount = int.tryParse(_amount.text.trim()) ?? 0;
-    if (amount < 1) {
+    if (_enabled && amount < 1) {
       _toast(S.invalidCompletionBonus);
       return;
     }
-    await HabitScope.of(context)
-        .setCompletionBonus(enabled: _enabled, points: amount);
+    await HabitScope.of(context).setCompletionBonus(
+      enabled: _enabled,
+      points: amount < 1 ? null : amount,
+    );
     if (!mounted) return;
     _toast(S.completionBonusSaved);
   }
@@ -97,6 +99,7 @@ class _CompletionBonusSettingsSectionState
           key: const Key('completion-bonus-amount'),
           controller: _amount,
           label: S.completionBonusPoints,
+          enabled: _enabled,
           keyboardType: const TextInputType.numberWithOptions(
             signed: false,
             decimal: false,
