@@ -37,6 +37,7 @@ class S {
   static const addTask = 'Додати завдання';
   static const addTodayTaskPrompt =
       'Введи пароль, щоб додати завдання на сьогодні';
+  static const addDailyTaskPrompt = 'Введи пароль, щоб додати завдання';
   static const editTask = 'Змінити завдання';
   static const taskTitle = 'Назва';
   static const taskPoints = 'Бали';
@@ -256,10 +257,6 @@ class S {
   static const pastDayHint = 'Можна підтвердити завдання, які зробили раніше.';
   static const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
   static const taskDays = 'Дні тижня';
-  static const everyDay = 'Щодня';
-
-  static String weekdaysList(List<int> days) =>
-      [for (final day in days) weekdays[day - 1]].join(', ');
 
   static const months = [
     'Січень',

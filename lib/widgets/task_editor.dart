@@ -61,6 +61,17 @@ class _TaskEditorState extends State<_TaskEditor> {
     _points = TextEditingController(text: '${widget.existing?.points ?? 10}');
     _icon = TaskIcons.canonical(widget.existing?.icon);
     _days = {...?widget.existing?.weekdays};
+    if (_days.isEmpty) {
+      _days.addAll([
+        DateTime.monday,
+        DateTime.tuesday,
+        DateTime.wednesday,
+        DateTime.thursday,
+        DateTime.friday,
+        DateTime.saturday,
+        DateTime.sunday,
+      ]);
+    }
   }
 
   @override
@@ -72,12 +83,22 @@ class _TaskEditorState extends State<_TaskEditor> {
 
   List<int> get _sortedDays => _days.toList()..sort();
 
+  /// Every day selected is stored as an empty list — the model's
+  /// "appears every day" representation.
+  List<int> get _savedDays {
+    final days = _sortedDays;
+    if (days.isEmpty || days.length == DateTime.sunday) return const [];
+    return days;
+  }
+
   bool get _dirty {
     final title = _title.text.trim();
     final points = _points.text.trim();
     final icon = TaskIcons.canonical(widget.existing?.icon);
-    final daysChanged = !widget.todayOnly &&
-        !listEquals(_sortedDays, widget.existing?.weekdays ?? const <int>[]);
+    final daysChanged = !listEquals(
+      _savedDays,
+      widget.existing?.weekdays ?? const <int>[],
+    );
     if (widget.existing == null) {
       return title.isNotEmpty || points != '10' || _icon != icon || daysChanged;
     }
@@ -106,7 +127,7 @@ class _TaskEditorState extends State<_TaskEditor> {
           status: widget.existing?.status ?? TaskStatus.pending,
           todayOnly: widget.todayOnly,
           optional: widget.optional,
-          weekdays: widget.todayOnly ? const [] : _sortedDays,
+          weekdays: _savedDays,
         ),
       ),
     );
@@ -184,58 +205,45 @@ class _TaskEditorState extends State<_TaskEditor> {
                     ),
                 ],
               ),
-              if (!widget.todayOnly) ...[
-                const SizedBox(height: 20),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    S.taskDays,
-                    style: TextStyle(
-                      color: AppColors.muted,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
-                    ),
+              const SizedBox(height: 20),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  S.taskDays,
+                  style: TextStyle(
+                    color: AppColors.muted,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
                   ),
                 ),
-                const SizedBox(height: 8),
+              ),
+              const SizedBox(height: 8),
                 Row(
                   children: [
                     for (var weekday = DateTime.monday;
                         weekday <= DateTime.sunday;
                         weekday++)
-                      Expanded(
-                        child: Padding(
-                          padding: EdgeInsets.only(
-                            right: weekday == DateTime.sunday ? 0 : 6,
-                          ),
-                          child: _DayChip(
-                            key: Key('task-day-$weekday'),
-                            weekday: weekday,
-                            selected: _days.contains(weekday),
-                            onToggle: () => setState(() {
-                              if (_days.contains(weekday)) {
-                                _days.remove(weekday);
-                              } else {
-                                _days.add(weekday);
-                              }
-                            }),
-                          ),
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          right: weekday == DateTime.sunday ? 0 : 6,
+                        ),
+                        child: _DayChip(
+                          key: Key('task-day-$weekday'),
+                          weekday: weekday,
+                          selected: _days.contains(weekday),
+                          onToggle: () => setState(() {
+                            if (_days.contains(weekday)) {
+                              _days.remove(weekday);
+                            } else {
+                              _days.add(weekday);
+                            }
+                          }),
                         ),
                       ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    _days.isEmpty ? S.everyDay : S.weekdaysList(_sortedDays),
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontWeight: FontWeight.w700,
                     ),
-                  ),
-                ),
-              ],
+                ],
+              ),
               const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,

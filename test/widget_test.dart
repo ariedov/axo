@@ -2534,20 +2534,31 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
+    Color chipColor(int weekday) => tester
+        .widget<Text>(
+          find.descendant(
+            of: find.byKey(Key('task-day-$weekday')),
+            matching: find.byType(Text),
+          ),
+        )
+        .style!
+        .color!;
+
     await pumpParentSettings(tester, store);
     await openParentSetting(tester, const Key('settings-daily-optional-tasks'));
     await tester.tap(find.byKey(const Key('add-daily-optional-task')));
     await tester.pumpAndSettle();
 
     expect(find.text(S.taskDays), findsOneWidget);
-    expect(find.text(S.everyDay), findsOneWidget);
+    expect(chipColor(DateTime.monday), AppColors.pinkDark);
+    expect(chipColor(DateTime.sunday), AppColors.pinkDark);
 
     await tester.tap(find.byKey(const Key('task-day-6')));
     await tester.pump();
     await tester.tap(find.byKey(const Key('task-day-7')));
     await tester.pump();
-    expect(find.text(S.everyDay), findsNothing);
-    expect(find.text('Сб, Нд'), findsOneWidget);
+    expect(chipColor(DateTime.saturday), AppColors.muted);
+    expect(chipColor(DateTime.sunday), AppColors.muted);
 
     await tester.enterText(
       find
@@ -2568,22 +2579,36 @@ void main() {
 
     expect(store.dailyOptionalTasks.single.title, 'Допомогти вдома');
     expect(store.dailyOptionalTasks.single.weekdays, [
-      DateTime.saturday,
-      DateTime.sunday,
+      DateTime.monday,
+      DateTime.tuesday,
+      DateTime.wednesday,
+      DateTime.thursday,
+      DateTime.friday,
     ]);
-    expect(store.extraTasks, isEmpty);
+    expect(store.extraTasks.single.title, 'Допомогти вдома');
 
     await tester.tap(find.text('Допомогти вдома').hitTestable());
     await tester.pumpAndSettle();
-    expect(find.text('Сб, Нд'), findsOneWidget);
-    expect(find.text(S.everyDay), findsNothing);
+    expect(chipColor(DateTime.saturday), AppColors.muted);
+    expect(chipColor(DateTime.monday), AppColors.pinkDark);
 
-    await tester.tap(find.text(S.cancel));
+    await tester.tap(find.byKey(const Key('task-day-6')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('task-day-7')));
+    await tester.pump();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Зберегти'),
+      ),
+    );
     await tester.pumpAndSettle();
-    expect(find.text(S.taskDays), findsNothing);
+
+    expect(store.dailyOptionalTasks.single.weekdays, isEmpty);
+    expect(store.extraTasks.single.title, 'Допомогти вдома');
   });
 
-  testWidgets('task editor hides recurring days for today-only tasks', (
+  testWidgets('task editor shows recurring days for today-only tasks', (
     tester,
   ) async {
     final store = testStore();
@@ -2613,8 +2638,42 @@ void main() {
     await tester.pump();
 
     expect(find.text('Додати завдання'), findsOneWidget);
-    expect(find.text(S.taskDays), findsNothing);
-    expect(find.byKey(const Key('task-day-1')), findsNothing);
+    expect(find.text(S.taskDays), findsOneWidget);
+    expect(find.byKey(const Key('task-day-1')), findsOneWidget);
+    expect(find.byKey(const Key('task-day-7')), findsOneWidget);
+  });
+
+  testWidgets('home can add a daily task after parent approval', (
+    tester,
+  ) async {
+    final store = testStore();
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('add-daily-task')));
+    await tester.pump();
+    expect(find.text(S.addDailyTaskPrompt), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), '4826');
+    await tester.tap(find.text('Перевірити'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text(S.addTask), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'Полити квіти');
+    await tester.tap(find.text('Зберегти'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(store.dailyTasks.single.title, 'Полити квіти');
+    expect(store.todayDailyTasks.single.title, 'Полити квіти');
+    expect(find.text('Полити квіти'), findsOneWidget);
   });
 
   testWidgets('first launch walks parents through setup once', (tester) async {
@@ -2806,6 +2865,8 @@ void main() {
       300,
       scrollable: find.byType(Scrollable),
     );
+    await tester.ensureVisible(find.byKey(const Key('cal-2026-08-26')));
+    await tester.pump();
     await tester.tap(find.byKey(const Key('cal-2026-08-26')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
@@ -2975,6 +3036,8 @@ void main() {
       300,
       scrollable: find.byType(Scrollable),
     );
+    await tester.ensureVisible(find.byKey(const Key('add-strike')));
+    await tester.pump();
     expect(find.text('Страйки'), findsOneWidget);
     expect(find.text('0 з 3'), findsOneWidget);
 
@@ -3007,6 +3070,8 @@ void main() {
       300,
       scrollable: find.byType(Scrollable),
     );
+    await tester.ensureVisible(find.byKey(const Key('add-strike')));
+    await tester.pump();
     expect(find.text('2 з 3'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('add-strike')));
