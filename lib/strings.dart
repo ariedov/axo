@@ -255,6 +255,12 @@ class S {
   static const calendarPartial = 'Частина';
   static const pastDayHint = 'Можна підтвердити завдання, які зробили раніше.';
   static const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
+  static const taskDays = 'Дні тижня';
+  static const everyDay = 'Щодня';
+
+  static String weekdaysList(List<int> days) =>
+      [for (final day in days) weekdays[day - 1]].join(', ');
+
   static const months = [
     'Січень',
     'Лютий',

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../data/models.dart';
@@ -51,6 +52,7 @@ class _TaskEditorState extends State<_TaskEditor> {
   late final TextEditingController _title;
   late final TextEditingController _points;
   late String _icon;
+  late Set<int> _days;
 
   @override
   void initState() {
@@ -58,6 +60,7 @@ class _TaskEditorState extends State<_TaskEditor> {
     _title = TextEditingController(text: widget.existing?.title ?? '');
     _points = TextEditingController(text: '${widget.existing?.points ?? 10}');
     _icon = TaskIcons.canonical(widget.existing?.icon);
+    _days = {...?widget.existing?.weekdays};
   }
 
   @override
@@ -67,16 +70,21 @@ class _TaskEditorState extends State<_TaskEditor> {
     super.dispose();
   }
 
+  List<int> get _sortedDays => _days.toList()..sort();
+
   bool get _dirty {
     final title = _title.text.trim();
     final points = _points.text.trim();
     final icon = TaskIcons.canonical(widget.existing?.icon);
+    final daysChanged = !widget.todayOnly &&
+        !listEquals(_sortedDays, widget.existing?.weekdays ?? const <int>[]);
     if (widget.existing == null) {
-      return title.isNotEmpty || points != '10' || _icon != icon;
+      return title.isNotEmpty || points != '10' || _icon != icon || daysChanged;
     }
     return title != widget.existing!.title ||
         points != '${widget.existing!.points}' ||
-        _icon != icon;
+        _icon != icon ||
+        daysChanged;
   }
 
   Future<void> _tryClose() => closeSettings(context, dirty: _dirty);
@@ -98,6 +106,7 @@ class _TaskEditorState extends State<_TaskEditor> {
           status: widget.existing?.status ?? TaskStatus.pending,
           todayOnly: widget.todayOnly,
           optional: widget.optional,
+          weekdays: widget.todayOnly ? const [] : _sortedDays,
         ),
       ),
     );
@@ -175,6 +184,58 @@ class _TaskEditorState extends State<_TaskEditor> {
                     ),
                 ],
               ),
+              if (!widget.todayOnly) ...[
+                const SizedBox(height: 20),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    S.taskDays,
+                    style: TextStyle(
+                      color: AppColors.muted,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    for (var weekday = DateTime.monday;
+                        weekday <= DateTime.sunday;
+                        weekday++)
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            right: weekday == DateTime.sunday ? 0 : 6,
+                          ),
+                          child: _DayChip(
+                            key: Key('task-day-$weekday'),
+                            weekday: weekday,
+                            selected: _days.contains(weekday),
+                            onToggle: () => setState(() {
+                              if (_days.contains(weekday)) {
+                                _days.remove(weekday);
+                              } else {
+                                _days.add(weekday);
+                              }
+                            }),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    _days.isEmpty ? S.everyDay : S.weekdaysList(_sortedDays),
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -191,6 +252,49 @@ class _TaskEditorState extends State<_TaskEditor> {
                 ],
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DayChip extends StatelessWidget {
+  const _DayChip({
+    super.key,
+    required this.weekday,
+    required this.selected,
+    required this.onToggle,
+  });
+
+  final int weekday;
+  final bool selected;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppColors.blush : const Color(0xFFFFF3EC),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: selected ? AppColors.pink : AppColors.blush,
+          width: 2,
+        ),
+      ),
+      child: InkWell(
+        onTap: onToggle,
+        borderRadius: BorderRadius.circular(12),
+        child: SizedBox(
+          height: 40,
+          child: Center(
+            child: Text(
+              S.weekdays[weekday - 1],
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                color: selected ? AppColors.pinkDark : AppColors.muted,
+              ),
+            ),
           ),
         ),
       ),

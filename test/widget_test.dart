@@ -471,6 +471,29 @@ void main() {
     expect(task.toJson()['optional'], isFalse);
   });
 
+  test('task weekdays default to every day and ignore junk', () {
+    final task = HabitTask.fromJson({
+      'id': 'bed',
+      'title': 'Застелити ліжко',
+      'points': 10,
+      'icon': 'bed',
+    });
+    expect(task.weekdays, isEmpty);
+    expect(task.showsOn(DateTime(2026, 9, 5)), isTrue);
+
+    final junk = HabitTask.fromJson({
+      'id': 'bed',
+      'title': 'Застелити ліжко',
+      'points': 10,
+      'icon': 'bed',
+      'weekdays': [9, 0, 6.0, '3', 7],
+    });
+    expect(junk.weekdays, [DateTime.saturday, DateTime.sunday]);
+    expect(junk.showsOn(DateTime(2026, 9, 5)), isTrue);
+    expect(junk.showsOn(DateTime(2026, 9, 7)), isFalse);
+    expect(junk.toJson()['weekdays'], [6, 7]);
+  });
+
   test('goals can be saved, reordered, and spent', () async {
     final store = testStore(
       points: 80,
@@ -690,6 +713,45 @@ void main() {
       expect(legacy.taskDays.keys, ['2026-08-29']);
     },
   );
+
+  test('backup keeps task weekdays and old files stay daily', () async {
+    final source = testStore(
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+        HabitTask(
+          id: 'homework',
+          title: 'Домашнє завдання',
+          points: 20,
+          icon: 'homework',
+          weekdays: [DateTime.saturday, DateTime.sunday],
+        ),
+      ],
+    );
+    await source.load();
+
+    final encoded = source.exportBackup().encode();
+    expect(encoded.contains('weekdays'), isTrue);
+
+    final restored = BackupSnapshot.fromJson(
+      jsonDecode(encoded) as Map<String, dynamic>,
+    );
+    expect(restored.tasks.tasks.map((task) => task.weekdays), [
+      const <int>[],
+      const [DateTime.saturday, DateTime.sunday],
+    ]);
+
+    final target = testStore(
+      tasks: const [
+        HabitTask(id: 'other', title: 'Інше', points: 5, icon: 'star'),
+      ],
+    );
+    await target.load();
+    await target.importBackup(restored);
+    expect(target.dailyTasks.map((task) => task.weekdays), [
+      const <int>[],
+      const [DateTime.saturday, DateTime.sunday],
+    ]);
+  });
 
   test('a new day resets progress but keeps the task list', () async {
     final memory = <String, String>{};
@@ -912,6 +974,83 @@ void main() {
     expect(store.progressFor(todayStamp())?.isPartial, isFalse);
   });
 
+  List<HabitTask> recurringTasks() => const [
+    HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+    HabitTask(
+      id: 'homework',
+      title: 'Домашнє завдання',
+      points: 20,
+      icon: 'homework',
+      weekdays: [DateTime.saturday, DateTime.sunday],
+    ),
+    HabitTask(
+      id: 'help',
+      title: 'Допомогти',
+      points: 8,
+      icon: 'star',
+      optional: true,
+      weekdays: [DateTime.tuesday],
+    ),
+  ];
+
+  test('recurring tasks only show on their days', () async {
+    final monday = DateTime(2026, 8, 31);
+    final store = testStore(now: () => monday, tasks: recurringTasks());
+    await store.load();
+
+    expect(store.dailyTasks.map((task) => task.id), ['bed', 'homework']);
+    expect(store.todayDailyTasks.map((task) => task.id), ['bed']);
+    expect(store.extraTasks, isEmpty);
+    expect(store.pendingCount, 1);
+    expect(store.todayPossiblePoints, 10);
+    expect(store.todayEarnedPoints, 0);
+    expect(store.progressFor('2026-08-31')?.total, 1);
+
+    final tuesday = DateTime(2026, 9, 1);
+    final tuesdayStore = testStore(now: () => tuesday, tasks: recurringTasks());
+    await tuesdayStore.load();
+    expect(tuesdayStore.todayDailyTasks.map((task) => task.id), ['bed']);
+    expect(tuesdayStore.extraTasks.map((task) => task.id), ['help']);
+    expect(tuesdayStore.extraPossiblePoints, 8);
+    expect(tuesdayStore.todayPossiblePoints, 10);
+
+    final saturday = DateTime(2026, 9, 5);
+    final saturdayStore = testStore(
+      now: () => saturday,
+      tasks: recurringTasks(),
+    );
+    await saturdayStore.load();
+    expect(saturdayStore.todayDailyTasks.map((task) => task.id), [
+      'bed',
+      'homework',
+    ]);
+    expect(saturdayStore.extraTasks, isEmpty);
+    expect(saturdayStore.todayPossiblePoints, 30);
+  });
+
+  test('off-day tasks do not block the completion bonus', () async {
+    final monday = DateTime(2026, 8, 31);
+    final store = testStore(
+      now: () => monday,
+      tasks: const [
+        HabitTask(id: 'teeth', title: 'Зуби', points: 10, icon: 'hygiene'),
+        HabitTask(
+          id: 'homework',
+          title: 'Домашнє завдання',
+          points: 20,
+          icon: 'homework',
+          weekdays: [DateTime.saturday, DateTime.sunday],
+        ),
+      ],
+    );
+    await store.load();
+
+    await store.submit('teeth');
+    expect(await store.verify('teeth'), 10);
+    expect(store.totalPoints, 20);
+    expect(store.progressFor('2026-08-31')?.isFull, isTrue);
+  });
+
   test('streak counts consecutive full days and keeps today in progress', () {
     const history = DayHistory(
       days: {
@@ -1082,6 +1221,57 @@ void main() {
     expect(store.progressFor('2026-08-26')?.completed, 1);
     expect(store.progressFor('2026-08-26')?.total, 1);
     expect(store.celebrating, isFalse);
+  });
+
+  test('a past day only shows tasks scheduled that day', () async {
+    final clock = DateTime(2026, 9, 1);
+    final store = HabitStore(
+      pointsRepo: InMemoryPointsRepository(),
+      taskRepo: InMemoryTaskRepository(
+        const TaskSnapshot(
+          day: '2026-09-01',
+          tasks: [
+            HabitTask(
+              id: 'bed',
+              title: 'Застелити ліжко',
+              points: 10,
+              icon: 'bed',
+            ),
+          ],
+        ),
+        days: {
+          '2026-08-31': const TaskSnapshot(
+            day: '2026-08-31',
+            tasks: [
+              HabitTask(
+                id: 'bed',
+                title: 'Застелити ліжко',
+                points: 10,
+                icon: 'bed',
+              ),
+              HabitTask(
+                id: 'homework',
+                title: 'Домашнє завдання',
+                points: 20,
+                icon: 'homework',
+                weekdays: [DateTime.saturday, DateTime.sunday],
+              ),
+            ],
+          ),
+        },
+      ),
+      parentAuth: InMemoryParentAuth('mama'),
+      gamePlays: InMemoryGamePlaysRepository(),
+      goalRepo: InMemoryGoalRepository(),
+      historyRepo: InMemoryDayHistoryRepository(),
+      celebrateFor: Duration.zero,
+      now: () => clock,
+    );
+    await store.load();
+
+    expect(store.tasksOn('2026-08-31').map((task) => task.id), ['bed']);
+    expect(store.progressFor('2026-08-31')?.total, 1);
+    expect(store.progressFor('2026-08-31')?.completed, 0);
   });
 
   test('three strikes apply the penalty and stay until the next day', () async {
@@ -2333,6 +2523,98 @@ void main() {
     await tester.enterText(find.byType(TextField).first, 'Нова назва завдання');
     await tester.pump();
     expect(tester.getSize(find.byType(AlertDialog)), dialog);
+  });
+
+  testWidgets('task editor can set recurring days', (tester) async {
+    final monday = DateTime(2026, 8, 31);
+    final store = testStore(now: () => monday);
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await pumpParentSettings(tester, store);
+    await openParentSetting(tester, const Key('settings-daily-optional-tasks'));
+    await tester.tap(find.byKey(const Key('add-daily-optional-task')));
+    await tester.pumpAndSettle();
+
+    expect(find.text(S.taskDays), findsOneWidget);
+    expect(find.text(S.everyDay), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('task-day-6')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('task-day-7')));
+    await tester.pump();
+    expect(find.text(S.everyDay), findsNothing);
+    expect(find.text('Сб, Нд'), findsOneWidget);
+
+    await tester.enterText(
+      find
+          .descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byType(TextField),
+          )
+          .first,
+      'Допомогти вдома',
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Зберегти'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(store.dailyOptionalTasks.single.title, 'Допомогти вдома');
+    expect(store.dailyOptionalTasks.single.weekdays, [
+      DateTime.saturday,
+      DateTime.sunday,
+    ]);
+    expect(store.extraTasks, isEmpty);
+
+    await tester.tap(find.text('Допомогти вдома').hitTestable());
+    await tester.pumpAndSettle();
+    expect(find.text('Сб, Нд'), findsOneWidget);
+    expect(find.text(S.everyDay), findsNothing);
+
+    await tester.tap(find.text(S.cancel));
+    await tester.pumpAndSettle();
+    expect(find.text(S.taskDays), findsNothing);
+  });
+
+  testWidgets('task editor hides recurring days for today-only tasks', (
+    tester,
+  ) async {
+    final store = testStore();
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('add-today-task')),
+      300,
+      scrollable: find.byType(Scrollable),
+    );
+    await tester.tap(find.byKey(const Key('add-today-task')));
+    await tester.pump();
+
+    expect(
+      find.text('Введи пароль, щоб додати завдання на сьогодні'),
+      findsOneWidget,
+    );
+    await tester.enterText(find.byType(TextField), '4826');
+    await tester.tap(find.text('Перевірити'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Додати завдання'), findsOneWidget);
+    expect(find.text(S.taskDays), findsNothing);
+    expect(find.byKey(const Key('task-day-1')), findsNothing);
   });
 
   testWidgets('first launch walks parents through setup once', (tester) async {

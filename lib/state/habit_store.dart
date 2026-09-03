@@ -80,19 +80,30 @@ class HabitStore extends ChangeNotifier {
 
   bool checkPassword(String value) => value.trim() == parentPassword;
 
-  int get pendingCount => dailyTasks.where((task) => task.isPending).length;
-  int get waitingCount => dailyTasks.where((task) => task.isSubmitted).length;
-  int get verifiedCount => dailyTasks.where((task) => task.isVerified).length;
-  int get todayEarnedPoints => dailyTasks
+  int get pendingCount =>
+      todayDailyTasks.where((task) => task.isPending).length;
+  int get waitingCount =>
+      todayDailyTasks.where((task) => task.isSubmitted).length;
+  int get verifiedCount =>
+      todayDailyTasks.where((task) => task.isVerified).length;
+  int get todayEarnedPoints => todayDailyTasks
       .where((task) => task.isVerified)
       .fold(0, (sum, task) => sum + task.points);
   int get todayPossiblePoints =>
-      dailyTasks.fold(0, (sum, task) => sum + task.points);
+      todayDailyTasks.fold(0, (sum, task) => sum + task.points);
   int get extraEarnedPoints => extraTasks
       .where((task) => task.isVerified)
       .fold(0, (sum, task) => sum + task.points);
   int get extraPossiblePoints =>
       extraTasks.fold(0, (sum, task) => sum + task.points);
+
+  /// Mandatory tasks the child sees today — recurring tasks only on their days.
+  List<HabitTask> get todayDailyTasks => [
+    for (final task in dailyTasks)
+      if (task.showsOn(now())) task,
+  ];
+
+  /// Every mandatory task, used for editing and reordering.
   List<HabitTask> get dailyTasks => [
     for (final task in tasks)
       if (task.isMandatory) task,
@@ -103,7 +114,7 @@ class HabitStore extends ChangeNotifier {
   ];
   List<HabitTask> get extraTasks => [
     for (final task in tasks)
-      if (task.optional || task.todayOnly) task,
+      if ((task.optional || task.todayOnly) && task.showsOn(now())) task,
   ];
   List<RewardGoal> get activeGoals => [
     for (final goal in goals)
@@ -589,8 +600,12 @@ class HabitStore extends ChangeNotifier {
   int get streak => history.currentStreak(todayStamp(now()));
 
   List<HabitTask> tasksOn(String day) {
-    if (_isToday(day)) return tasks;
-    return days[day]?.tasks ?? const [];
+    final list = _isToday(day) ? tasks : days[day]?.tasks ?? const [];
+    final date = _isToday(day) ? now() : dateFromStamp(day);
+    return [
+      for (final task in list)
+        if (task.showsOn(date)) task,
+    ];
   }
 
   bool canCompleteDay(String day) {
@@ -706,8 +721,7 @@ class HabitStore extends ChangeNotifier {
   }
 
   HabitTask? _taskOn(String taskId, String? day) {
-    final list = _isToday(day) ? tasks : days[day]?.tasks ?? const [];
-    for (final task in list) {
+    for (final task in tasksOn(_isToday(day) ? todayStamp(now()) : day!)) {
       if (task.id == taskId) return task;
     }
     return null;

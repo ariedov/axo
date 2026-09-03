@@ -106,9 +106,9 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   SliverList.builder(
-                    itemCount: store.dailyTasks.length,
+                    itemCount: store.todayDailyTasks.length,
                     itemBuilder: (context, index) {
-                      final task = store.dailyTasks[index];
+                      final task = store.todayDailyTasks[index];
                       return TaskTile(
                         task: task,
                         onSubmit: () => store.submit(task.id),
