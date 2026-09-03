@@ -41,7 +41,11 @@ class S {
   static const taskTitle = 'Назва';
   static const taskPoints = 'Бали';
   static const save = 'Зберегти';
+  static const close = 'Закрити';
   static const delete = 'Видалити';
+  static const off = 'Вимкнено';
+  static const unsavedSettingsTitle = 'Налаштування не збережено';
+  static const unsavedSettingsBody = 'Точно хочете закрити?';
   static const howMany = 'Скільки буде?';
   static const check = 'Перевірити';
   static const correct = 'Молодець!';
@@ -174,6 +178,7 @@ class S {
       'Це зніме ${pointsWord(n)} у дитини. Продовжити?';
 
   static const backup = 'Резервна копія';
+  static const backupSubtitle = 'Експорт і імпорт';
   static const backupHint =
       'Збережіть дані на випадок зміни телефону. Пароль у файл не потрапляє.';
   static const exportBackup = 'Експортувати';

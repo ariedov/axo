@@ -95,6 +95,30 @@ HabitStore testStore({
   );
 }
 
+Future<void> openParentSetting(WidgetTester tester, Key key) async {
+  final finder = find.byKey(key);
+  await tester.scrollUntilVisible(
+    finder,
+    200,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.tap(finder);
+  await tester.pumpAndSettle();
+}
+
+Future<void> pumpParentSettings(WidgetTester tester, HabitStore store) async {
+  await tester.pumpWidget(
+    HabitScope(
+      store: store,
+      child: MaterialApp(
+        theme: AppTheme.cute,
+        home: const ParentSettingsScreen(),
+      ),
+    ),
+  );
+  await tester.pump();
+}
+
 void main() {
   test('answers match ignoring case and extra spaces', () {
     expect(answersMatch('  Cat  ', 'cat'), isTrue);
@@ -1990,47 +2014,38 @@ void main() {
     await tester.pump();
 
     expect(find.text('Щоденні завдання'), findsOneWidget);
-    expect(find.text('Застелити ліжко'), findsOneWidget);
+    expect(find.text(S.dailyTasksHint), findsOneWidget);
+    expect(find.text('Застелити ліжко'), findsNothing);
     expect(find.text('Щоденні додаткові завдання'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Цілі'),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
+    expect(find.text(S.dailyOptionalTasksHint), findsOneWidget);
     expect(find.text('Цілі'), findsOneWidget);
-    expect(
-      find.text('Поки немає цілей — додайте щось смачненьке.'),
-      findsOneWidget,
-    );
+    expect(find.text(S.goalsHint), findsOneWidget);
+    expect(find.text('Бонус і штраф'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('Бонус і штраф'),
+      find.text('Резервна копія'),
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('Бонус і штраф'), findsOneWidget);
+    expect(find.text('Резервна копія'), findsOneWidget);
+    expect(find.text('Експорт і імпорт'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Змінити пароль'),
       200,
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Змінити пароль'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Експортувати'),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('Резервна копія'), findsOneWidget);
-    expect(find.byKey(const Key('export-backup')), findsOneWidget);
-    expect(find.byKey(const Key('import-backup')), findsOneWidget);
+    expect(find.text(S.privacy), findsOneWidget);
+    expect(find.byKey(const Key('export-backup')), findsNothing);
+    expect(find.byKey(const Key('import-backup')), findsNothing);
     expect(
       find.text('Імпорт замінить усі дані на цьому телефоні.'),
       findsNothing,
     );
-    await tester.scrollUntilVisible(
-      find.text('Імпортувати'),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
+
+    await openParentSetting(tester, const Key('settings-backup'));
+    expect(find.byKey(const Key('export-backup')), findsOneWidget);
+    expect(find.byKey(const Key('import-backup')), findsOneWidget);
+    expect(find.text('Експортувати'), findsOneWidget);
     expect(find.text('Імпортувати'), findsOneWidget);
   });
 
@@ -2058,11 +2073,7 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('import-backup')),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
+    await openParentSetting(tester, const Key('settings-backup'));
 
     await tester.tap(find.byKey(const Key('import-backup')));
     await tester.pumpAndSettle();
@@ -2105,8 +2116,12 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Застелити ліжко'), findsOneWidget);
+    expect(find.text('Застелити ліжко'), findsNothing);
     expect(find.text('Щоденні додаткові завдання'), findsOneWidget);
+    expect(find.text('Прогулянка'), findsNothing);
+
+    await openParentSetting(tester, const Key('settings-daily-tasks'));
+    expect(find.text('Застелити ліжко'), findsOneWidget);
     expect(find.text('Прогулянка'), findsNothing);
   });
 
@@ -2133,11 +2148,7 @@ void main() {
     );
     await tester.pump();
 
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('add-daily-optional-task')),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
+    await openParentSetting(tester, const Key('settings-daily-optional-tasks'));
     await tester.tap(find.byKey(const Key('add-daily-optional-task')));
     await tester.pumpAndSettle();
 
@@ -2159,7 +2170,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Допомогти вдома'), findsOneWidget);
+    expect(find.text('Допомогти вдома'), findsWidgets);
     expect(store.dailyOptionalTasks, hasLength(1));
     expect(store.dailyOptionalTasks.single.title, 'Допомогти вдома');
     expect(store.dailyOptionalTasks.single.optional, isTrue);
@@ -2186,11 +2197,7 @@ void main() {
     );
     await tester.pump();
 
-    await tester.scrollUntilVisible(
-      find.text('Бонус і штраф'),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
+    await openParentSetting(tester, const Key('settings-bonus-points'));
     expect(find.text('Зараз 20 балів'), findsOneWidget);
     expect(find.text('+10'), findsNothing);
 
@@ -2245,11 +2252,8 @@ void main() {
     );
     await tester.pump();
 
-    await tester.scrollUntilVisible(
-      find.text('Морозиво'),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
+    await openParentSetting(tester, const Key('settings-goals'));
+    expect(find.text('Морозиво'), findsWidgets);
     expect(find.text('80 балів / 50 балів'), findsOneWidget);
     await tester.tap(find.text('Видати'));
     await tester.pumpAndSettle();
@@ -2289,13 +2293,8 @@ void main() {
       findsOneWidget,
     );
 
-    tester
-        .state<ScrollableState>(find.byType(Scrollable).first)
-        .position
-        .jumpTo(0);
-    await tester.pump();
     await tester.tap(find.byKey(const Key('completed-goals')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('Видані цілі'), findsOneWidget);
     expect(find.text('Морозиво'), findsOneWidget);
   });
@@ -2318,7 +2317,8 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.tap(find.text('Застелити ліжко'));
+    await openParentSetting(tester, const Key('settings-daily-tasks'));
+    await tester.tap(find.text('Застелити ліжко').hitTestable());
     await tester.pumpAndSettle();
 
     expect(find.text('Змінити завдання'), findsOneWidget);
@@ -2787,28 +2787,20 @@ void main() {
     );
     await tester.pump();
 
-    await tester.scrollUntilVisible(
-      find.text('Штраф за страйки'),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('Штраф за страйки'), findsOneWidget);
+    await openParentSetting(tester, const Key('penalty-settings'));
+    expect(find.text('Штраф за страйки'), findsWidgets);
     expect(find.text('Страйки: 2 з 3'), findsOneWidget);
 
     await tester.enterText(find.byKey(const Key('penalty-amount')), '15');
     await tester.pump();
     await tester.tap(find.byKey(const Key('save-penalty')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(store.penaltyPoints, 15);
     expect(find.text('Штраф збережено'), findsAtLeastNWidgets(1));
 
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('clear-strikes')),
-      100,
-      scrollable: find.byType(Scrollable).first,
-    );
+    await openParentSetting(tester, const Key('penalty-settings'));
     await tester.tap(find.byKey(const Key('clear-strikes')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(store.strikes, 0);
     expect(find.text('Страйки скинуто'), findsAtLeastNWidgets(1));
   });
@@ -2834,18 +2826,14 @@ void main() {
     );
     await tester.pump();
 
-    await tester.scrollUntilVisible(
-      find.text('Ліміт ігор'),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('Ліміт ігор'), findsOneWidget);
+    await openParentSetting(tester, const Key('game-limit-settings'));
+    expect(find.text('Ліміт ігор'), findsWidgets);
 
     await tester.enterText(find.byKey(const Key('game-limit-rounds')), '3');
     await tester.enterText(find.byKey(const Key('game-limit-rest')), '30');
     await tester.pump();
     await tester.tap(find.byKey(const Key('save-game-limit')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(store.rewardedPlays, 3);
     expect(store.playLimitMinutes, 30);
     expect(find.text('Ліміт ігор збережено'), findsAtLeastNWidgets(1));
@@ -2870,12 +2858,8 @@ void main() {
     );
     await tester.pump();
 
-    await tester.scrollUntilVisible(
-      find.text('Бонус за всі завдання'),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('Бонус за всі завдання'), findsOneWidget);
+    await openParentSetting(tester, const Key('completion-bonus-settings'));
+    expect(find.text('Бонус за всі завдання'), findsWidgets);
     expect(store.completionBonusEnabled, isTrue);
     expect(store.completionBonusPoints, 10);
 
@@ -2898,10 +2882,119 @@ void main() {
     await tester.pump();
     expect(amountField().enabled, isFalse);
     await tester.tap(find.byKey(const Key('save-completion-bonus')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(store.completionBonusEnabled, isFalse);
     expect(store.completionBonusPoints, 20);
     expect(find.text('Бонус збережено'), findsAtLeastNWidgets(1));
+  });
+
+  testWidgets('parent sheets close silently when nothing changed', (
+    tester,
+  ) async {
+    final store = testStore(points: 20, strikes: 1);
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await pumpParentSettings(tester, store);
+
+    const sheets = [
+      Key('settings-daily-tasks'),
+      Key('settings-daily-optional-tasks'),
+      Key('settings-goals'),
+      Key('settings-bonus-points'),
+      Key('completion-bonus-settings'),
+      Key('game-limit-settings'),
+      Key('penalty-settings'),
+      Key('settings-password'),
+      Key('settings-backup'),
+    ];
+    for (final key in sheets) {
+      await openParentSetting(tester, key);
+      await tester.tap(find.byKey(const Key('settings-sheet-close')));
+      await tester.pumpAndSettle();
+      expect(find.text(S.unsavedSettingsTitle), findsNothing);
+      expect(find.byKey(const Key('settings-sheet-close')), findsNothing);
+    }
+  });
+
+  testWidgets('parent sheets ask before discarding unsaved changes', (
+    tester,
+  ) async {
+    final store = testStore();
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await pumpParentSettings(tester, store);
+
+    Future<void> expectDiscardPrompt() async {
+      await tester.tap(find.byKey(const Key('settings-sheet-close')));
+      await tester.pumpAndSettle();
+      expect(find.text(S.unsavedSettingsTitle), findsOneWidget);
+      await tester.tap(find.text(S.cancel));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('settings-sheet-close')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('settings-sheet-close')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(S.close));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('settings-sheet-close')), findsNothing);
+    }
+
+    await openParentSetting(tester, const Key('game-limit-settings'));
+    await tester.enterText(find.byKey(const Key('game-limit-rounds')), '3');
+    await tester.pump();
+    await expectDiscardPrompt();
+    expect(store.rewardedPlays, AppConfig.rewardedPlays);
+
+    await openParentSetting(tester, const Key('completion-bonus-settings'));
+    await tester.tap(find.byKey(const Key('completion-bonus-enabled')));
+    await tester.pump();
+    await expectDiscardPrompt();
+    expect(store.completionBonusEnabled, isTrue);
+
+    await openParentSetting(tester, const Key('penalty-settings'));
+    await tester.enterText(find.byKey(const Key('penalty-amount')), '15');
+    await tester.pump();
+    await expectDiscardPrompt();
+    expect(store.penaltyPoints, AppConfig.defaultPenaltyPoints);
+
+    await openParentSetting(tester, const Key('settings-password'));
+    await tester.enterText(find.byType(TextField).first, '4826');
+    await tester.pump();
+    await expectDiscardPrompt();
+
+    await openParentSetting(tester, const Key('settings-bonus-points'));
+    await tester.enterText(find.byKey(const Key('bonus-amount')), '10');
+    await tester.pump();
+    await expectDiscardPrompt();
+    expect(store.totalPoints, 0);
+  });
+
+  testWidgets('parent sheets save and close without a discard prompt', (
+    tester,
+  ) async {
+    final store = testStore();
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await pumpParentSettings(tester, store);
+
+    await openParentSetting(tester, const Key('game-limit-settings'));
+    await tester.enterText(find.byKey(const Key('game-limit-rounds')), '3');
+    await tester.enterText(find.byKey(const Key('game-limit-rest')), '20');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('save-game-limit')));
+    await tester.pumpAndSettle();
+    expect(find.text(S.unsavedSettingsTitle), findsNothing);
+    expect(find.byKey(const Key('game-limit-rounds')), findsNothing);
+    expect(store.rewardedPlays, 3);
+    expect(store.playLimitMinutes, 20);
   });
 
   testWidgets('home splits mandatory and optional tasks', (tester) async {
