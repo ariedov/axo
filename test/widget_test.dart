@@ -373,6 +373,7 @@ void main() {
         points: 15,
         icon: 'walk',
         todayOnly: true,
+        optional: true,
       ),
     );
     expect(store.tasks.map((task) => task.id), ['bed', 'park']);
@@ -1049,6 +1050,54 @@ void main() {
     expect(await store.verify('teeth'), 10);
     expect(store.totalPoints, 20);
     expect(store.progressFor('2026-08-31')?.isFull, isTrue);
+  });
+
+  test('completion bonus is awarded once per day', () async {
+    final store = testStore(
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+      ],
+    );
+    await store.load();
+    await store.submit('bed');
+    expect(await store.verify('bed'), 10);
+    expect(store.totalPoints, 20);
+
+    final snapshot = store.exportBackup();
+
+    await store.upsertTask(
+      const HabitTask(
+        id: 'dishes',
+        title: 'Помити посуд',
+        points: 5,
+        icon: 'star',
+        todayOnly: true,
+      ),
+    );
+    await store.submit('dishes');
+    expect(await store.verify('dishes'), 0);
+    expect(store.totalPoints, 25);
+    expect(store.progressFor(todayStamp())?.isFull, isTrue);
+
+    final restored = BackupSnapshot.fromJson(
+      jsonDecode(snapshot.encode()) as Map<String, dynamic>,
+    );
+    final target = testStore();
+    await target.load();
+    await target.importBackup(restored);
+    expect(target.totalPoints, 20);
+    await target.upsertTask(
+      const HabitTask(
+        id: 'dishes',
+        title: 'Помити посуд',
+        points: 5,
+        icon: 'star',
+        todayOnly: true,
+      ),
+    );
+    await target.submit('dishes');
+    expect(await target.verify('dishes'), 0);
+    expect(target.totalPoints, 25);
   });
 
   test('streak counts consecutive full days and keeps today in progress', () {
@@ -2290,6 +2339,7 @@ void main() {
           points: 15,
           icon: 'walk',
           todayOnly: true,
+          optional: true,
         ),
       ],
     );
@@ -2608,6 +2658,53 @@ void main() {
     expect(store.extraTasks.single.title, 'Допомогти вдома');
   });
 
+  testWidgets('parent screen requires a day for new tasks', (tester) async {
+    final store = testStore();
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await pumpParentSettings(tester, store);
+    await openParentSetting(tester, const Key('settings-daily-optional-tasks'));
+    await tester.tap(find.byKey(const Key('add-daily-optional-task')));
+    await tester.pumpAndSettle();
+
+    FilledButton saveButton() => tester.widget<FilledButton>(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(FilledButton),
+      ),
+    );
+
+    expect(saveButton().onPressed, isNotNull);
+
+    for (var weekday = DateTime.monday; weekday <= DateTime.sunday; weekday++) {
+      await tester.tap(find.byKey(Key('task-day-$weekday')));
+    }
+    await tester.pump();
+
+    expect(find.text(S.chooseDay), findsOneWidget);
+    expect(find.text(S.taskDays), findsNothing);
+    expect(saveButton().onPressed, isNull);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Зберегти'),
+      ),
+    );
+    await tester.pump();
+    expect(find.text(S.addTask), findsOneWidget);
+    expect(store.dailyOptionalTasks, isEmpty);
+
+    await tester.tap(find.byKey(const Key('task-day-3')));
+    await tester.pump();
+    expect(find.text(S.taskDays), findsOneWidget);
+    expect(saveButton().onPressed, isNotNull);
+  });
+
   testWidgets('task editor shows recurring days for today-only tasks', (
     tester,
   ) async {
@@ -2638,7 +2735,8 @@ void main() {
     await tester.pump();
 
     expect(find.text('Додати завдання'), findsOneWidget);
-    expect(find.text(S.taskDays), findsOneWidget);
+    expect(find.text(S.onlyToday), findsOneWidget);
+    expect(find.text(S.taskDays), findsNothing);
     expect(find.byKey(const Key('task-day-1')), findsOneWidget);
     expect(find.byKey(const Key('task-day-7')), findsOneWidget);
     expect(
@@ -2676,6 +2774,8 @@ void main() {
     await tester.pump();
 
     expect(find.text(S.addTask), findsOneWidget);
+    expect(find.text(S.onlyToday), findsOneWidget);
+    expect(find.text(S.taskDays), findsNothing);
     expect(
       tester
           .widget<Text>(
@@ -2696,8 +2796,8 @@ void main() {
 
     expect(store.tasks.single.todayOnly, isTrue);
     expect(store.tasks.single.weekdays, isEmpty);
-    expect(store.dailyTasks, isEmpty);
-    expect(store.extraTasks.single.title, 'Полити квіти');
+    expect(store.todayDailyTasks.single.title, 'Полити квіти');
+    expect(store.extraTasks, isEmpty);
     expect(find.text('Полити квіти'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('add-daily-task')));
@@ -2719,7 +2819,7 @@ void main() {
     expect(recurring.todayOnly, isFalse);
     expect(recurring.weekdays, [DateTime.monday]);
     expect(store.dailyTasks.single.title, 'Кормити кота');
-    expect(store.extraTasks.single.title, 'Полити квіти');
+    expect(store.extraTasks, isEmpty);
   });
 
   testWidgets('first launch walks parents through setup once', (tester) async {

@@ -29,7 +29,9 @@ class HabitTask {
   bool get isPending => status == TaskStatus.pending;
   bool get isSubmitted => status == TaskStatus.submitted;
   bool get isVerified => status == TaskStatus.verified;
-  bool get isMandatory => !optional && !todayOnly;
+
+  /// Required tasks — including one-off tasks created for today.
+  bool get isMandatory => !optional;
 
   bool showsOn(DateTime date) =>
       weekdays.isEmpty || weekdays.contains(date.weekday);

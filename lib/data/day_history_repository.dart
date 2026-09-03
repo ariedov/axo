@@ -4,12 +4,21 @@ import 'models.dart';
 import 'today.dart';
 
 class DayHistory {
-  const DayHistory({this.activatedOn, this.days = const {}});
+  const DayHistory({
+    this.activatedOn,
+    this.days = const {},
+    this.bonusDays = const [],
+  });
 
   final String? activatedOn;
   final Map<String, DayProgress> days;
 
+  /// Days the all-done completion bonus was already awarded.
+  final List<String> bonusDays;
+
   DayProgress? operator [](String day) => days[day];
+
+  bool bonusOn(String day) => bonusDays.contains(day);
 
   int currentStreak(String today) {
     var day = this[today]?.isFull == true ? today : previousStamp(today);
@@ -24,21 +33,32 @@ class DayHistory {
   DayHistory copyWith({
     String? activatedOn,
     Map<String, DayProgress>? days,
+    List<String>? bonusDays,
   }) {
     return DayHistory(
       activatedOn: activatedOn ?? this.activatedOn,
       days: days ?? this.days,
+      bonusDays: bonusDays ?? this.bonusDays,
     );
   }
 
   DayHistory withActivatedOn(String day) {
-    return DayHistory(activatedOn: day, days: days);
+    return DayHistory(activatedOn: day, days: days, bonusDays: bonusDays);
   }
 
   DayHistory withDay(DayProgress progress) {
     return DayHistory(
       activatedOn: activatedOn,
       days: {...days, progress.day: progress},
+      bonusDays: bonusDays,
+    );
+  }
+
+  DayHistory withBonusDay(String day) {
+    return DayHistory(
+      activatedOn: activatedOn,
+      days: days,
+      bonusDays: {...bonusDays, day}.toList()..sort(),
     );
   }
 
@@ -47,10 +67,12 @@ class DayHistory {
     'days': {
       for (final entry in days.entries) entry.key: entry.value.toJson(),
     },
+    if (bonusDays.isNotEmpty) 'bonusDays': bonusDays,
   };
 
   factory DayHistory.fromJson(Map<String, dynamic> json) {
     final raw = json['days'] as Map<String, dynamic>? ?? {};
+    final rawBonus = json['bonusDays'] as List?;
     return DayHistory(
       activatedOn: json['activatedOn'] as String?,
       days: {
@@ -60,6 +82,7 @@ class DayHistory {
             entry.value as Map<String, dynamic>,
           ),
       },
+      bonusDays: [for (final day in rawBonus ?? const []) day as String],
     );
   }
 }

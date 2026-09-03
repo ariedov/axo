@@ -92,6 +92,17 @@ class _TaskEditorState extends State<_TaskEditor> {
 
   List<int> get _sortedDays => _days.toList()..sort();
 
+  /// No day selected means a one-off for today — only allowed from the
+  /// main screen.
+  bool get _needsDay => _days.isEmpty && !widget.oneOffDefault;
+
+  String get _daysLabel {
+    if (_days.isEmpty) {
+      return widget.oneOffDefault ? S.onlyToday : S.chooseDay;
+    }
+    return S.taskDays;
+  }
+
   /// Every day selected is stored as an empty list — the model's
   /// "appears every day" representation.
   List<int> get _savedDays {
@@ -127,7 +138,7 @@ class _TaskEditorState extends State<_TaskEditor> {
   void _save() {
     final title = _title.text.trim();
     final points = int.tryParse(_points.text.trim()) ?? 0;
-    if (title.isEmpty || points <= 0) return;
+    if (title.isEmpty || points <= 0 || _needsDay) return;
 
     Navigator.pop(
       context,
@@ -220,23 +231,23 @@ class _TaskEditorState extends State<_TaskEditor> {
                 ],
               ),
               const SizedBox(height: 20),
-              const Align(
+              Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  S.taskDays,
+                  _daysLabel,
                   style: TextStyle(
-                    color: AppColors.muted,
+                    color: _needsDay ? AppColors.pinkDark : AppColors.muted,
                     fontWeight: FontWeight.w800,
                     fontSize: 13,
                   ),
                 ),
               ),
               const SizedBox(height: 8),
-                Row(
-                  children: [
-                    for (var weekday = DateTime.monday;
-                        weekday <= DateTime.sunday;
-                        weekday++)
+              Row(
+                children: [
+                  for (var weekday = DateTime.monday;
+                      weekday <= DateTime.sunday;
+                      weekday++)
                     Expanded(
                       child: Padding(
                         padding: EdgeInsets.only(
@@ -268,7 +279,7 @@ class _TaskEditorState extends State<_TaskEditor> {
                   ),
                   const SizedBox(width: 8),
                   FilledButton(
-                    onPressed: _save,
+                    onPressed: _needsDay ? null : _save,
                     child: const Text(S.save),
                   ),
                 ],

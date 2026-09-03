@@ -257,6 +257,8 @@ class S {
   static const pastDayHint = 'Можна підтвердити завдання, які зробили раніше.';
   static const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
   static const taskDays = 'Дні тижня';
+  static const onlyToday = 'Лише сьогодні';
+  static const chooseDay = 'Оберіть день';
 
   static const months = [
     'Січень',

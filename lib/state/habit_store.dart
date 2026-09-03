@@ -97,16 +97,18 @@ class HabitStore extends ChangeNotifier {
   int get extraPossiblePoints =>
       extraTasks.fold(0, (sum, task) => sum + task.points);
 
-  /// Mandatory tasks the child sees today — recurring tasks only on their days.
+  /// Required tasks the child sees today — recurring tasks only on their
+  /// days, one-offs always.
   List<HabitTask> get todayDailyTasks => [
-    for (final task in dailyTasks)
-      if (task.showsOn(now())) task,
+    for (final task in tasks)
+      if (task.isMandatory && task.showsOn(now())) task,
   ];
 
-  /// Every mandatory task, used for editing and reordering.
+  /// Recurring mandatory tasks, used for editing and reordering. One-offs
+  /// for today are managed from the home screen instead.
   List<HabitTask> get dailyTasks => [
     for (final task in tasks)
-      if (task.isMandatory) task,
+      if (task.isMandatory && !task.todayOnly) task,
   ];
   List<HabitTask> get dailyOptionalTasks => [
     for (final task in tasks)
@@ -114,7 +116,7 @@ class HabitStore extends ChangeNotifier {
   ];
   List<HabitTask> get extraTasks => [
     for (final task in tasks)
-      if ((task.optional || task.todayOnly) && task.showsOn(now())) task,
+      if (task.optional && task.showsOn(now())) task,
   ];
   List<RewardGoal> get activeGoals => [
     for (final goal in goals)
@@ -495,7 +497,7 @@ class HabitStore extends ChangeNotifier {
     var index = 0;
     tasks = [
       for (final task in tasks)
-        if (task.isMandatory) daily[index++] else task,
+        if (task.isMandatory && !task.todayOnly) daily[index++] else task,
     ];
     notifyListeners();
     await _persist();
@@ -712,10 +714,13 @@ class HabitStore extends ChangeNotifier {
     if (!completionBonusEnabled || completionBonusPoints < 1) return 0;
     if (wasComplete || !_mandatoryComplete(day)) return 0;
     final stamp = day ?? todayStamp(now());
+    if (history.bonusOn(stamp)) return 0;
     totalPoints = await pointsRepo.award(
       amount: completionBonusPoints,
       taskId: 'bonus:$stamp',
     );
+    history = history.withBonusDay(stamp);
+    await historyRepo.save(history);
     notifyListeners();
     return completionBonusPoints;
   }
