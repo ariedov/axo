@@ -6,6 +6,8 @@ class AppConfig {
   static const defaultStartingPoints = 50;
   static const strikesToPenalty = 3;
   static const defaultPenaltyPoints = 10;
+  static const defaultCompletionBonusEnabled = true;
+  static const defaultCompletionBonusPoints = 10;
 
   static const timesTablesMin = 1;
   static const timesTablesMax = 10;

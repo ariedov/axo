@@ -11,6 +11,7 @@ class LabeledField extends StatefulWidget {
     this.keyboardType,
     this.inputFormatters,
     this.obscureText = false,
+    this.enabled = true,
     this.textInputAction = TextInputAction.next,
     this.onChanged,
     this.onSubmitted,
@@ -21,6 +22,7 @@ class LabeledField extends StatefulWidget {
   final TextInputType? keyboardType;
   final List<TextInputFormatter>? inputFormatters;
   final bool obscureText;
+  final bool enabled;
   final TextInputAction textInputAction;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
@@ -41,6 +43,14 @@ class _LabeledFieldState extends State<LabeledField> {
   }
 
   @override
+  void didUpdateWidget(LabeledField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.enabled && oldWidget.enabled) {
+      _focus.unfocus();
+    }
+  }
+
+  @override
   void dispose() {
     _focus.dispose();
     super.dispose();
@@ -48,13 +58,13 @@ class _LabeledFieldState extends State<LabeledField> {
 
   @override
   Widget build(BuildContext context) {
-    final focused = _focus.hasFocus;
+    final focused = widget.enabled && _focus.hasFocus;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: widget.enabled ? Colors.white : AppColors.peach,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: focused ? AppColors.pink : AppColors.blush,
@@ -75,6 +85,7 @@ class _LabeledFieldState extends State<LabeledField> {
           TextField(
             controller: widget.controller,
             focusNode: _focus,
+            enabled: widget.enabled,
             obscureText: widget.obscureText,
             keyboardType: widget.keyboardType,
             inputFormatters: widget.inputFormatters,

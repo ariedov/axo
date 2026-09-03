@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:app/config.dart';
 import 'package:app/data/answer.dart';
 import 'package:app/data/backup.dart';
+import 'package:app/data/completion_bonus.dart';
 import 'package:app/data/day_history_repository.dart';
 import 'package:app/data/division_problem.dart';
 import 'package:app/data/game_catalog.dart';
@@ -54,6 +55,8 @@ HabitStore testStore({
   int penaltyPoints = AppConfig.defaultPenaltyPoints,
   int rewardedPlays = AppConfig.rewardedPlays,
   int playLimitMinutes = AppConfig.playLimitMinutes,
+  bool completionBonusEnabled = AppConfig.defaultCompletionBonusEnabled,
+  int completionBonusPoints = AppConfig.defaultCompletionBonusPoints,
   GameRecentsRepository? gameRecents,
   DayHistory? history,
   DateTime Function()? now,
@@ -79,6 +82,12 @@ HabitStore testStore({
       GameLimitSnapshot(
         rewardedPlays: rewardedPlays,
         playLimitMinutes: playLimitMinutes,
+      ),
+    ),
+    completionBonusRepo: InMemoryCompletionBonusRepository(
+      CompletionBonusSnapshot(
+        enabled: completionBonusEnabled,
+        points: completionBonusPoints,
       ),
     ),
     celebrateFor: Duration.zero,
@@ -206,9 +215,76 @@ void main() {
 
     await store.verify('bed');
     expect(store.tasks.first.isVerified, isTrue);
-    expect(store.totalPoints, 10);
+    expect(store.totalPoints, 20);
     expect(store.todayEarnedPoints, 10);
     expect(store.todayPossiblePoints, 10);
+  });
+
+  test(
+    'completion bonus is awarded when the last mandatory task is verified',
+    () async {
+      final store = testStore(
+        tasks: const [
+          HabitTask(id: 'a', title: 'Перше', points: 5, icon: 'star'),
+          HabitTask(id: 'b', title: 'Друге', points: 5, icon: 'bed'),
+          HabitTask(
+            id: 'help',
+            title: 'Допомогти',
+            points: 8,
+            icon: 'star',
+            optional: true,
+          ),
+        ],
+      );
+      await store.load();
+
+      await store.submit('a');
+      expect(await store.verify('a'), 0);
+      expect(store.totalPoints, 5);
+
+      await store.submit('help');
+      expect(await store.verify('help'), 0);
+      expect(store.totalPoints, 13);
+
+      await store.submit('b');
+      expect(await store.verify('b'), 10);
+      expect(store.totalPoints, 28);
+    },
+  );
+
+  test('completion bonus can be disabled or resized', () async {
+    final store = testStore(
+      completionBonusEnabled: false,
+      completionBonusPoints: 25,
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+      ],
+    );
+    await store.load();
+    await store.submit('bed');
+    expect(await store.verify('bed'), 0);
+    expect(store.totalPoints, 10);
+
+    await store.setCompletionBonus(enabled: true, points: 25);
+    expect(store.completionBonusEnabled, isTrue);
+    expect(store.completionBonusPoints, 25);
+
+    final again = testStore(
+      completionBonusEnabled: true,
+      completionBonusPoints: 25,
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+      ],
+    );
+    await again.load();
+    await again.submit('bed');
+    expect(await again.verify('bed'), 25);
+    expect(again.totalPoints, 35);
+
+    await again.setCompletionBonus(enabled: false);
+    expect(again.completionBonusEnabled, isFalse);
+    await again.setCompletionBonus(points: 0);
+    expect(again.completionBonusPoints, 25);
   });
 
   test('today task points count verified against the full list', () async {
@@ -443,6 +519,14 @@ void main() {
     expect(json['data']['penaltyPoints'], AppConfig.defaultPenaltyPoints);
     expect(json['data']['rewardedPlays'], AppConfig.rewardedPlays);
     expect(json['data']['playLimitMinutes'], AppConfig.playLimitMinutes);
+    expect(
+      json['data']['completionBonusEnabled'],
+      AppConfig.defaultCompletionBonusEnabled,
+    );
+    expect(
+      json['data']['completionBonusPoints'],
+      AppConfig.defaultCompletionBonusPoints,
+    );
 
     final encoded = snapshot.encode();
     expect(encoded.contains('secret-pass'), isFalse);
@@ -514,6 +598,14 @@ void main() {
     expect(target.penaltyPoints, AppConfig.defaultPenaltyPoints);
     expect(target.rewardedPlays, AppConfig.rewardedPlays);
     expect(target.playLimitMinutes, AppConfig.playLimitMinutes);
+    expect(
+      target.completionBonusEnabled,
+      AppConfig.defaultCompletionBonusEnabled,
+    );
+    expect(
+      target.completionBonusPoints,
+      AppConfig.defaultCompletionBonusPoints,
+    );
   });
 
   test(
@@ -960,7 +1052,7 @@ void main() {
     await store.submit('bed', day: '2026-08-26');
     await store.verify('bed', day: '2026-08-26');
 
-    expect(store.totalPoints, 10);
+    expect(store.totalPoints, 20);
     expect(store.tasksOn('2026-08-26').first.isVerified, isTrue);
     expect(store.tasks.single.isPending, isTrue);
     expect(store.progressFor('2026-08-26')?.completed, 1);
@@ -1265,6 +1357,49 @@ void main() {
     await target.importBackup(snapshot);
     expect(target.rewardedPlays, 3);
     expect(target.playLimitMinutes, 30);
+  });
+
+  test('backup round-trips completion bonus settings', () async {
+    final source = testStore(
+      completionBonusEnabled: false,
+      completionBonusPoints: 15,
+    );
+    await source.load();
+    final snapshot = source.exportBackup();
+    expect(snapshot.completionBonusEnabled, isFalse);
+    expect(snapshot.completionBonusPoints, 15);
+
+    final encoded = snapshot.encode();
+    final restored = BackupSnapshot.fromJson(
+      jsonDecode(encoded) as Map<String, dynamic>,
+    );
+    expect(restored.completionBonusEnabled, isFalse);
+    expect(restored.completionBonusPoints, 15);
+
+    final old = BackupSnapshot.fromJson({
+      'app': 'axo',
+      'format': 1,
+      'exportedAt': '2026-08-29T00:00:00.000Z',
+      'data': {
+        'points': 10,
+        'onboardingComplete': true,
+        'tasks': TaskSnapshot(day: todayStamp(), tasks: const []).toJson(),
+        'goals': <dynamic>[],
+        'history': const DayHistory().toJson(),
+        'gamePlays': GamePlaysSnapshot.empty().toJson(),
+      },
+    });
+    expect(old.completionBonusEnabled, AppConfig.defaultCompletionBonusEnabled);
+    expect(old.completionBonusPoints, AppConfig.defaultCompletionBonusPoints);
+
+    final target = testStore(
+      completionBonusEnabled: true,
+      completionBonusPoints: 40,
+    );
+    await target.load();
+    await target.importBackup(snapshot);
+    expect(target.completionBonusEnabled, isFalse);
+    expect(target.completionBonusPoints, 15);
   });
 
   test('old daily play counts start a fresh window', () {
@@ -1908,7 +2043,7 @@ void main() {
       ],
     );
     await store.load();
-    tester.view.physicalSize = const Size(800, 2400);
+    tester.view.physicalSize = const Size(800, 3200);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -2274,12 +2409,7 @@ void main() {
         },
       ),
       tasks: const [
-        HabitTask(
-          id: 'bed',
-          title: 'Застелити ліжко',
-          points: 10,
-          icon: 'bed',
-        ),
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
       ],
     );
     await store.load();
@@ -2296,12 +2426,7 @@ void main() {
   ) async {
     final store = testStore(
       tasks: const [
-        HabitTask(
-          id: 'bed',
-          title: 'Застелити ліжко',
-          points: 10,
-          icon: 'bed',
-        ),
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
       ],
     );
     await store.load();
@@ -2494,7 +2619,17 @@ void main() {
     await tester.tap(find.text('Нарахувати бали'));
     await tester.pump();
     await tester.pump();
-    expect(store.totalPoints, 52);
+    expect(store.totalPoints, 62);
+    expect(find.byKey(const Key('completion-bonus-dialog')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('completion-bonus-dialog')),
+        matching: find.text('+10 балів'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('completion-bonus-ok')));
+    await tester.pump();
     expect(find.text('Підтверджено'), findsOneWidget);
     expect(find.text('10 / 10 балів'), findsOneWidget);
 
@@ -2714,6 +2849,59 @@ void main() {
     expect(store.rewardedPlays, 3);
     expect(store.playLimitMinutes, 30);
     expect(find.text('Ліміт ігор збережено'), findsAtLeastNWidgets(1));
+  });
+
+  testWidgets('parent settings can change completion bonus', (tester) async {
+    final store = testStore();
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      HabitScope(
+        store: store,
+        child: MaterialApp(
+          theme: AppTheme.cute,
+          home: const ParentSettingsScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.scrollUntilVisible(
+      find.text('Бонус за всі завдання'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Бонус за всі завдання'), findsOneWidget);
+    expect(store.completionBonusEnabled, isTrue);
+    expect(store.completionBonusPoints, 10);
+
+    TextField amountField() {
+      return tester.widget<TextField>(
+        find.descendant(
+          of: find.byKey(const Key('completion-bonus-amount')),
+          matching: find.byType(TextField),
+        ),
+      );
+    }
+
+    expect(amountField().enabled, isTrue);
+    await tester.enterText(
+      find.byKey(const Key('completion-bonus-amount')),
+      '20',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('completion-bonus-enabled')));
+    await tester.pump();
+    expect(amountField().enabled, isFalse);
+    await tester.tap(find.byKey(const Key('save-completion-bonus')));
+    await tester.pump();
+    expect(store.completionBonusEnabled, isFalse);
+    expect(store.completionBonusPoints, 20);
+    expect(find.text('Бонус збережено'), findsAtLeastNWidgets(1));
   });
 
   testWidgets('home splits mandatory and optional tasks', (tester) async {

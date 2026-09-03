@@ -7,6 +7,7 @@ import '../state/habit_scope.dart';
 import '../strings.dart';
 import '../theme.dart';
 import '../widgets/bonus_points_section.dart';
+import '../widgets/completion_bonus_settings_section.dart';
 import '../widgets/game_limit_settings_section.dart';
 import '../widgets/penalty_settings_section.dart';
 import '../widgets/completed_goals_sheet.dart';
@@ -366,6 +367,14 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
                 padding: const EdgeInsets.fromLTRB(24, 22, 24, 0),
                 sliver: SliverToBoxAdapter(
                   child: const BonusPointsSection(),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(24, 22, 24, 0),
+                sliver: SliverToBoxAdapter(
+                  child: const CompletionBonusSettingsSection(
+                    key: Key('completion-bonus-settings'),
+                  ),
                 ),
               ),
               SliverPadding(
