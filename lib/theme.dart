@@ -88,6 +88,15 @@ class AppTheme {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         ),
       ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          return Colors.white;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return AppColors.pink;
+          return AppColors.blush;
+        }),
+      ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../config.dart';
 import '../data/backup.dart';
+import '../data/completion_bonus.dart';
 import '../data/day_history_repository.dart';
 import '../data/game_limit.dart';
 import '../data/game_plays.dart';
@@ -26,12 +27,15 @@ class HabitStore extends ChangeNotifier {
     OnboardingFlags? onboardingFlags,
     StrikesRepository? strikesRepo,
     GameLimitRepository? gameLimitRepo,
+    CompletionBonusRepository? completionBonusRepo,
     GameRecentsRepository? gameRecents,
     this.celebrateFor = const Duration(seconds: 3),
     DateTime Function()? now,
   }) : onboardingFlags = onboardingFlags ?? InMemoryOnboardingFlags(),
        strikesRepo = strikesRepo ?? InMemoryStrikesRepository(),
        gameLimitRepo = gameLimitRepo ?? InMemoryGameLimitRepository(),
+       completionBonusRepo =
+           completionBonusRepo ?? InMemoryCompletionBonusRepository(),
        gameRecents = gameRecents ?? InMemoryGameRecentsRepository(),
        now = now ?? DateTime.now;
 
@@ -44,6 +48,7 @@ class HabitStore extends ChangeNotifier {
   final OnboardingFlags onboardingFlags;
   final StrikesRepository strikesRepo;
   final GameLimitRepository gameLimitRepo;
+  final CompletionBonusRepository completionBonusRepo;
   final GameRecentsRepository gameRecents;
   final Duration celebrateFor;
   final DateTime Function() now;
@@ -64,6 +69,8 @@ class HabitStore extends ChangeNotifier {
   int penaltyPoints = AppConfig.defaultPenaltyPoints;
   int rewardedPlays = AppConfig.rewardedPlays;
   int playLimitMinutes = AppConfig.playLimitMinutes;
+  bool completionBonusEnabled = AppConfig.defaultCompletionBonusEnabled;
+  int completionBonusPoints = AppConfig.defaultCompletionBonusPoints;
 
   Duration get playLimitWindow => Duration(minutes: playLimitMinutes);
 
@@ -130,6 +137,7 @@ class HabitStore extends ChangeNotifier {
     history = await historyRepo.load();
     await _loadStrikes();
     await _loadGameLimit();
+    await _loadCompletionBonus();
     await _prunePlays();
     for (final snapshot in days.values) {
       history = history.withDay(
@@ -212,6 +220,22 @@ class HabitStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setCompletionBonus({bool? enabled, int? points}) async {
+    if (points != null && points < 1) return;
+    var changed = false;
+    if (enabled != null && enabled != completionBonusEnabled) {
+      completionBonusEnabled = enabled;
+      changed = true;
+    }
+    if (points != null && points != completionBonusPoints) {
+      completionBonusPoints = points;
+      changed = true;
+    }
+    if (!changed) return;
+    await _persistCompletionBonus();
+    notifyListeners();
+  }
+
   Future<void> setGameLimit({int? rounds, int? restMinutes}) async {
     if (rounds != null && rounds < 1) return;
     if (restMinutes != null && restMinutes < 1) return;
@@ -269,6 +293,23 @@ class HabitStore extends ChangeNotifier {
       GameLimitSnapshot(
         rewardedPlays: rewardedPlays,
         playLimitMinutes: playLimitMinutes,
+      ),
+    );
+  }
+
+  Future<void> _loadCompletionBonus() async {
+    final snapshot = await completionBonusRepo.load();
+    completionBonusEnabled = snapshot.enabled;
+    completionBonusPoints = snapshot.points < 1
+        ? AppConfig.defaultCompletionBonusPoints
+        : snapshot.points;
+  }
+
+  Future<void> _persistCompletionBonus() {
+    return completionBonusRepo.save(
+      CompletionBonusSnapshot(
+        enabled: completionBonusEnabled,
+        points: completionBonusPoints,
       ),
     );
   }
@@ -373,10 +414,11 @@ class HabitStore extends ChangeNotifier {
     );
   }
 
-  Future<void> verify(String taskId, {String? day}) async {
+  Future<int> verify(String taskId, {String? day}) async {
     final task = _taskOn(taskId, day);
-    if (task == null || !task.isSubmitted) return;
+    if (task == null || !task.isSubmitted) return 0;
 
+    final wasComplete = _mandatoryComplete(day);
     totalPoints = await pointsRepo.award(amount: task.points, taskId: task.id);
     final isToday = _isToday(day);
     celebrating = isToday;
@@ -385,11 +427,16 @@ class HabitStore extends ChangeNotifier {
       (item) => item.copyWith(status: TaskStatus.verified),
       day: day,
     );
-    if (celebrating && celebrateFor > Duration.zero) {
+    final bonus = await _maybeAwardCompletionBonus(
+      day: day,
+      wasComplete: wasComplete,
+    );
+    if (celebrating && celebrateFor > Duration.zero && bonus == 0) {
       await Future<void>.delayed(celebrateFor);
     }
     celebrating = false;
     notifyListeners();
+    return bonus;
   }
 
   Future<void> reject(String taskId, {String? day}) =>
@@ -569,6 +616,8 @@ class HabitStore extends ChangeNotifier {
       penaltyPoints: penaltyPoints,
       rewardedPlays: rewardedPlays,
       playLimitMinutes: playLimitMinutes,
+      completionBonusEnabled: completionBonusEnabled,
+      completionBonusPoints: completionBonusPoints,
     );
   }
 
@@ -590,6 +639,12 @@ class HabitStore extends ChangeNotifier {
       GameLimitSnapshot(
         rewardedPlays: snapshot.rewardedPlays,
         playLimitMinutes: snapshot.playLimitMinutes,
+      ),
+    );
+    await completionBonusRepo.save(
+      CompletionBonusSnapshot(
+        enabled: snapshot.completionBonusEnabled,
+        points: snapshot.completionBonusPoints,
       ),
     );
     await load();
@@ -625,6 +680,29 @@ class HabitStore extends ChangeNotifier {
 
   bool _isToday(String? day) {
     return day == null || day == todayStamp(now());
+  }
+
+  bool _mandatoryComplete(String? day) {
+    final mandatory = [
+      for (final task in tasksOn(day ?? todayStamp(now())))
+        if (task.isMandatory) task,
+    ];
+    return mandatory.isNotEmpty && mandatory.every((task) => task.isVerified);
+  }
+
+  Future<int> _maybeAwardCompletionBonus({
+    required String? day,
+    required bool wasComplete,
+  }) async {
+    if (!completionBonusEnabled || completionBonusPoints < 1) return 0;
+    if (wasComplete || !_mandatoryComplete(day)) return 0;
+    final stamp = day ?? todayStamp(now());
+    totalPoints = await pointsRepo.award(
+      amount: completionBonusPoints,
+      taskId: 'bonus:$stamp',
+    );
+    notifyListeners();
+    return completionBonusPoints;
   }
 
   HabitTask? _taskOn(String taskId, String? day) {

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../data/models.dart';
 import '../state/habit_scope.dart';
 import '../strings.dart';
 import '../theme.dart';
-import 'parent_gate.dart';
+import 'completion_bonus_dialog.dart';
 import 'task_tile.dart';
 
 Future<void> showDayTasksSheet(BuildContext context, String day) {
@@ -130,15 +129,7 @@ class DayTasksSheet extends StatelessWidget {
     );
   }
 
-  Future<void> _verify(BuildContext context, HabitTask task) async {
-    final store = HabitScope.of(context);
-    await showParentTaskActions(
-      context,
-      onAward: () {
-        HapticFeedback.mediumImpact();
-        store.verify(task.id, day: day);
-      },
-      onSendBack: () => store.reject(task.id, day: day),
-    );
+  Future<void> _verify(BuildContext context, HabitTask task) {
+    return verifyTaskWithBonus(context, task, day: day);
   }
 }

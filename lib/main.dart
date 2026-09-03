@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'config.dart';
+import 'data/completion_bonus.dart';
 import 'data/day_history_repository.dart';
 import 'data/game_limit.dart';
 import 'data/goal_repository.dart';
@@ -86,6 +87,12 @@ Future<void> main() async {
       },
     ),
     gameLimitRepo: LocalGameLimitRepository(
+      (key) async => prefs.getString(key),
+      (key, value) async {
+        await prefs.setString(key, value);
+      },
+    ),
+    completionBonusRepo: LocalCompletionBonusRepository(
       (key) async => prefs.getString(key),
       (key, value) async {
         await prefs.setString(key, value);

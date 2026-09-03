@@ -146,6 +146,17 @@ class S {
   static const gameLimitRest = 'Перерва в хвилинах';
   static const gameLimitSaved = 'Ліміт ігор збережено';
   static const invalidGameLimit = 'Вкажіть ціле число більше нуля';
+  static const completionBonus = 'Бонус за всі завдання';
+  static const completionBonusHint =
+      'Додаткові бали, якщо дитина виконала всі обов\'язкові завдання за день.';
+  static const completionBonusEnabled = 'Нараховувати бонус';
+  static const completionBonusPoints = 'Бонус у балах';
+  static const completionBonusSaved = 'Бонус збережено';
+  static const invalidCompletionBonus = 'Вкажіть ціле число балів';
+  static const completionBonusTitle = 'Усі завдання готові!';
+
+  static String completionBonusEarned(int n) =>
+      'Аксо пишається тобою! Ось ще ${pointsWord(n)}.';
 
   static String strikesProgress(int n, int max) => '$n з $max';
 

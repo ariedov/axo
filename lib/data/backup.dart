@@ -22,6 +22,8 @@ class BackupSnapshot {
     this.penaltyPoints = AppConfig.defaultPenaltyPoints,
     this.rewardedPlays = AppConfig.rewardedPlays,
     this.playLimitMinutes = AppConfig.playLimitMinutes,
+    this.completionBonusEnabled = AppConfig.defaultCompletionBonusEnabled,
+    this.completionBonusPoints = AppConfig.defaultCompletionBonusPoints,
   });
 
   static const appId = 'axo';
@@ -40,6 +42,8 @@ class BackupSnapshot {
   final int penaltyPoints;
   final int rewardedPlays;
   final int playLimitMinutes;
+  final bool completionBonusEnabled;
+  final int completionBonusPoints;
 
   String get fileName => 'axo-${todayStamp(exportedAt)}.json';
 
@@ -65,6 +69,8 @@ class BackupSnapshot {
       'penaltyPoints': penaltyPoints,
       'rewardedPlays': rewardedPlays,
       'playLimitMinutes': playLimitMinutes,
+      'completionBonusEnabled': completionBonusEnabled,
+      'completionBonusPoints': completionBonusPoints,
     },
   };
 
@@ -110,6 +116,12 @@ class BackupSnapshot {
       playLimitMinutes:
           (data['playLimitMinutes'] as num?)?.toInt() ??
           AppConfig.playLimitMinutes,
+      completionBonusEnabled:
+          data['completionBonusEnabled'] as bool? ??
+          AppConfig.defaultCompletionBonusEnabled,
+      completionBonusPoints:
+          (data['completionBonusPoints'] as num?)?.toInt() ??
+          AppConfig.defaultCompletionBonusPoints,
     );
   }
 }
