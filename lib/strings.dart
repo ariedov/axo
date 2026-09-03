@@ -43,7 +43,6 @@ class S {
   static const save = 'Зберегти';
   static const close = 'Закрити';
   static const delete = 'Видалити';
-  static const noneYet = 'Немає';
   static const off = 'Вимкнено';
   static const unsavedSettingsTitle = 'Налаштування не збережено';
   static const unsavedSettingsBody = 'Точно хочете закрити?';
@@ -195,7 +194,6 @@ class S {
   static const importConfirm = 'Замінити';
   static const importDone = 'Дані відновлено';
   static const privacy = 'Приватність';
-  static const privacySubtitle = 'Дані лишаються на цьому телефоні';
   static const privacyBody =
       'Аксо працює лише на цьому телефоні. Завдання, бали, цілі та батьківський пароль зберігаються локально. Ми не збираємо і не надсилаємо дані, не показуємо рекламу і не використовуємо рекламний ідентифікатор.';
   static const dailyTasks = 'Щоденні завдання';

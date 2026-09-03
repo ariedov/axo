@@ -2014,17 +2014,13 @@ void main() {
     await tester.pump();
 
     expect(find.text('Щоденні завдання'), findsOneWidget);
-    expect(find.text('Застелити ліжко'), findsOneWidget);
+    expect(find.text(S.dailyTasksHint), findsOneWidget);
+    expect(find.text('Застелити ліжко'), findsNothing);
     expect(find.text('Щоденні додаткові завдання'), findsOneWidget);
+    expect(find.text(S.dailyOptionalTasksHint), findsOneWidget);
     expect(find.text('Цілі'), findsOneWidget);
-    expect(find.text('Немає'), findsAtLeastNWidgets(1));
+    expect(find.text(S.goalsHint), findsOneWidget);
     expect(find.text('Бонус і штраф'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Змінити пароль'),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('Змінити пароль'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Резервна копія'),
       200,
@@ -2032,6 +2028,13 @@ void main() {
     );
     expect(find.text('Резервна копія'), findsOneWidget);
     expect(find.text('Експорт і імпорт'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Змінити пароль'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Змінити пароль'), findsOneWidget);
+    expect(find.text(S.privacy), findsOneWidget);
     expect(find.byKey(const Key('export-backup')), findsNothing);
     expect(find.byKey(const Key('import-backup')), findsNothing);
     expect(
@@ -2113,12 +2116,12 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Застелити ліжко'), findsOneWidget);
+    expect(find.text('Застелити ліжко'), findsNothing);
     expect(find.text('Щоденні додаткові завдання'), findsOneWidget);
     expect(find.text('Прогулянка'), findsNothing);
 
     await openParentSetting(tester, const Key('settings-daily-tasks'));
-    expect(find.text('Застелити ліжко'), findsWidgets);
+    expect(find.text('Застелити ліжко'), findsOneWidget);
     expect(find.text('Прогулянка'), findsNothing);
   });
 

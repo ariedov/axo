@@ -16,12 +16,6 @@ import '../widgets/settings_tile.dart';
 class ParentSettingsScreen extends StatelessWidget {
   const ParentSettingsScreen({super.key});
 
-  static String _joined(Iterable<String> titles) {
-    final list = titles.toList();
-    if (list.isEmpty) return S.noneYet;
-    return list.join(', ');
-  }
-
   void _privacy(BuildContext context) {
     showDialog<void>(
       context: context,
@@ -54,23 +48,19 @@ class ParentSettingsScreen extends StatelessWidget {
               SettingsTile(
                 key: const Key('settings-daily-tasks'),
                 title: S.dailyTasks,
-                subtitle: _joined(store.dailyTasks.map((task) => task.title)),
+                subtitle: S.dailyTasksHint,
                 onTap: () => showDailyTasksSheet(context),
               ),
               SettingsTile(
                 key: const Key('settings-daily-optional-tasks'),
                 title: S.dailyOptionalTasks,
-                subtitle: _joined(
-                  store.dailyOptionalTasks.map((task) => task.title),
-                ),
+                subtitle: S.dailyOptionalTasksHint,
                 onTap: () => showDailyTasksSheet(context, optional: true),
               ),
               SettingsTile(
                 key: const Key('settings-goals'),
                 title: S.goals,
-                subtitle: _joined(
-                  store.activeGoals.map((goal) => goal.title),
-                ),
+                subtitle: S.goalsHint,
                 onTap: () => showGoalsSettingsSheet(context),
               ),
               SettingsTile(
@@ -102,21 +92,19 @@ class ParentSettingsScreen extends StatelessWidget {
                 onTap: () => showPenaltySettingsSheet(context),
               ),
               SettingsTile(
-                key: const Key('settings-password'),
-                title: S.changePassword,
-                onTap: () => showPasswordSettingsSheet(context),
-              ),
-              SettingsTile(
                 key: const Key('settings-backup'),
                 title: S.backup,
                 subtitle: S.backupSubtitle,
                 onTap: () => showBackupSettingsSheet(context),
               ),
               SettingsTile(
-                key: const Key('settings-privacy'),
-                title: S.privacy,
-                subtitle: S.privacySubtitle,
-                onTap: () => _privacy(context),
+                key: const Key('settings-password'),
+                title: S.changePassword,
+                onTap: () => showPasswordSettingsSheet(context),
+              ),
+              TextButton(
+                onPressed: () => _privacy(context),
+                child: const Text(S.privacy),
               ),
             ],
           ),
