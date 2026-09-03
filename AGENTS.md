@@ -42,4 +42,4 @@ Spelling/translation prompts use Material icons via `PictureIcons`, not emoji (N
 
 ## Release
 
-Version is `pubspec.yaml` (`1.2.3+9`). Tag push builds APK, AAB, and GitHub Pages at `/{repo}/` (`--base-href`, plus `build/web/.nojekyll`). Android signing: local `android/key.properties` (see `key.properties.example`); do not commit keystore or `key.properties`. Icons: `dart run flutter_launcher_icons`.
+Version is `pubspec.yaml` (`1.2.4+10`). Tag push builds APK, AAB, and GitHub Pages at `/{repo}/` (`--base-href`, plus `build/web/.nojekyll`). Android signing: local `android/key.properties` (see `key.properties.example`); do not commit keystore or `key.properties`. Icons: `dart run flutter_launcher_icons`.
