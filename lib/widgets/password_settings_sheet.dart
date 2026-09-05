@@ -25,7 +25,6 @@ class PasswordSettingsSheet extends StatefulWidget {
 }
 
 class _PasswordSettingsSheetState extends State<PasswordSettingsSheet> {
-  final _current = TextEditingController();
   final _next = TextEditingController();
   final _repeat = TextEditingController();
   String? _message;
@@ -37,7 +36,6 @@ class _PasswordSettingsSheetState extends State<PasswordSettingsSheet> {
   @override
   void initState() {
     super.initState();
-    _current.addListener(_refresh);
     _next.addListener(_refresh);
     _repeat.addListener(_refresh);
   }
@@ -53,9 +51,6 @@ class _PasswordSettingsSheetState extends State<PasswordSettingsSheet> {
 
   @override
   void dispose() {
-    _current
-      ..removeListener(_refresh)
-      ..dispose();
     _next
       ..removeListener(_refresh)
       ..dispose();
@@ -71,7 +66,6 @@ class _PasswordSettingsSheetState extends State<PasswordSettingsSheet> {
 
   bool get _dirty =>
       _enabled != _hadPassword ||
-      _current.text.isNotEmpty ||
       _next.text.isNotEmpty ||
       _repeat.text.isNotEmpty;
 
@@ -86,10 +80,7 @@ class _PasswordSettingsSheetState extends State<PasswordSettingsSheet> {
     }
 
     final next = _next.text.trim();
-    if (_hadPassword &&
-        next.isEmpty &&
-        _current.text.isEmpty &&
-        _repeat.text.isEmpty) {
+    if (_hadPassword && next.isEmpty && _repeat.text.isEmpty) {
       Navigator.pop(context);
       return;
     }
@@ -108,23 +99,8 @@ class _PasswordSettingsSheetState extends State<PasswordSettingsSheet> {
       return;
     }
 
-    if (_hadPassword) {
-      final changed = await store.changePassword(
-        current: _current.text,
-        next: next,
-      );
-      if (!mounted) return;
-      if (!changed) {
-        setState(() {
-          _ok = false;
-          _message = S.wrongPassword;
-        });
-        return;
-      }
-    } else {
-      await store.setParentPassword(next);
-      if (!mounted) return;
-    }
+    await store.setParentPassword(next);
+    if (!mounted) return;
     showParentToast(widget.messenger, S.passwordChanged);
     Navigator.pop(context);
   }
@@ -166,15 +142,6 @@ class _PasswordSettingsSheetState extends State<PasswordSettingsSheet> {
               ),
             ),
             if (_enabled) ...[
-              if (_hadPassword) ...[
-                const SizedBox(height: 12),
-                LabeledField(
-                  key: const Key('password-current'),
-                  controller: _current,
-                  label: S.currentPassword,
-                  obscureText: true,
-                ),
-              ],
               const SizedBox(height: 12),
               LabeledField(
                 key: const Key('password-next'),

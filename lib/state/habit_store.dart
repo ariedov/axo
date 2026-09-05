@@ -338,15 +338,6 @@ class HabitStore extends ChangeNotifier {
     await gamePlays.save(plays);
   }
 
-  Future<bool> changePassword({
-    required String current,
-    required String next,
-  }) async {
-    if (hasParentPassword && !checkPassword(current)) return false;
-    await setParentPassword(next);
-    return true;
-  }
-
   int playsUsed(String gameId) {
     final used = plays.usedToday(gameId, now());
     return used > rewardedPlays ? rewardedPlays : used;

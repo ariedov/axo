@@ -1441,12 +1441,11 @@ void main() {
     expect(await store.adjustPoints(0), 0);
   });
 
-  test('changing password requires the current one', () async {
+  test('password can be replaced without the current one', () async {
     final store = testStore();
     await store.load();
-    expect(await store.changePassword(current: 'nope', next: 'abcd'), isFalse);
-    expect(store.checkPassword('4826'), isTrue);
-    expect(await store.changePassword(current: '4826', next: 'abcd'), isTrue);
+    await store.setParentPassword('abcd');
+    expect(store.checkPassword('4826'), isFalse);
     expect(store.checkPassword('abcd'), isTrue);
   });
 
@@ -1455,7 +1454,7 @@ void main() {
     await store.load();
     expect(store.hasParentPassword, isFalse);
     expect(store.checkPassword(''), isFalse);
-    expect(await store.changePassword(current: '', next: 'mama'), isTrue);
+    await store.setParentPassword('mama');
     expect(store.hasParentPassword, isTrue);
     expect(store.checkPassword('mama'), isTrue);
 
@@ -2887,8 +2886,8 @@ void main() {
     await tester.tap(find.text('Далі'));
     await tester.pump();
 
-    await tester.enterText(find.byType(TextField).at(0), 'mama');
     await tester.enterText(find.byType(TextField).at(1), 'mama');
+    await tester.enterText(find.byType(TextField).at(2), 'mama');
     await tester.tap(find.text('Далі'));
     await tester.pump();
 
@@ -3469,11 +3468,11 @@ void main() {
 
     await openParentSetting(tester, const Key('settings-password'));
     expect(store.hasParentPassword, isTrue);
-    expect(find.byKey(const Key('password-current')), findsOneWidget);
+    expect(find.byKey(const Key('password-next')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('password-enabled')));
     await tester.pump();
-    expect(find.byKey(const Key('password-current')), findsNothing);
+    expect(find.byKey(const Key('password-next')), findsNothing);
     await tester.tap(find.byKey(const Key('save-password')));
     await tester.pumpAndSettle();
     expect(store.hasParentPassword, isFalse);
@@ -3502,7 +3501,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('password-enabled')));
     await tester.pump();
-    expect(find.byKey(const Key('password-current')), findsNothing);
+    expect(find.byKey(const Key('password-next')), findsOneWidget);
     await tester.enterText(find.byKey(const Key('password-next')), 'mama');
     await tester.enterText(find.byKey(const Key('password-repeat')), 'mama');
     await tester.pump();

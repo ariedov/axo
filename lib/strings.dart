@@ -113,7 +113,6 @@ class S {
 
   static String pointsPerRound(int n) => '${pointsWord(n)} за раунд';
   static const ok = 'Гаразд';
-  static const currentPassword = 'Поточний пароль';
   static const newPassword = 'Новий пароль';
   static const passwordChanged = 'Пароль змінено';
   static const passwordOff = 'Пароль вимкнено';

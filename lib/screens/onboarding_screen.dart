@@ -289,6 +289,13 @@ class _PasswordPage extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         LabeledField(
+          controller: points,
+          label: S.startingPoints,
+          keyboardType: TextInputType.number,
+          onChanged: (_) => onChanged(),
+        ),
+        const SizedBox(height: 12),
+        LabeledField(
           controller: password,
           label: S.choosePassword,
           obscureText: true,
@@ -299,14 +306,6 @@ class _PasswordPage extends StatelessWidget {
           controller: repeat,
           label: S.repeatPassword,
           obscureText: true,
-          onChanged: (_) => onChanged(),
-          onSubmitted: (_) => onNext(),
-        ),
-        const SizedBox(height: 12),
-        LabeledField(
-          controller: points,
-          label: S.startingPoints,
-          keyboardType: TextInputType.number,
           textInputAction: TextInputAction.done,
           onChanged: (_) => onChanged(),
           onSubmitted: (_) => onNext(),
