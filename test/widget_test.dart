@@ -24,6 +24,7 @@ import 'package:app/data/parent_auth.dart';
 import 'package:app/data/points_repository.dart';
 import 'package:app/data/strikes_repository.dart';
 import 'package:app/data/task_repository.dart';
+import 'package:app/data/timer_repository.dart';
 import 'package:app/data/today.dart';
 import 'package:app/main.dart';
 import 'package:app/screens/division_screen.dart';
@@ -43,6 +44,7 @@ import 'package:app/widgets/game_plays_banner.dart';
 import 'package:app/widgets/game_scaffold.dart';
 import 'package:app/widgets/game_setup_body.dart';
 import 'package:app/widgets/task_icons.dart';
+import 'package:app/widgets/timer_clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -62,6 +64,10 @@ HabitStore testStore({
   GameRecentsRepository? gameRecents,
   OnboardingFlags? onboardingFlags,
   DayHistory? history,
+  TimerRepository? timerRepo,
+  bool timerEnabled = AppConfig.defaultTimerEnabled,
+  List<TimerSession> timerHistory = const [],
+  TimerSession? activeTimer,
   DateTime Function()? now,
 }) {
   return HabitStore(
@@ -95,6 +101,15 @@ HabitStore testStore({
         points: completionBonusPoints,
       ),
     ),
+    timerRepo:
+        timerRepo ??
+        InMemoryTimerRepository(
+          TimerSnapshot(
+            enabled: timerEnabled,
+            active: activeTimer,
+            history: timerHistory,
+          ),
+        ),
     celebrateFor: Duration.zero,
     now: now,
   );
@@ -4041,5 +4056,259 @@ void main() {
 
     expect(focus.hasFocus, isTrue);
     expect(find.text('Раунди'), findsOneWidget);
+  });
+
+  test('timer counts up, pauses, and records history', () async {
+    var clock = DateTime(2026, 9, 5, 12);
+    final store = testStore(now: () => clock);
+    await store.load();
+
+    await store.startTimer(
+      duration: const Duration(minutes: 5),
+      reason: 'Читання',
+    );
+    clock = clock.add(const Duration(seconds: 12));
+    expect(store.timerElapsed, const Duration(seconds: 12));
+
+    await store.pauseTimer();
+    clock = clock.add(const Duration(seconds: 30));
+    expect(store.timerElapsed, const Duration(seconds: 12));
+
+    await store.resumeTimer();
+    clock = clock.add(const Duration(seconds: 8));
+    expect(store.timerElapsed, const Duration(seconds: 20));
+
+    await store.abandonTimer();
+    expect(store.activeTimer, isNull);
+    expect(store.timerHistory, hasLength(1));
+    expect(store.timerHistory.single.reason, 'Читання');
+    expect(store.timerHistory.single.status, TimerStatus.abandoned);
+    expect(store.timerHistory.single.elapsedMillis, 20000);
+  });
+
+  test('timer completes only after the target time', () async {
+    var clock = DateTime(2026, 9, 5, 12);
+    final store = testStore(now: () => clock);
+    await store.load();
+
+    await store.startTimer(duration: const Duration(minutes: 1));
+    clock = clock.add(const Duration(seconds: 10));
+    await store.completeTimer();
+    expect(store.activeTimer, isNotNull);
+    expect(store.timerHistory, isEmpty);
+
+    clock = clock.add(const Duration(seconds: 50));
+    await store.completeTimer();
+    expect(store.activeTimer, isNull);
+    expect(store.timerHistory.single.status, TimerStatus.completed);
+    expect(store.timerHistory.single.elapsedMillis, 60000);
+  });
+
+  test('reloading finishes a timer that already ran out', () async {
+    var clock = DateTime(2026, 9, 5, 12);
+    final repo = InMemoryTimerRepository();
+    final store = testStore(now: () => clock, timerRepo: repo);
+    await store.load();
+    await store.startTimer(duration: const Duration(minutes: 1), reason: 'Сон');
+    clock = clock.add(const Duration(minutes: 2));
+
+    final again = testStore(now: () => clock, timerRepo: repo);
+    await again.load();
+    expect(again.activeTimer, isNull);
+    expect(again.timerHistory.single.reason, 'Сон');
+    expect(again.timerHistory.single.status, TimerStatus.completed);
+  });
+
+  test('backup exports and imports timer history', () async {
+    var clock = DateTime(2026, 9, 5, 12);
+    final source = testStore(now: () => clock);
+    await source.load();
+    await source.startTimer(
+      duration: const Duration(minutes: 5),
+      reason: 'Читання',
+    );
+    clock = clock.add(const Duration(minutes: 5));
+    await source.completeTimer();
+    await source.setTimerEnabled(false);
+
+    final snapshot = source.exportBackup();
+    expect(snapshot.toJson()['data']['timer'], isA<Map<String, dynamic>>());
+    expect(snapshot.timer.enabled, isFalse);
+    expect(snapshot.timer.history, hasLength(1));
+    expect(snapshot.timer.history.single.reason, 'Читання');
+    expect(snapshot.timer.history.single.status, TimerStatus.completed);
+
+    final target = testStore(
+      timerHistory: [
+        TimerSession(
+          id: 'old',
+          targetMillis: 1000,
+          startedAt: clock.toIso8601String(),
+          reason: 'Старе',
+          status: TimerStatus.abandoned,
+        ),
+      ],
+    );
+    await target.load();
+    await target.importBackup(snapshot);
+    expect(target.timerEnabled, isFalse);
+    expect(target.timerHistory.single.reason, 'Читання');
+    expect(target.timerHistory.single.status, TimerStatus.completed);
+  });
+
+  test('old backups without timer data still import', () {
+    final restored = BackupSnapshot.fromJson({
+      'app': 'axo',
+      'format': 2,
+      'exportedAt': '2026-08-29T00:00:00.000Z',
+      'data': {
+        'points': 0,
+        'onboardingComplete': true,
+        'tasks': {'day': '2026-08-29', 'tasks': <Map<String, dynamic>>[]},
+        'goals': <Map<String, dynamic>>[],
+        'history': <String, dynamic>{},
+        'gamePlays': {'day': '2026-08-29', 'counts': <String, dynamic>{}},
+      },
+    });
+    expect(restored.timer.enabled, AppConfig.defaultTimerEnabled);
+    expect(restored.timer.history, isEmpty);
+    expect(restored.timer.active, isNull);
+  });
+
+  test('clock drag maps around the face to minutes', () {
+    expect(TimerClock.minutesForOffset(const Offset(100, 20), size: 200), 60);
+    expect(TimerClock.minutesForOffset(const Offset(180, 100), size: 200), 15);
+    expect(TimerClock.minutesForOffset(const Offset(100, 180), size: 200), 30);
+    expect(TimerClock.minutesForOffset(const Offset(20, 100), size: 200), 45);
+  });
+
+  test('Ukrainian timer records pluralization', () {
+    expect(S.recordsWord(1), '1 запис');
+    expect(S.recordsWord(2), '2 записи');
+    expect(S.recordsWord(5), '5 записів');
+    expect(S.recordsWord(21), '21 запис');
+  });
+
+  testWidgets('home fab starts a timer that counts up', (tester) async {
+    var clock = DateTime(2026, 9, 5, 12);
+    final store = testStore(now: () => clock);
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+
+    expect(find.byKey(const Key('timer-fab')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('timer-fab')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byKey(const Key('timer-start')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('timer-preset-1')));
+    await tester.enterText(find.byKey(const Key('timer-reason')), 'Читання');
+    await tester.tap(find.byKey(const Key('timer-start')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.byKey(const Key('timer-run-clock')), findsOneWidget);
+    expect(find.text('Читання'), findsWidgets);
+    expect(store.activeTimer, isNotNull);
+
+    clock = clock.add(const Duration(seconds: 12));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.text('0:12'), findsWidgets);
+
+    await tester.tap(find.byKey(const Key('timer-pause')));
+    await tester.pump();
+    clock = clock.add(const Duration(seconds: 20));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.text('0:12'), findsWidgets);
+    expect(find.byKey(const Key('timer-resume')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('timer-resume')));
+    await tester.pump();
+    clock = clock.add(const Duration(seconds: 48));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.byKey(const Key('timer-done')), findsOneWidget);
+    expect(store.timerHistory.single.status, TimerStatus.completed);
+    expect(store.timerHistory.single.reason, 'Читання');
+
+    await tester.tap(find.byKey(const Key('timer-done')));
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(const Key('timer-fab')), findsOneWidget);
+  });
+
+  testWidgets('abandoning the timer stores it in history', (tester) async {
+    var clock = DateTime(2026, 9, 5, 12);
+    final store = testStore(now: () => clock);
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('timer-fab')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.byKey(const Key('timer-start')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    clock = clock.add(const Duration(seconds: 9));
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.tap(find.byKey(const Key('timer-abandon')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('timer-abandon-confirm')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(store.activeTimer, isNull);
+    expect(store.timerHistory.single.status, TimerStatus.abandoned);
+    expect(store.timerHistory.single.elapsedMillis, 9000);
+    expect(find.byKey(const Key('timer-fab')), findsOneWidget);
+  });
+
+  testWidgets('parent settings show timer history and can hide the fab', (
+    tester,
+  ) async {
+    var clock = DateTime(2026, 9, 5, 12, 30);
+    final store = testStore(
+      now: () => clock,
+      timerHistory: [
+        TimerSession(
+          id: '1',
+          reason: 'Читання',
+          targetMillis: const Duration(minutes: 5).inMilliseconds,
+          elapsedMillis: const Duration(minutes: 5).inMilliseconds,
+          startedAt: clock.toIso8601String(),
+          endedAt: clock.toIso8601String(),
+          status: TimerStatus.completed,
+        ),
+      ],
+    );
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await pumpParentSettings(tester, store);
+    await openParentSetting(tester, const Key('settings-timer'));
+    expect(find.text('Читання'), findsOneWidget);
+    expect(find.text(S.timerCompleted), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('timer-enabled')));
+    await tester.pump();
+    expect(store.timerEnabled, isFalse);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+    expect(find.byKey(const Key('timer-fab')), findsNothing);
   });
 }

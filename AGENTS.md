@@ -32,7 +32,9 @@ Tasks are required unless `optional` (`HabitTask.isMandatory`); calendar complet
 
 Games: 10 items per round (`AppConfig.roundLength`). Two caps: a global window (`rewardedPlays` in `playLimitMinutes`) and a per-game daily cap. After the daily cap, practice mode (no points). Parent can turn limits off (`gameLimitEnabled`, default on); then play has no stops and always awards points. Award through `tryAwardGamePlay`. New game: id/points in `AppConfig`, catalog entry, screen (follow `GameScaffold` / `GameSetupBody` / `GameRound`), route in `miniGameScreen()`, strings on `S`, tests in `widget_test.dart`.
 
-Backup format 2, `app: axo`. Never export the parent password; import keeps the existing password. Newer format throws.
+Backup format 2, `app: axo`. Never export the parent password; import keeps the existing password. Newer format throws. Timer history and the parent enable flag ride along in `data.timer`.
+
+Timer: FAB on home (parent can hide it). Duration + optional reason, counts up, pause/resume/abandon, screen stays on. History is in parent settings.
 
 ## UI / assets
 

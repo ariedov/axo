@@ -83,9 +83,11 @@ class AppTheme {
           textStyle: const TextStyle(
             fontFamily: 'Nunito',
             fontWeight: FontWeight.w800,
+            fontSize: 16,
           ),
-          side: const BorderSide(color: AppColors.blush, width: 2),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          side: const BorderSide(color: AppColors.blush, width: 2),
         ),
       ),
       switchTheme: SwitchThemeData(

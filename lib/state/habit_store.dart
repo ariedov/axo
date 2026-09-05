@@ -14,6 +14,7 @@ import '../data/parent_auth.dart';
 import '../data/points_repository.dart';
 import '../data/strikes_repository.dart';
 import '../data/task_repository.dart';
+import '../data/timer_repository.dart';
 import '../data/today.dart';
 
 class HabitStore extends ChangeNotifier {
@@ -29,6 +30,7 @@ class HabitStore extends ChangeNotifier {
     GameLimitRepository? gameLimitRepo,
     CompletionBonusRepository? completionBonusRepo,
     GameRecentsRepository? gameRecents,
+    TimerRepository? timerRepo,
     this.celebrateFor = const Duration(seconds: 3),
     DateTime Function()? now,
   }) : onboardingFlags = onboardingFlags ?? InMemoryOnboardingFlags(),
@@ -37,6 +39,7 @@ class HabitStore extends ChangeNotifier {
        completionBonusRepo =
            completionBonusRepo ?? InMemoryCompletionBonusRepository(),
        gameRecents = gameRecents ?? InMemoryGameRecentsRepository(),
+       timerRepo = timerRepo ?? InMemoryTimerRepository(),
        now = now ?? DateTime.now;
 
   final PointsRepository pointsRepo;
@@ -50,6 +53,7 @@ class HabitStore extends ChangeNotifier {
   final GameLimitRepository gameLimitRepo;
   final CompletionBonusRepository completionBonusRepo;
   final GameRecentsRepository gameRecents;
+  final TimerRepository timerRepo;
   final Duration celebrateFor;
   final DateTime Function() now;
 
@@ -72,6 +76,9 @@ class HabitStore extends ChangeNotifier {
   int playLimitMinutes = AppConfig.playLimitMinutes;
   bool completionBonusEnabled = AppConfig.defaultCompletionBonusEnabled;
   int completionBonusPoints = AppConfig.defaultCompletionBonusPoints;
+  bool timerEnabled = AppConfig.defaultTimerEnabled;
+  TimerSession? activeTimer;
+  List<TimerSession> timerHistory = const [];
 
   Duration get playLimitWindow => Duration(minutes: playLimitMinutes);
 
@@ -156,6 +163,7 @@ class HabitStore extends ChangeNotifier {
     await _loadStrikes();
     await _loadGameLimit();
     await _loadCompletionBonus();
+    await _loadTimer();
     await _prunePlays();
     for (final snapshot in days.values) {
       history = history.withDay(
@@ -321,6 +329,143 @@ class HabitStore extends ChangeNotifier {
         enabled: gameLimitEnabled,
         rewardedPlays: rewardedPlays,
         playLimitMinutes: playLimitMinutes,
+      ),
+    );
+  }
+
+  Duration get timerElapsed {
+    final active = activeTimer;
+    if (active == null) return Duration.zero;
+    return active.elapsedAt(now());
+  }
+
+  bool get timerFinished {
+    final active = activeTimer;
+    if (active == null) return false;
+    return active.isFinishedAt(now());
+  }
+
+  Future<void> setTimerEnabled(bool enabled) async {
+    if (enabled == timerEnabled) return;
+    timerEnabled = enabled;
+    await _persistTimer();
+    notifyListeners();
+  }
+
+  Future<void> startTimer({
+    required Duration duration,
+    String reason = '',
+  }) async {
+    if (activeTimer != null) return;
+    if (duration < const Duration(seconds: 1)) return;
+    final stamp = now().toIso8601String();
+    activeTimer = TimerSession(
+      id: now().millisecondsSinceEpoch.toString(),
+      reason: reason.trim(),
+      targetMillis: duration.inMilliseconds,
+      startedAt: stamp,
+      runningSince: stamp,
+    );
+    await _persistTimer();
+    notifyListeners();
+  }
+
+  Future<void> pauseTimer() async {
+    final active = activeTimer;
+    if (active == null || !active.isRunning) return;
+    activeTimer = active.copyWith(
+      elapsedMillis: active.elapsedMillisAt(now()),
+      status: TimerStatus.paused,
+      clearRunningSince: true,
+    );
+    await _persistTimer();
+    notifyListeners();
+  }
+
+  Future<void> resumeTimer() async {
+    final active = activeTimer;
+    if (active == null || active.status != TimerStatus.paused) return;
+    if (active.isFinishedAt(now())) {
+      await completeTimer();
+      return;
+    }
+    activeTimer = active.copyWith(
+      status: TimerStatus.running,
+      runningSince: now().toIso8601String(),
+    );
+    await _persistTimer();
+    notifyListeners();
+  }
+
+  Future<void> abandonTimer() async {
+    final active = activeTimer;
+    if (active == null || !active.isOpen) return;
+    _archive(
+      active.copyWith(
+        elapsedMillis: active.elapsedMillisAt(now()),
+        endedAt: now().toIso8601String(),
+        status: TimerStatus.abandoned,
+        clearRunningSince: true,
+      ),
+    );
+    await _persistTimer();
+    notifyListeners();
+  }
+
+  Future<void> completeTimer() async {
+    final active = activeTimer;
+    if (active == null || !active.isOpen) return;
+    if (!active.isFinishedAt(now())) return;
+    _archive(
+      active.copyWith(
+        elapsedMillis: active.targetMillis,
+        endedAt: now().toIso8601String(),
+        status: TimerStatus.completed,
+        clearRunningSince: true,
+      ),
+    );
+    await _persistTimer();
+    notifyListeners();
+  }
+
+  void _archive(TimerSession session) {
+    activeTimer = null;
+    timerHistory = [session, ...timerHistory];
+    if (timerHistory.length > AppConfig.timerHistoryLimit) {
+      timerHistory = timerHistory.sublist(0, AppConfig.timerHistoryLimit);
+    }
+  }
+
+  Future<void> _loadTimer() async {
+    final snapshot = await timerRepo.load();
+    timerEnabled = snapshot.enabled;
+    timerHistory = snapshot.history;
+    final active = snapshot.active;
+    if (active == null || !active.isOpen) {
+      activeTimer = null;
+      return;
+    }
+    if (active.isFinishedAt(now())) {
+      _archive(
+        active.copyWith(
+          elapsedMillis: active.targetMillis,
+          endedAt: now().toIso8601String(),
+          status: TimerStatus.completed,
+          clearRunningSince: true,
+        ),
+      );
+      await _persistTimer();
+      return;
+    }
+    activeTimer = active;
+  }
+
+  Future<void> _persistTimer() {
+    return timerRepo.save(
+      TimerSnapshot(
+        enabled: timerEnabled,
+        active: activeTimer,
+        history: timerHistory,
       ),
     );
   }
@@ -655,6 +800,11 @@ class HabitStore extends ChangeNotifier {
       playLimitMinutes: playLimitMinutes,
       completionBonusEnabled: completionBonusEnabled,
       completionBonusPoints: completionBonusPoints,
+      timer: TimerSnapshot(
+        enabled: timerEnabled,
+        active: activeTimer,
+        history: timerHistory,
+      ),
     );
   }
 
@@ -685,6 +835,7 @@ class HabitStore extends ChangeNotifier {
         points: snapshot.completionBonusPoints,
       ),
     );
+    await timerRepo.save(snapshot.timer);
     await load();
   }
 

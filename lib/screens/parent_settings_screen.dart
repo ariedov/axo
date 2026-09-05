@@ -12,6 +12,7 @@ import '../widgets/parent_tasks_sheet.dart';
 import '../widgets/password_settings_sheet.dart';
 import '../widgets/penalty_settings_section.dart';
 import '../widgets/settings_tile.dart';
+import '../widgets/timer_history_sheet.dart';
 
 class ParentSettingsScreen extends StatelessWidget {
   const ParentSettingsScreen({super.key});
@@ -84,6 +85,16 @@ class ParentSettingsScreen extends StatelessWidget {
                     ? '${S.roundsWord(store.rewardedPlays)}, ${S.minutesWord(store.playLimitMinutes)}'
                     : S.off,
                 onTap: () => showGameLimitSettingsSheet(context),
+              ),
+              SettingsTile(
+                key: const Key('settings-timer'),
+                title: S.timer,
+                subtitle: store.timerEnabled
+                    ? (store.timerHistory.isEmpty
+                          ? S.timerNoHistory
+                          : S.recordsWord(store.timerHistory.length))
+                    : S.off,
+                onTap: () => showTimerHistorySheet(context),
               ),
               SettingsTile(
                 key: const Key('penalty-settings'),

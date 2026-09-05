@@ -336,6 +336,49 @@ class S {
 
   static String pointsToGo(int n) => 'Ще ${pointsWord(n)}';
 
+  static const timer = 'Таймер';
+  static const timerHint =
+      'Дитина може запустити таймер з головного екрана. Тут видно, скільки часу пройшло.';
+  static const timerEnabled = 'Показувати таймер';
+  static const timerReason = 'Навіщо';
+  static const timerReasonHint = 'Необов\'язково';
+  static const timerStart = 'Старт';
+  static const timerPause = 'Пауза';
+  static const timerResume = 'Далі';
+  static const timerAbandon = 'Зупинити';
+  static const timerAbandonTitle = 'Зупинити таймер?';
+  static const timerAbandonBody =
+      'Таймер зупиниться, а запис з\'явиться в історії.';
+  static const timerDone = 'Готово!';
+  static const timerDoneBody = 'Час вийшов! Я пишаюся тобою!';
+  static const timerNoHistory = 'Поки немає записів.';
+  static const timerCompleted = 'Виконано';
+  static const timerAbandoned = 'Зупинено';
+  static const noReason = 'Без назви';
+
+  static String timerOf(String elapsed, String target) => '$elapsed з $target';
+
+  static String recordsWord(int n) {
+    final abs = n.abs();
+    final mod10 = abs % 10;
+    final mod100 = abs % 100;
+    if (mod10 == 1 && mod100 != 11) return '$n запис';
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+      return '$n записи';
+    }
+    return '$n записів';
+  }
+
+  static String timerWhen(String iso) {
+    final date = DateTime.tryParse(iso)?.toLocal();
+    if (date == null) return iso;
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '$day.$month.${date.year} $hour:$minute';
+  }
+
   static String mascotLine({
     required int remaining,
     required int waiting,

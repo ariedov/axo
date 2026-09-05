@@ -15,6 +15,7 @@ import 'data/game_plays.dart';
 import 'data/game_recents.dart';
 import 'data/strikes_repository.dart';
 import 'data/task_repository.dart';
+import 'data/timer_repository.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'state/habit_scope.dart';
@@ -38,54 +39,54 @@ Future<void> main() async {
         await prefs.setInt(key, value);
       },
     ),
-    taskRepo: LocalTaskRepository(
-      (key) async => prefs.getString(key),
-      (key, value) async {
-        await prefs.setString(key, value);
-      },
-    ),
-    parentAuth: LocalParentAuth(
-      (key) async => prefs.getString(key),
-      (key, value) async {
-        await prefs.setString(key, value);
-      },
-    ),
-    gamePlays: LocalGamePlaysRepository(
-      (key) async => prefs.getString(key),
-      (key, value) async {
-        await prefs.setString(key, value);
-      },
-    ),
+    taskRepo: LocalTaskRepository((key) async => prefs.getString(key), (
+      key,
+      value,
+    ) async {
+      await prefs.setString(key, value);
+    }),
+    parentAuth: LocalParentAuth((key) async => prefs.getString(key), (
+      key,
+      value,
+    ) async {
+      await prefs.setString(key, value);
+    }),
+    gamePlays: LocalGamePlaysRepository((key) async => prefs.getString(key), (
+      key,
+      value,
+    ) async {
+      await prefs.setString(key, value);
+    }),
     gameRecents: LocalGameRecentsRepository(
       (key) async => prefs.getString(key),
       (key, value) async {
         await prefs.setString(key, value);
       },
     ),
-    goalRepo: LocalGoalRepository(
-      (key) async => prefs.getString(key),
-      (key, value) async {
-        await prefs.setString(key, value);
-      },
-    ),
+    goalRepo: LocalGoalRepository((key) async => prefs.getString(key), (
+      key,
+      value,
+    ) async {
+      await prefs.setString(key, value);
+    }),
     historyRepo: LocalDayHistoryRepository(
       (key) async => prefs.getString(key),
       (key, value) async {
         await prefs.setString(key, value);
       },
     ),
-    onboardingFlags: LocalOnboardingFlags(
-      (key) async => prefs.getBool(key),
-      (key, value) async {
-        await prefs.setBool(key, value);
-      },
-    ),
-    strikesRepo: LocalStrikesRepository(
-      (key) async => prefs.getString(key),
-      (key, value) async {
-        await prefs.setString(key, value);
-      },
-    ),
+    onboardingFlags: LocalOnboardingFlags((key) async => prefs.getBool(key), (
+      key,
+      value,
+    ) async {
+      await prefs.setBool(key, value);
+    }),
+    strikesRepo: LocalStrikesRepository((key) async => prefs.getString(key), (
+      key,
+      value,
+    ) async {
+      await prefs.setString(key, value);
+    }),
     gameLimitRepo: LocalGameLimitRepository(
       (key) async => prefs.getString(key),
       (key, value) async {
@@ -98,6 +99,12 @@ Future<void> main() async {
         await prefs.setString(key, value);
       },
     ),
+    timerRepo: LocalTimerRepository((key) async => prefs.getString(key), (
+      key,
+      value,
+    ) async {
+      await prefs.setString(key, value);
+    }),
   );
   await store.load();
   runApp(AxolotlApp(store: store));

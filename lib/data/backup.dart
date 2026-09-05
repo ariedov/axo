@@ -5,6 +5,7 @@ import 'day_history_repository.dart';
 import 'game_plays.dart';
 import 'models.dart';
 import 'task_repository.dart';
+import 'timer_repository.dart';
 import 'today.dart';
 
 class BackupSnapshot {
@@ -25,6 +26,7 @@ class BackupSnapshot {
     this.playLimitMinutes = AppConfig.playLimitMinutes,
     this.completionBonusEnabled = AppConfig.defaultCompletionBonusEnabled,
     this.completionBonusPoints = AppConfig.defaultCompletionBonusPoints,
+    this.timer = const TimerSnapshot(),
   });
 
   static const appId = 'axo';
@@ -46,6 +48,7 @@ class BackupSnapshot {
   final int playLimitMinutes;
   final bool completionBonusEnabled;
   final int completionBonusPoints;
+  final TimerSnapshot timer;
 
   String get fileName => 'axo-${todayStamp(exportedAt)}.json';
 
@@ -74,6 +77,7 @@ class BackupSnapshot {
       'playLimitMinutes': playLimitMinutes,
       'completionBonusEnabled': completionBonusEnabled,
       'completionBonusPoints': completionBonusPoints,
+      'timer': timer.toJson(),
     },
   };
 
@@ -128,6 +132,9 @@ class BackupSnapshot {
       completionBonusPoints:
           (data['completionBonusPoints'] as num?)?.toInt() ??
           AppConfig.defaultCompletionBonusPoints,
+      timer: data['timer'] is Map<String, dynamic>
+          ? TimerSnapshot.fromJson(data['timer'] as Map<String, dynamic>)
+          : const TimerSnapshot(),
     );
   }
 }
