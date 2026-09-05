@@ -26,7 +26,7 @@ No PR CI. `.github/workflows/release.yml` runs only on tag push. Always `analyze
 
 ## Domain
 
-Task flow: pending → `submit` → parent `verify` (awards points) or `reject` (back to pending). Parent gate is `askParent()`.
+Task flow: pending → `submit` → parent `verify` (awards points) or `reject` (back to pending). Parent gate is `askParent()`. Password is optional: skip at onboarding or turn off in parent settings. `askParent()` succeeds immediately when unset.
 
 Tasks are required unless `optional` (`HabitTask.isMandatory`); calendar completion, pending count, and the all-done bonus count only required tasks scheduled that day. `todayOnly` one-offs do not roll to the next day and stay out of the parent task sheets, but count toward their day. The all-done bonus is awarded at most once per day (`DayHistory.bonusDays`). `verify` returns the completion-bonus amount (0 if none). Task editor: main screen defaults to a one-off (no days selected), parent settings to every day; saving with no day selected is blocked outside the main screen.
 

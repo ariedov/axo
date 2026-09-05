@@ -24,6 +24,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     text: '${AppConfig.defaultStartingPoints}',
   );
   var _step = 0;
+  var _skippedPassword = false;
   String? _error;
   RewardGoal? _goal;
 
@@ -47,26 +48,56 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     setState(() => _step = 1);
   }
 
-  void _nextFromPassword() {
+  Future<void> _nextFromPassword() async {
     final password = _password.text.trim();
     final repeat = _repeat.text.trim();
     final pointsText = _points.text.trim();
-    final points = int.tryParse(pointsText) ??
+    final points =
+        int.tryParse(pointsText) ??
         (pointsText.isEmpty ? AppConfig.defaultStartingPoints : null);
-    if (password.length < AppConfig.minPasswordLength) {
-      setState(() => _error = S.passwordTooShort);
-      return;
-    }
-    if (password != repeat) {
-      setState(() => _error = S.passwordsDontMatch);
-      return;
-    }
     if (points == null || points < 0) {
       setState(() => _error = S.invalidPoints);
       return;
     }
+    var skipPassword = false;
+    if (password.isEmpty && repeat.isEmpty) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
+          title: const Text(S.skipPasswordTitle),
+          content: const Text(S.skipPasswordBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text(S.cancel),
+            ),
+            FilledButton(
+              key: const Key('onboarding-skip-password'),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text(S.continueAction),
+            ),
+          ],
+        ),
+      );
+      if (!mounted || confirmed != true) return;
+      skipPassword = true;
+    } else {
+      if (password.length < AppConfig.minPasswordLength) {
+        setState(() => _error = S.passwordTooShort);
+        return;
+      }
+      if (password != repeat) {
+        setState(() => _error = S.passwordsDontMatch);
+        return;
+      }
+    }
     setState(() {
       _error = null;
+      _skippedPassword = skipPassword;
       _step = 2;
     });
   }
@@ -82,10 +113,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _finish() async {
-    final points = int.tryParse(_points.text.trim()) ??
-        AppConfig.defaultStartingPoints;
+    final points =
+        int.tryParse(_points.text.trim()) ?? AppConfig.defaultStartingPoints;
     await HabitScope.of(context).completeOnboarding(
-      password: _password.text.trim(),
+      password: _skippedPassword ? '' : _password.text.trim(),
       startingPoints: points,
       goal: _goal,
     );
@@ -129,7 +160,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         ),
                         2 => _GoalPage(
                           goal: _goal,
-                          points: int.tryParse(_points.text.trim()) ??
+                          points:
+                              int.tryParse(_points.text.trim()) ??
                               AppConfig.defaultStartingPoints,
                           onAdd: _addGoal,
                           onNext: () => setState(() => _step = 3),
@@ -174,9 +206,8 @@ class _TopBar extends StatelessWidget {
             child: Text(
               AppConfig.appName,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w900,
-              ),
+              style: Theme.of(context).textTheme.headlineMedium
+                  ?.copyWith(fontWeight: FontWeight.w900),
             ),
           ),
           const SizedBox(width: 48),
@@ -281,6 +312,13 @@ class _PasswordPage extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         LabeledField(
+          controller: points,
+          label: S.startingPoints,
+          keyboardType: TextInputType.number,
+          onChanged: (_) => onChanged(),
+        ),
+        const SizedBox(height: 12),
+        LabeledField(
           controller: password,
           label: S.choosePassword,
           obscureText: true,
@@ -291,14 +329,6 @@ class _PasswordPage extends StatelessWidget {
           controller: repeat,
           label: S.repeatPassword,
           obscureText: true,
-          onChanged: (_) => onChanged(),
-          onSubmitted: (_) => onNext(),
-        ),
-        const SizedBox(height: 12),
-        LabeledField(
-          controller: points,
-          label: S.startingPoints,
-          keyboardType: TextInputType.number,
           textInputAction: TextInputAction.done,
           onChanged: (_) => onChanged(),
           onSubmitted: (_) => onNext(),

@@ -25,25 +25,32 @@ class PasswordSettingsSheet extends StatefulWidget {
 }
 
 class _PasswordSettingsSheetState extends State<PasswordSettingsSheet> {
-  final _current = TextEditingController();
   final _next = TextEditingController();
   final _repeat = TextEditingController();
   String? _message;
   var _ok = false;
+  var _enabled = true;
+  var _hadPassword = true;
+  var _seeded = false;
 
   @override
   void initState() {
     super.initState();
-    _current.addListener(_refresh);
     _next.addListener(_refresh);
     _repeat.addListener(_refresh);
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_seeded) return;
+    _hadPassword = HabitScope.of(context).hasParentPassword;
+    _enabled = _hadPassword;
+    _seeded = true;
+  }
+
+  @override
   void dispose() {
-    _current
-      ..removeListener(_refresh)
-      ..dispose();
     _next
       ..removeListener(_refresh)
       ..dispose();
@@ -58,12 +65,25 @@ class _PasswordSettingsSheetState extends State<PasswordSettingsSheet> {
   }
 
   bool get _dirty =>
-      _current.text.isNotEmpty ||
+      _enabled != _hadPassword ||
       _next.text.isNotEmpty ||
       _repeat.text.isNotEmpty;
 
   Future<void> _save() async {
+    final store = HabitScope.of(context);
+    if (!_enabled) {
+      if (_hadPassword) await store.setParentPassword('');
+      if (!mounted) return;
+      showParentToast(widget.messenger, S.passwordOff);
+      Navigator.pop(context);
+      return;
+    }
+
     final next = _next.text.trim();
+    if (_hadPassword && next.isEmpty && _repeat.text.isEmpty) {
+      Navigator.pop(context);
+      return;
+    }
     if (next.length < AppConfig.minPasswordLength) {
       setState(() {
         _ok = false;
@@ -79,18 +99,8 @@ class _PasswordSettingsSheetState extends State<PasswordSettingsSheet> {
       return;
     }
 
-    final changed = await HabitScope.of(context).changePassword(
-      current: _current.text,
-      next: next,
-    );
+    await store.setParentPassword(next);
     if (!mounted) return;
-    if (!changed) {
-      setState(() {
-        _ok = false;
-        _message = S.wrongPassword;
-      });
-      return;
-    }
     showParentToast(widget.messenger, S.passwordChanged);
     Navigator.pop(context);
   }
@@ -98,31 +108,57 @@ class _PasswordSettingsSheetState extends State<PasswordSettingsSheet> {
   @override
   Widget build(BuildContext context) {
     return SettingsSheetScaffold(
-      title: S.changePassword,
+      title: S.parentPassword,
+      hint: S.parentPasswordHint,
       dirty: _dirty,
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            LabeledField(
-              controller: _current,
-              label: S.currentPassword,
-              obscureText: true,
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppColors.blush, width: 2),
+              ),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      S.passwordEnabled,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  Switch(
+                    key: const Key('password-enabled'),
+                    value: _enabled,
+                    onChanged: (value) => setState(() => _enabled = value),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            LabeledField(
-              controller: _next,
-              label: S.newPassword,
-              obscureText: true,
-            ),
-            const SizedBox(height: 12),
-            LabeledField(
-              controller: _repeat,
-              label: S.repeatPassword,
-              obscureText: true,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => _save(),
-            ),
+            if (_enabled) ...[
+              const SizedBox(height: 12),
+              LabeledField(
+                key: const Key('password-next'),
+                controller: _next,
+                label: _hadPassword ? S.newPassword : S.choosePassword,
+                obscureText: true,
+              ),
+              const SizedBox(height: 12),
+              LabeledField(
+                key: const Key('password-repeat'),
+                controller: _repeat,
+                label: S.repeatPassword,
+                obscureText: true,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _save(),
+              ),
+            ],
             if (_message != null)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
@@ -136,6 +172,7 @@ class _PasswordSettingsSheetState extends State<PasswordSettingsSheet> {
               ),
             const SizedBox(height: 20),
             FilledButton(
+              key: const Key('save-password'),
               onPressed: _save,
               child: const Text(S.save),
             ),

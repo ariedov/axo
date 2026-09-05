@@ -6,6 +6,7 @@ import '../strings.dart';
 import '../theme.dart';
 
 Future<bool> askParent(BuildContext context, {String? message}) async {
+  if (!HabitScope.of(context).hasParentPassword) return true;
   final ok = await showDialog<bool>(
     context: context,
     barrierDismissible: false,

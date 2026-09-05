@@ -99,7 +99,8 @@ class ParentSettingsScreen extends StatelessWidget {
               ),
               SettingsTile(
                 key: const Key('settings-password'),
-                title: S.changePassword,
+                title: S.parentPassword,
+                subtitle: store.hasParentPassword ? S.changePassword : S.off,
                 onTap: () => showPasswordSettingsSheet(context),
               ),
               TextButton(
