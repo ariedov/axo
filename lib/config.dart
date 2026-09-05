@@ -36,4 +36,11 @@ class AppConfig {
   static const simonStartLength = 2;
   static const simonPads = 4;
   static const simonRoundPoints = 3;
+
+  static const defaultTimerEnabled = true;
+  static const timerDefaultMinutes = 5;
+  static const timerMinMinutes = 1;
+  static const timerMaxMinutes = 60;
+  static const timerHistoryLimit = 100;
+  static const timerPresetsMinutes = [1, 2, 5, 10, 15, 20, 30];
 }

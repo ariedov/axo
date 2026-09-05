@@ -20,9 +20,31 @@ import '../widgets/strikes_card.dart';
 import '../widgets/task_calendar.dart';
 import '../widgets/task_editor.dart';
 import '../widgets/task_tile.dart';
+import '../widgets/timer_run_overlay.dart';
+import '../widgets/timer_setup_sheet.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  var _openedActiveTimer = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_openedActiveTimer) return;
+    _openedActiveTimer = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (HabitScope.of(context).activeTimer != null) {
+        showTimerRunDialog(context);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +60,17 @@ class HomeScreen extends StatelessWidget {
         : AxolotlMood.happy;
 
     return Scaffold(
+      floatingActionButton: store.timerEnabled && store.activeTimer == null
+          ? FloatingActionButton(
+              key: const Key('timer-fab'),
+              tooltip: S.timer,
+              onPressed: () => _openTimer(context),
+              backgroundColor: AppColors.pink,
+              foregroundColor: Colors.white,
+              child: const Icon(Icons.timer_rounded),
+            )
+          : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       body: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -208,7 +241,9 @@ class HomeScreen extends StatelessWidget {
                     child: StrikesCard(key: Key('strikes-card')),
                   ),
                   const SliverToBoxAdapter(child: _ParentSection()),
-                  const SliverToBoxAdapter(child: SizedBox(height: 28)),
+                  SliverToBoxAdapter(
+                    child: SizedBox(height: store.timerEnabled ? 88 : 28),
+                  ),
                 ],
               ),
             ),
@@ -216,6 +251,15 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _openTimer(BuildContext context) async {
+    final result = await showTimerSetupDialog(context);
+    if (result == null || !context.mounted) return;
+    await HabitScope.of(context)
+        .startTimer(duration: result.duration, reason: result.reason);
+    if (!context.mounted) return;
+    await showTimerRunDialog(context);
   }
 
   Future<void> _openBonus(BuildContext context) async {
