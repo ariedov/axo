@@ -395,11 +395,15 @@ class HabitStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Records the round for the play window. Points only if this game still has
-  /// daily rewarded plays left. With limits off, always awards and skips caps.
+  /// Records the round for the play window. With limits off, rounds still
+  /// update per-game progress, while the award is never blocked by a cap.
   Future<int> tryAwardGamePlay(String gameId, {int? points}) async {
+    final award = points ?? AppConfig.gamePlayPoints;
     if (!gameLimitEnabled) {
-      final award = points ?? AppConfig.gamePlayPoints;
+      plays = plays
+          .increment(gameId, now())
+          .pruned(now(), window: playLimitWindow);
+      await gamePlays.save(plays);
       totalPoints = await pointsRepo.award(
         amount: award,
         taskId: 'game:$gameId',
@@ -408,22 +412,20 @@ class HabitStore extends ChangeNotifier {
       return award;
     }
     if (windowLeft <= 0) return 0;
-    final award = playsLeft(gameId) <= 0
-        ? 0
-        : (points ?? AppConfig.gamePlayPoints);
+    final scoredAward = playsLeft(gameId) <= 0 ? 0 : award;
 
     plays = plays
         .increment(gameId, now())
         .pruned(now(), window: playLimitWindow);
     await gamePlays.save(plays);
-    if (award > 0) {
+    if (scoredAward > 0) {
       totalPoints = await pointsRepo.award(
-        amount: award,
+        amount: scoredAward,
         taskId: 'game:$gameId',
       );
     }
     notifyListeners();
-    return award;
+    return scoredAward;
   }
 
   Future<void> submit(String taskId, {String? day}) {

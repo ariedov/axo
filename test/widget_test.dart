@@ -37,6 +37,7 @@ import 'package:app/strings.dart';
 import 'package:app/theme.dart';
 import 'package:app/widgets/answer_flash.dart';
 import 'package:app/widgets/axolotl_mascot.dart';
+import 'package:app/widgets/game_card.dart';
 import 'package:app/widgets/game_input_body.dart';
 import 'package:app/widgets/game_plays_banner.dart';
 import 'package:app/widgets/game_scaffold.dart';
@@ -1867,6 +1868,28 @@ void main() {
       tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
       isNotNull,
     );
+  });
+
+  testWidgets('game cards keep showing point progress when limits are off', (
+    tester,
+  ) async {
+    final store = testStore(gameLimitEnabled: false);
+    await store.load();
+
+    await tester.pumpWidget(
+      HabitScope(
+        store: store,
+        child: MaterialApp(
+          home: Scaffold(body: GameCardsRow(games: miniGames.take(1).toList())),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('0/${AppConfig.rewardedPlays}'), findsOneWidget);
+
+    await store.tryAwardGamePlay(miniGames.first.id);
+    await tester.pump();
+    expect(find.text('1/${AppConfig.rewardedPlays}'), findsOneWidget);
   });
 
   test('home recents fill from the catalog then last played', () {
