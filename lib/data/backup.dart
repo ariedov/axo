@@ -20,6 +20,7 @@ class BackupSnapshot {
     this.strikes = 0,
     this.strikeDay,
     this.penaltyPoints = AppConfig.defaultPenaltyPoints,
+    this.gameLimitEnabled = AppConfig.defaultGameLimitEnabled,
     this.rewardedPlays = AppConfig.rewardedPlays,
     this.playLimitMinutes = AppConfig.playLimitMinutes,
     this.completionBonusEnabled = AppConfig.defaultCompletionBonusEnabled,
@@ -40,6 +41,7 @@ class BackupSnapshot {
   final int strikes;
   final String? strikeDay;
   final int penaltyPoints;
+  final bool gameLimitEnabled;
   final int rewardedPlays;
   final int playLimitMinutes;
   final bool completionBonusEnabled;
@@ -67,6 +69,7 @@ class BackupSnapshot {
       'strikes': strikes,
       'strikeDay': strikeDay,
       'penaltyPoints': penaltyPoints,
+      'gameLimitEnabled': gameLimitEnabled,
       'rewardedPlays': rewardedPlays,
       'playLimitMinutes': playLimitMinutes,
       'completionBonusEnabled': completionBonusEnabled,
@@ -111,6 +114,9 @@ class BackupSnapshot {
       penaltyPoints:
           (data['penaltyPoints'] as num?)?.toInt() ??
           AppConfig.defaultPenaltyPoints,
+      gameLimitEnabled:
+          data['gameLimitEnabled'] as bool? ??
+          AppConfig.defaultGameLimitEnabled,
       rewardedPlays:
           (data['rewardedPlays'] as num?)?.toInt() ?? AppConfig.rewardedPlays,
       playLimitMinutes:

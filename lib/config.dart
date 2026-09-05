@@ -12,6 +12,7 @@ class AppConfig {
   static const timesTablesMin = 1;
   static const timesTablesMax = 10;
 
+  static const defaultGameLimitEnabled = true;
   static const rewardedPlays = 5;
   static const playLimitMinutes = 15;
   static const playLimitWindow = Duration(minutes: playLimitMinutes);

@@ -53,6 +53,7 @@ HabitStore testStore({
   int strikes = 0,
   String? strikeDay,
   int penaltyPoints = AppConfig.defaultPenaltyPoints,
+  bool gameLimitEnabled = AppConfig.defaultGameLimitEnabled,
   int rewardedPlays = AppConfig.rewardedPlays,
   int playLimitMinutes = AppConfig.playLimitMinutes,
   bool completionBonusEnabled = AppConfig.defaultCompletionBonusEnabled,
@@ -80,6 +81,7 @@ HabitStore testStore({
     ),
     gameLimitRepo: InMemoryGameLimitRepository(
       GameLimitSnapshot(
+        enabled: gameLimitEnabled,
         rewardedPlays: rewardedPlays,
         playLimitMinutes: playLimitMinutes,
       ),
@@ -565,6 +567,7 @@ void main() {
     expect(json['data']['gamePlays'], isA<Map<String, dynamic>>());
     expect(json['data']['strikes'], 0);
     expect(json['data']['penaltyPoints'], AppConfig.defaultPenaltyPoints);
+    expect(json['data']['gameLimitEnabled'], AppConfig.defaultGameLimitEnabled);
     expect(json['data']['rewardedPlays'], AppConfig.rewardedPlays);
     expect(json['data']['playLimitMinutes'], AppConfig.playLimitMinutes);
     expect(
@@ -644,6 +647,7 @@ void main() {
     expect(target.onboardingComplete, isTrue);
     expect(target.strikes, 0);
     expect(target.penaltyPoints, AppConfig.defaultPenaltyPoints);
+    expect(target.gameLimitEnabled, AppConfig.defaultGameLimitEnabled);
     expect(target.rewardedPlays, AppConfig.rewardedPlays);
     expect(target.playLimitMinutes, AppConfig.playLimitMinutes);
     expect(
@@ -1577,6 +1581,7 @@ void main() {
     await store.setGameLimit(rounds: 0, restMinutes: 1);
     expect(store.rewardedPlays, 3);
     expect(store.playLimitMinutes, 30);
+    expect(store.gameLimitEnabled, isTrue);
 
     expect(await store.tryAwardGamePlay('english'), 5);
     expect(await store.tryAwardGamePlay('spelling'), 5);
@@ -1585,10 +1590,33 @@ void main() {
     expect(store.playsCooldown, const Duration(minutes: 30));
   });
 
+  test('parent can turn off game limits', () async {
+    final store = testStore();
+    await store.load();
+    expect(store.gameLimitEnabled, isTrue);
+
+    await store.setGameLimit(enabled: false);
+    expect(store.gameLimitEnabled, isFalse);
+    expect(store.gamesLocked, isFalse);
+
+    for (var i = 0; i < AppConfig.rewardedPlays + 3; i++) {
+      expect(await store.tryAwardGamePlay('english'), 5);
+    }
+    expect(store.totalPoints, (AppConfig.rewardedPlays + 3) * 5);
+    expect(store.playsLeft('english'), AppConfig.rewardedPlays);
+    expect(store.gamesLocked, isFalse);
+    expect(await store.tryAwardGamePlay('spelling'), 5);
+  });
+
   test('backup round-trips game limit settings', () async {
-    final source = testStore(rewardedPlays: 3, playLimitMinutes: 30);
+    final source = testStore(
+      gameLimitEnabled: false,
+      rewardedPlays: 3,
+      playLimitMinutes: 30,
+    );
     await source.load();
     final snapshot = source.exportBackup();
+    expect(snapshot.gameLimitEnabled, isFalse);
     expect(snapshot.rewardedPlays, 3);
     expect(snapshot.playLimitMinutes, 30);
 
@@ -1596,6 +1624,7 @@ void main() {
     final restored = BackupSnapshot.fromJson(
       jsonDecode(encoded) as Map<String, dynamic>,
     );
+    expect(restored.gameLimitEnabled, isFalse);
     expect(restored.rewardedPlays, 3);
     expect(restored.playLimitMinutes, 30);
 
@@ -1612,12 +1641,14 @@ void main() {
         'gamePlays': GamePlaysSnapshot.empty().toJson(),
       },
     });
+    expect(old.gameLimitEnabled, AppConfig.defaultGameLimitEnabled);
     expect(old.rewardedPlays, AppConfig.rewardedPlays);
     expect(old.playLimitMinutes, AppConfig.playLimitMinutes);
 
     final target = testStore(rewardedPlays: 8, playLimitMinutes: 45);
     await target.load();
     await target.importBackup(snapshot);
+    expect(target.gameLimitEnabled, isFalse);
     expect(target.rewardedPlays, 3);
     expect(target.playLimitMinutes, 30);
   });
@@ -1755,6 +1786,43 @@ void main() {
     clock = clock.add(AppConfig.playLimitWindow);
     await tester.pump(const Duration(seconds: 1));
     expect(find.text(S.practiceMode), findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      isNotNull,
+    );
+  });
+
+  testWidgets('game setup stays open when the parent turns limits off', (
+    tester,
+  ) async {
+    final store = testStore(gameLimitEnabled: false);
+    await store.load();
+
+    await tester.pumpWidget(
+      HabitScope(
+        store: store,
+        child: MaterialApp(
+          home: Scaffold(
+            body: GameSetupBody(gameId: 'english', onStart: () {}),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('0/${AppConfig.rewardedPlays}'), findsNothing);
+    expect(find.text(S.practiceMode), findsNothing);
+    expect(
+      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      isNotNull,
+    );
+
+    for (var i = 0; i < AppConfig.rewardedPlays; i++) {
+      expect(await store.tryAwardGamePlay('english'), 5);
+    }
+    await tester.pump();
+    expect(store.gamesLocked, isFalse);
+    expect(find.text(S.gamePointsGone(AppConfig.rewardedPlays)), findsNothing);
+    expect(find.text(S.practiceMode), findsNothing);
     expect(
       tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
       isNotNull,
@@ -3330,6 +3398,48 @@ void main() {
     expect(store.rewardedPlays, 3);
     expect(store.playLimitMinutes, 30);
     expect(find.text('Ліміт ігор збережено'), findsAtLeastNWidgets(1));
+  });
+
+  testWidgets('parent settings can turn off the game limit', (tester) async {
+    final store = testStore();
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      HabitScope(
+        store: store,
+        child: MaterialApp(
+          theme: AppTheme.cute,
+          home: const ParentSettingsScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await openParentSetting(tester, const Key('game-limit-settings'));
+    expect(store.gameLimitEnabled, isTrue);
+
+    TextField roundsField() {
+      return tester.widget<TextField>(
+        find.descendant(
+          of: find.byKey(const Key('game-limit-rounds')),
+          matching: find.byType(TextField),
+        ),
+      );
+    }
+
+    expect(roundsField().enabled, isTrue);
+    await tester.tap(find.byKey(const Key('game-limit-enabled')));
+    await tester.pump();
+    expect(roundsField().enabled, isFalse);
+    await tester.tap(find.byKey(const Key('save-game-limit')));
+    await tester.pumpAndSettle();
+    expect(store.gameLimitEnabled, isFalse);
+    expect(find.text('Ліміт ігор збережено'), findsAtLeastNWidgets(1));
+    expect(find.text(S.off), findsOneWidget);
   });
 
   testWidgets('parent settings can change completion bonus', (tester) async {

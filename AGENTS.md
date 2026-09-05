@@ -30,7 +30,7 @@ Task flow: pending → `submit` → parent `verify` (awards points) or `reject` 
 
 Tasks are required unless `optional` (`HabitTask.isMandatory`); calendar completion, pending count, and the all-done bonus count only required tasks scheduled that day. `todayOnly` one-offs do not roll to the next day and stay out of the parent task sheets, but count toward their day. The all-done bonus is awarded at most once per day (`DayHistory.bonusDays`). `verify` returns the completion-bonus amount (0 if none). Task editor: main screen defaults to a one-off (no days selected), parent settings to every day; saving with no day selected is blocked outside the main screen.
 
-Games: 10 items per round (`AppConfig.roundLength`). Two caps: a global window (`rewardedPlays` in `playLimitMinutes`) and a per-game daily cap. After the daily cap, practice mode (no points). Award through `tryAwardGamePlay`. New game: id/points in `AppConfig`, catalog entry, screen (follow `GameScaffold` / `GameSetupBody` / `GameRound`), route in `miniGameScreen()`, strings on `S`, tests in `widget_test.dart`.
+Games: 10 items per round (`AppConfig.roundLength`). Two caps: a global window (`rewardedPlays` in `playLimitMinutes`) and a per-game daily cap. After the daily cap, practice mode (no points). Parent can turn limits off (`gameLimitEnabled`, default on); then play has no stops and always awards points. Award through `tryAwardGamePlay`. New game: id/points in `AppConfig`, catalog entry, screen (follow `GameScaffold` / `GameSetupBody` / `GameRound`), route in `miniGameScreen()`, strings on `S`, tests in `widget_test.dart`.
 
 Backup format 2, `app: axo`. Never export the parent password; import keeps the existing password. Newer format throws.
 

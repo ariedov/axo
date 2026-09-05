@@ -63,6 +63,7 @@ class GameCardsRow extends StatelessWidget {
                         game: games[i],
                         used: store.playsUsed(games[i].id),
                         max: store.rewardedPlays,
+                        showLimit: store.gameLimitEnabled,
                         onTap: () => openMiniGame(context, games[i]),
                       )
                     : const SizedBox.shrink(),
@@ -82,12 +83,14 @@ class GameCard extends StatelessWidget {
     required this.used,
     required this.max,
     required this.onTap,
+    this.showLimit = true,
   });
 
   final MiniGame game;
   final int used;
   final int max;
   final VoidCallback onTap;
+  final bool showLimit;
 
   @override
   Widget build(BuildContext context) {
@@ -139,26 +142,29 @@ class GameCard extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.star_rounded,
-                      size: 16,
-                      color: used < max ? AppColors.goldDeep : AppColors.muted,
-                    ),
-                    const SizedBox(width: 2),
-                    Text(
-                      S.gameRoundsProgress(used, max),
-                      style: TextStyle(
-                        fontWeight: FontWeight.w900,
+                if (showLimit)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.star_rounded,
+                        size: 16,
                         color: used < max
                             ? AppColors.goldDeep
                             : AppColors.muted,
                       ),
-                    ),
-                  ],
-                ),
+                      const SizedBox(width: 2),
+                      Text(
+                        S.gameRoundsProgress(used, max),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          color: used < max
+                              ? AppColors.goldDeep
+                              : AppColors.muted,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             ),
           ),

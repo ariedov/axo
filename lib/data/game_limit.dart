@@ -4,20 +4,24 @@ import '../config.dart';
 
 class GameLimitSnapshot {
   const GameLimitSnapshot({
+    this.enabled = AppConfig.defaultGameLimitEnabled,
     this.rewardedPlays = AppConfig.rewardedPlays,
     this.playLimitMinutes = AppConfig.playLimitMinutes,
   });
 
+  final bool enabled;
   final int rewardedPlays;
   final int playLimitMinutes;
 
   Map<String, dynamic> toJson() => {
+    'enabled': enabled,
     'rewardedPlays': rewardedPlays,
     'playLimitMinutes': playLimitMinutes,
   };
 
   factory GameLimitSnapshot.fromJson(Map<String, dynamic> json) {
     return GameLimitSnapshot(
+      enabled: json['enabled'] as bool? ?? AppConfig.defaultGameLimitEnabled,
       rewardedPlays:
           (json['rewardedPlays'] as num?)?.toInt() ?? AppConfig.rewardedPlays,
       playLimitMinutes:
