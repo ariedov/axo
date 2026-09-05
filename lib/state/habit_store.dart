@@ -78,7 +78,11 @@ class HabitStore extends ChangeNotifier {
 
   bool get needsOnboarding => !onboardingComplete;
 
-  bool checkPassword(String value) => value.trim() == parentPassword;
+  bool get hasParentPassword =>
+      parentPassword != null && parentPassword!.isNotEmpty;
+
+  bool checkPassword(String value) =>
+      hasParentPassword && value.trim() == parentPassword;
 
   int get pendingCount =>
       todayDailyTasks.where((task) => task.isPending).length;
@@ -338,7 +342,7 @@ class HabitStore extends ChangeNotifier {
     required String current,
     required String next,
   }) async {
-    if (!checkPassword(current)) return false;
+    if (hasParentPassword && !checkPassword(current)) return false;
     await setParentPassword(next);
     return true;
   }
@@ -669,7 +673,7 @@ class HabitStore extends ChangeNotifier {
 
   Future<void> _ensureActivated() async {
     if (history.activatedOn != null) return;
-    if (parentPassword == null || parentPassword!.isEmpty) return;
+    if (!onboardingComplete) return;
     history = history.withActivatedOn(todayStamp(now()));
     await historyRepo.save(history);
   }

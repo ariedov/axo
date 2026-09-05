@@ -91,7 +91,7 @@ class S {
   static const onboardingParentsBody =
       'Цей розділ — для мами і тата. Тут ви налаштуєте додаток, перш ніж віддати телефон дитині.';
   static const onboardingBody =
-      'Мама або тато: придумайте пароль і скільки балів дати на старт. Паролем ви підтверджуватимете завдання.';
+      'Мама або тато: скільки балів дати на старт і, за бажанням, пароль. Паролем ви підтверджуватимете завдання.';
   static const onboardingPrivacy =
       'Усі дані лишаються на цьому пристрої. Без реклами, без акаунтів і без інтернету.';
   static const onboardingGoalHello = 'За що збираємо бали?';
@@ -99,10 +99,11 @@ class S {
       'На що дитина збиратиме бали? Можна поставити нову ціль тут.';
   static const onboardingDoneHello = 'Усе готово!';
   static const onboardingDoneBody =
-      'Налаштування завершено. Далі Аксо — для дитини: завдання, ігри й цілі. Мама й тато підтверджують виконане паролем.';
+      'Налаштування завершено. Далі Аксо — для дитини: завдання, ігри й цілі. Батьківський розділ можна захистити паролем.';
   static const understood = 'Зрозуміло';
   static const choosePassword = 'Придумайте пароль';
   static const repeatPassword = 'Повторіть пароль';
+  static const skipPassword = 'Без пароля';
   static const startingPoints = 'Початкові бали';
   static const invalidPoints = 'Вкажіть ціле число балів';
   static const passwordTooShort = 'Щонайменше 4 символи';
@@ -115,7 +116,12 @@ class S {
   static const currentPassword = 'Поточний пароль';
   static const newPassword = 'Новий пароль';
   static const passwordChanged = 'Пароль змінено';
+  static const passwordOff = 'Пароль вимкнено';
   static const changePassword = 'Змінити пароль';
+  static const parentPassword = 'Батьківський пароль';
+  static const parentPasswordHint =
+      'Пароль захищає батьківський розділ і підтвердження завдань. Можна вимкнути.';
+  static const passwordEnabled = 'Вимагати пароль';
   static const bonusPoints = 'Бонус і штраф';
   static const bonusPointsHint =
       'Нарахуйте або зніміть будь-яку кількість балів.';

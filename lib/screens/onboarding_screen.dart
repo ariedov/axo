@@ -24,6 +24,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     text: '${AppConfig.defaultStartingPoints}',
   );
   var _step = 0;
+  var _skippedPassword = false;
   String? _error;
   RewardGoal? _goal;
 
@@ -47,19 +48,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     setState(() => _step = 1);
   }
 
-  void _nextFromPassword() {
+  void _nextFromPassword({bool skipPassword = false}) {
     final password = _password.text.trim();
     final repeat = _repeat.text.trim();
     final pointsText = _points.text.trim();
-    final points = int.tryParse(pointsText) ??
+    final points =
+        int.tryParse(pointsText) ??
         (pointsText.isEmpty ? AppConfig.defaultStartingPoints : null);
-    if (password.length < AppConfig.minPasswordLength) {
-      setState(() => _error = S.passwordTooShort);
-      return;
-    }
-    if (password != repeat) {
-      setState(() => _error = S.passwordsDontMatch);
-      return;
+    if (!skipPassword) {
+      if (password.length < AppConfig.minPasswordLength) {
+        setState(() => _error = S.passwordTooShort);
+        return;
+      }
+      if (password != repeat) {
+        setState(() => _error = S.passwordsDontMatch);
+        return;
+      }
     }
     if (points == null || points < 0) {
       setState(() => _error = S.invalidPoints);
@@ -67,6 +71,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
     setState(() {
       _error = null;
+      _skippedPassword = skipPassword;
       _step = 2;
     });
   }
@@ -82,10 +87,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _finish() async {
-    final points = int.tryParse(_points.text.trim()) ??
-        AppConfig.defaultStartingPoints;
+    final points =
+        int.tryParse(_points.text.trim()) ?? AppConfig.defaultStartingPoints;
     await HabitScope.of(context).completeOnboarding(
-      password: _password.text.trim(),
+      password: _skippedPassword ? '' : _password.text.trim(),
       startingPoints: points,
       goal: _goal,
     );
@@ -125,11 +130,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           onChanged: () {
                             if (_error != null) setState(() => _error = null);
                           },
-                          onNext: _nextFromPassword,
+                          onNext: () => _nextFromPassword(),
+                          onSkip: () => _nextFromPassword(skipPassword: true),
                         ),
                         2 => _GoalPage(
                           goal: _goal,
-                          points: int.tryParse(_points.text.trim()) ??
+                          points:
+                              int.tryParse(_points.text.trim()) ??
                               AppConfig.defaultStartingPoints,
                           onAdd: _addGoal,
                           onNext: () => setState(() => _step = 3),
@@ -174,9 +181,8 @@ class _TopBar extends StatelessWidget {
             child: Text(
               AppConfig.appName,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w900,
-              ),
+              style: Theme.of(context).textTheme.headlineMedium
+                  ?.copyWith(fontWeight: FontWeight.w900),
             ),
           ),
           const SizedBox(width: 48),
@@ -258,6 +264,7 @@ class _PasswordPage extends StatelessWidget {
     required this.error,
     required this.onChanged,
     required this.onNext,
+    required this.onSkip,
   });
 
   final TextEditingController password;
@@ -266,6 +273,7 @@ class _PasswordPage extends StatelessWidget {
   final String? error;
   final VoidCallback onChanged;
   final VoidCallback onNext;
+  final VoidCallback onSkip;
 
   @override
   Widget build(BuildContext context) {
@@ -316,12 +324,26 @@ class _PasswordPage extends StatelessWidget {
             ),
           ),
       ],
-      action: FilledButton(
-        onPressed: onNext,
-        child: const Padding(
-          padding: EdgeInsets.symmetric(vertical: 6),
-          child: Text(S.next),
-        ),
+      action: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FilledButton(
+            onPressed: onNext,
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 6),
+              child: Text(S.next),
+            ),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton(
+            key: const Key('onboarding-skip-password'),
+            onPressed: onSkip,
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 6),
+              child: Text(S.skipPassword),
+            ),
+          ),
+        ],
       ),
     );
   }

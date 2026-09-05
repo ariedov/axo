@@ -58,6 +58,7 @@ HabitStore testStore({
   bool completionBonusEnabled = AppConfig.defaultCompletionBonusEnabled,
   int completionBonusPoints = AppConfig.defaultCompletionBonusPoints,
   GameRecentsRepository? gameRecents,
+  OnboardingFlags? onboardingFlags,
   DayHistory? history,
   DateTime Function()? now,
 }) {
@@ -69,6 +70,7 @@ HabitStore testStore({
     parentAuth: InMemoryParentAuth(password),
     gamePlays: InMemoryGamePlaysRepository(),
     gameRecents: gameRecents,
+    onboardingFlags: onboardingFlags,
     goalRepo: InMemoryGoalRepository([...goals]),
     historyRepo: InMemoryDayHistoryRepository(history ?? const DayHistory()),
     strikesRepo: InMemoryStrikesRepository(
@@ -1448,6 +1450,45 @@ void main() {
     expect(store.checkPassword('abcd'), isTrue);
   });
 
+  test('password can be skipped and turned off', () async {
+    final store = testStore(password: null);
+    await store.load();
+    expect(store.hasParentPassword, isFalse);
+    expect(store.checkPassword(''), isFalse);
+    expect(await store.changePassword(current: '', next: 'mama'), isTrue);
+    expect(store.hasParentPassword, isTrue);
+    expect(store.checkPassword('mama'), isTrue);
+
+    await store.setParentPassword('');
+    expect(store.hasParentPassword, isFalse);
+    expect(store.checkPassword('mama'), isFalse);
+    expect(store.checkPassword(''), isFalse);
+  });
+
+  test('onboarding without a password still activates the family', () async {
+    final flags = InMemoryOnboardingFlags();
+    final auth = InMemoryParentAuth();
+    final store = HabitStore(
+      pointsRepo: InMemoryPointsRepository(),
+      taskRepo: InMemoryTaskRepository(
+        TaskSnapshot(day: todayStamp(), tasks: const []),
+      ),
+      parentAuth: auth,
+      gamePlays: InMemoryGamePlaysRepository(),
+      goalRepo: InMemoryGoalRepository(),
+      historyRepo: InMemoryDayHistoryRepository(),
+      onboardingFlags: flags,
+      celebrateFor: Duration.zero,
+    );
+    await store.load();
+    await store.completeOnboarding(password: '', startingPoints: 20);
+    expect(store.needsOnboarding, isFalse);
+    expect(store.hasParentPassword, isFalse);
+    expect(store.parentPassword, '');
+    expect(store.totalPoints, 20);
+    expect(store.history.activatedOn, todayStamp());
+  });
+
   test('a game round is ten items then complete', () {
     final round = GameRound();
     for (var i = 0; i < 7; i++) {
@@ -2268,10 +2309,11 @@ void main() {
     expect(find.text('Резервна копія'), findsOneWidget);
     expect(find.text('Експорт і імпорт'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('Змінити пароль'),
+      find.text(S.privacy),
       200,
       scrollable: find.byType(Scrollable).first,
     );
+    expect(find.text('Батьківський пароль'), findsOneWidget);
     expect(find.text('Змінити пароль'), findsOneWidget);
     expect(find.text(S.privacy), findsOneWidget);
     expect(find.byKey(const Key('export-backup')), findsNothing);
@@ -2865,7 +2907,7 @@ void main() {
     expect(find.text('Усе готово!'), findsOneWidget);
     expect(
       find.text(
-        'Налаштування завершено. Далі Аксо — для дитини: завдання, ігри й цілі. Мама й тато підтверджують виконане паролем.',
+        'Налаштування завершено. Далі Аксо — для дитини: завдання, ігри й цілі. Батьківський розділ можна захистити паролем.',
       ),
       findsOneWidget,
     );
@@ -2881,6 +2923,40 @@ void main() {
     expect(store.history.activatedOn, todayStamp());
     expect(find.text('Завдання на сьогодні'), findsOneWidget);
     expect(find.text('Морозиво'), findsOneWidget);
+  });
+
+  testWidgets('first launch can skip the parent password', (tester) async {
+    final store = testStore(password: null);
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+
+    await tester.tap(find.text('Далі'));
+    await tester.pump();
+
+    expect(find.text('Без пароля'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('onboarding-skip-password')));
+    await tester.pump();
+
+    expect(find.text('За що збираємо бали?'), findsOneWidget);
+    expect(store.parentPassword, isNull);
+
+    await tester.tap(find.text('Далі'));
+    await tester.pump();
+    await tester.tap(find.text('Зрозуміло'));
+    await tester.pump();
+
+    expect(store.hasParentPassword, isFalse);
+    expect(store.parentPassword, '');
+    expect(store.totalPoints, 50);
+    expect(store.onboardingComplete, isTrue);
+    expect(store.history.activatedOn, todayStamp());
+    expect(find.text('Завдання на сьогодні'), findsOneWidget);
   });
 
   testWidgets('home shows a streak badge after consecutive full days', (
@@ -3381,6 +3457,62 @@ void main() {
     expect(find.text('Бонус збережено'), findsAtLeastNWidgets(1));
   });
 
+  testWidgets('parent settings can turn off the password', (tester) async {
+    final store = testStore();
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await pumpParentSettings(tester, store);
+
+    await openParentSetting(tester, const Key('settings-password'));
+    expect(store.hasParentPassword, isTrue);
+    expect(find.byKey(const Key('password-current')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('password-enabled')));
+    await tester.pump();
+    expect(find.byKey(const Key('password-current')), findsNothing);
+    await tester.tap(find.byKey(const Key('save-password')));
+    await tester.pumpAndSettle();
+    expect(store.hasParentPassword, isFalse);
+    expect(find.text('Пароль вимкнено'), findsAtLeastNWidgets(1));
+    expect(find.text(S.off), findsOneWidget);
+  });
+
+  testWidgets('parent settings can set a password when none is on', (
+    tester,
+  ) async {
+    final store = testStore(
+      password: null,
+      onboardingFlags: InMemoryOnboardingFlags(true),
+    );
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await pumpParentSettings(tester, store);
+
+    expect(find.text(S.off), findsOneWidget);
+    await openParentSetting(tester, const Key('settings-password'));
+    expect(find.byKey(const Key('password-next')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('password-enabled')));
+    await tester.pump();
+    expect(find.byKey(const Key('password-current')), findsNothing);
+    await tester.enterText(find.byKey(const Key('password-next')), 'mama');
+    await tester.enterText(find.byKey(const Key('password-repeat')), 'mama');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('save-password')));
+    await tester.pumpAndSettle();
+    expect(store.hasParentPassword, isTrue);
+    expect(store.checkPassword('mama'), isTrue);
+    expect(find.text('Пароль змінено'), findsAtLeastNWidgets(1));
+  });
+
   testWidgets('parent sheets close silently when nothing changed', (
     tester,
   ) async {
@@ -3604,6 +3736,41 @@ void main() {
     expect(store.tasks.last.optional, isTrue);
     expect(store.dailyTasks, hasLength(1));
     expect(store.extraTasks, hasLength(1));
+  });
+
+  testWidgets('home skips the parent gate when no password is set', (
+    tester,
+  ) async {
+    final store = testStore(
+      password: null,
+      onboardingFlags: InMemoryOnboardingFlags(true),
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+      ],
+    );
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('add-today-task')),
+      300,
+      scrollable: find.byType(Scrollable),
+    );
+    await tester.tap(find.byKey(const Key('add-today-task')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      find.text('Введи пароль, щоб додати завдання на сьогодні'),
+      findsNothing,
+    );
+    expect(find.text('Додати завдання'), findsOneWidget);
   });
 
   testWidgets('answer flash appears then fades away', (tester) async {
