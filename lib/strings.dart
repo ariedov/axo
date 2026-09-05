@@ -154,6 +154,7 @@ class S {
   static const gameLimitSettings = 'Ліміт ігор';
   static const gameLimitSettingsHint =
       'Скільки раундів можна зіграти підряд і скільки хвилин відпочинку після цього.';
+  static const gameLimitEnabled = 'Обмежувати ігри';
   static const gameLimitRounds = 'Раундів підряд';
   static const gameLimitRest = 'Перерва в хвилинах';
   static const gameLimitSaved = 'Ліміт ігор збережено';

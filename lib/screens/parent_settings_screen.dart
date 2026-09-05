@@ -80,8 +80,9 @@ class ParentSettingsScreen extends StatelessWidget {
               SettingsTile(
                 key: const Key('game-limit-settings'),
                 title: S.gameLimitSettings,
-                subtitle:
-                    '${S.roundsWord(store.rewardedPlays)}, ${S.minutesWord(store.playLimitMinutes)}',
+                subtitle: store.gameLimitEnabled
+                    ? '${S.roundsWord(store.rewardedPlays)}, ${S.minutesWord(store.playLimitMinutes)}'
+                    : S.off,
                 onTap: () => showGameLimitSettingsSheet(context),
               ),
               SettingsTile(

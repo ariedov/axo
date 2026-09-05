@@ -64,6 +64,7 @@ class GamePlaysBanner extends StatelessWidget {
     return GameLimitClock(
       builder: (context) {
         final store = HabitScope.of(context);
+        if (!store.gameLimitEnabled) return const SizedBox.shrink();
         if (compact && store.gamesLocked) {
           return Text.rich(
             TextSpan(

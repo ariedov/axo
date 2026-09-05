@@ -67,6 +67,7 @@ class HabitStore extends ChangeNotifier {
   int strikes = 0;
   String? strikeDay;
   int penaltyPoints = AppConfig.defaultPenaltyPoints;
+  bool gameLimitEnabled = AppConfig.defaultGameLimitEnabled;
   int rewardedPlays = AppConfig.rewardedPlays;
   int playLimitMinutes = AppConfig.playLimitMinutes;
   bool completionBonusEnabled = AppConfig.defaultCompletionBonusEnabled;
@@ -253,10 +254,18 @@ class HabitStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setGameLimit({int? rounds, int? restMinutes}) async {
+  Future<void> setGameLimit({
+    bool? enabled,
+    int? rounds,
+    int? restMinutes,
+  }) async {
     if (rounds != null && rounds < 1) return;
     if (restMinutes != null && restMinutes < 1) return;
     var changed = false;
+    if (enabled != null && enabled != gameLimitEnabled) {
+      gameLimitEnabled = enabled;
+      changed = true;
+    }
     if (rounds != null && rounds != rewardedPlays) {
       rewardedPlays = rounds;
       changed = true;
@@ -297,6 +306,7 @@ class HabitStore extends ChangeNotifier {
 
   Future<void> _loadGameLimit() async {
     final snapshot = await gameLimitRepo.load();
+    gameLimitEnabled = snapshot.enabled;
     rewardedPlays = snapshot.rewardedPlays < 1
         ? AppConfig.rewardedPlays
         : snapshot.rewardedPlays;
@@ -308,6 +318,7 @@ class HabitStore extends ChangeNotifier {
   Future<void> _persistGameLimit() {
     return gameLimitRepo.save(
       GameLimitSnapshot(
+        enabled: gameLimitEnabled,
         rewardedPlays: rewardedPlays,
         playLimitMinutes: playLimitMinutes,
       ),
@@ -344,6 +355,7 @@ class HabitStore extends ChangeNotifier {
   }
 
   int playsLeft(String gameId) {
+    if (!gameLimitEnabled) return rewardedPlays;
     final left = rewardedPlays - playsUsed(gameId);
     return left < 0 ? 0 : left;
   }
@@ -355,6 +367,7 @@ class HabitStore extends ChangeNotifier {
   }
 
   int get windowLeft {
+    if (!gameLimitEnabled) return rewardedPlays;
     if (gamesLocked) return 0;
     final left = rewardedPlays - plays.used(now(), window: playLimitWindow);
     return left < 0 ? 0 : left;
@@ -363,7 +376,7 @@ class HabitStore extends ChangeNotifier {
   DateTime? get playsUnlocksAt =>
       plays.unlocksAt(now(), window: playLimitWindow, cap: rewardedPlays);
 
-  bool get gamesLocked => playsUnlocksAt != null;
+  bool get gamesLocked => gameLimitEnabled && playsUnlocksAt != null;
 
   Duration get playsCooldown {
     final at = playsUnlocksAt;
@@ -383,8 +396,17 @@ class HabitStore extends ChangeNotifier {
   }
 
   /// Records the round for the play window. Points only if this game still has
-  /// daily rewarded plays left.
+  /// daily rewarded plays left. With limits off, always awards and skips caps.
   Future<int> tryAwardGamePlay(String gameId, {int? points}) async {
+    if (!gameLimitEnabled) {
+      final award = points ?? AppConfig.gamePlayPoints;
+      totalPoints = await pointsRepo.award(
+        amount: award,
+        taskId: 'game:$gameId',
+      );
+      notifyListeners();
+      return award;
+    }
     if (windowLeft <= 0) return 0;
     final award = playsLeft(gameId) <= 0
         ? 0
@@ -626,6 +648,7 @@ class HabitStore extends ChangeNotifier {
       strikes: strikes,
       strikeDay: strikeDay,
       penaltyPoints: penaltyPoints,
+      gameLimitEnabled: gameLimitEnabled,
       rewardedPlays: rewardedPlays,
       playLimitMinutes: playLimitMinutes,
       completionBonusEnabled: completionBonusEnabled,
@@ -649,6 +672,7 @@ class HabitStore extends ChangeNotifier {
     );
     await gameLimitRepo.save(
       GameLimitSnapshot(
+        enabled: snapshot.gameLimitEnabled,
         rewardedPlays: snapshot.rewardedPlays,
         playLimitMinutes: snapshot.playLimitMinutes,
       ),
