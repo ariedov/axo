@@ -2938,7 +2938,16 @@ void main() {
     await tester.tap(find.text('Далі'));
     await tester.pump();
 
-    expect(find.text('Без пароля'), findsOneWidget);
+    expect(find.text('Без пароля'), findsNothing);
+    await tester.tap(find.text('Далі'));
+    await tester.pump();
+    expect(find.text('Без пароля?'), findsOneWidget);
+    expect(
+      find.text(
+        'Можна продовжити без пароля. Його можна створити пізніше в батьківському розділі.',
+      ),
+      findsOneWidget,
+    );
     await tester.tap(find.byKey(const Key('onboarding-skip-password')));
     await tester.pump();
 

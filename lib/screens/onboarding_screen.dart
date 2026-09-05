@@ -48,14 +48,44 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     setState(() => _step = 1);
   }
 
-  void _nextFromPassword({bool skipPassword = false}) {
+  Future<void> _nextFromPassword() async {
     final password = _password.text.trim();
     final repeat = _repeat.text.trim();
     final pointsText = _points.text.trim();
     final points =
         int.tryParse(pointsText) ??
         (pointsText.isEmpty ? AppConfig.defaultStartingPoints : null);
-    if (!skipPassword) {
+    if (points == null || points < 0) {
+      setState(() => _error = S.invalidPoints);
+      return;
+    }
+    var skipPassword = false;
+    if (password.isEmpty && repeat.isEmpty) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
+          title: const Text(S.skipPasswordTitle),
+          content: const Text(S.skipPasswordBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text(S.cancel),
+            ),
+            FilledButton(
+              key: const Key('onboarding-skip-password'),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text(S.continueAction),
+            ),
+          ],
+        ),
+      );
+      if (!mounted || confirmed != true) return;
+      skipPassword = true;
+    } else {
       if (password.length < AppConfig.minPasswordLength) {
         setState(() => _error = S.passwordTooShort);
         return;
@@ -64,10 +94,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         setState(() => _error = S.passwordsDontMatch);
         return;
       }
-    }
-    if (points == null || points < 0) {
-      setState(() => _error = S.invalidPoints);
-      return;
     }
     setState(() {
       _error = null;
@@ -130,8 +156,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           onChanged: () {
                             if (_error != null) setState(() => _error = null);
                           },
-                          onNext: () => _nextFromPassword(),
-                          onSkip: () => _nextFromPassword(skipPassword: true),
+                          onNext: _nextFromPassword,
                         ),
                         2 => _GoalPage(
                           goal: _goal,
@@ -264,7 +289,6 @@ class _PasswordPage extends StatelessWidget {
     required this.error,
     required this.onChanged,
     required this.onNext,
-    required this.onSkip,
   });
 
   final TextEditingController password;
@@ -273,7 +297,6 @@ class _PasswordPage extends StatelessWidget {
   final String? error;
   final VoidCallback onChanged;
   final VoidCallback onNext;
-  final VoidCallback onSkip;
 
   @override
   Widget build(BuildContext context) {
@@ -323,26 +346,12 @@ class _PasswordPage extends StatelessWidget {
             ),
           ),
       ],
-      action: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          FilledButton(
-            onPressed: onNext,
-            child: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 6),
-              child: Text(S.next),
-            ),
-          ),
-          const SizedBox(height: 10),
-          OutlinedButton(
-            key: const Key('onboarding-skip-password'),
-            onPressed: onSkip,
-            child: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 6),
-              child: Text(S.skipPassword),
-            ),
-          ),
-        ],
+      action: FilledButton(
+        onPressed: onNext,
+        child: const Padding(
+          padding: EdgeInsets.symmetric(vertical: 6),
+          child: Text(S.next),
+        ),
       ),
     );
   }

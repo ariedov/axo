@@ -103,7 +103,9 @@ class S {
   static const understood = 'Зрозуміло';
   static const choosePassword = 'Придумайте пароль';
   static const repeatPassword = 'Повторіть пароль';
-  static const skipPassword = 'Без пароля';
+  static const skipPasswordTitle = 'Без пароля?';
+  static const skipPasswordBody =
+      'Можна продовжити без пароля. Його можна створити пізніше в батьківському розділі.';
   static const startingPoints = 'Початкові бали';
   static const invalidPoints = 'Вкажіть ціле число балів';
   static const passwordTooShort = 'Щонайменше 4 символи';
