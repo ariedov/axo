@@ -61,16 +61,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       floatingActionButton: store.timerEnabled && store.activeTimer == null
-          ? FloatingActionButton(
+          ? FloatingActionButton.extended(
               key: const Key('timer-fab'),
               tooltip: S.timer,
               onPressed: () => _openTimer(context),
               backgroundColor: AppColors.pink,
               foregroundColor: Colors.white,
-              child: const Icon(Icons.timer_rounded),
+              icon: const Icon(Icons.timer_rounded),
+              label: const Text(S.timer),
             )
           : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: LinearGradient(

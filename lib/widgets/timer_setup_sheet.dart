@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import '../config.dart';
 import '../strings.dart';
 import '../theme.dart';
-import 'labeled_field.dart';
 import 'timer_clock.dart';
 
 class TimerSetupResult {
@@ -15,21 +14,27 @@ class TimerSetupResult {
 }
 
 Future<TimerSetupResult?> showTimerSetupDialog(BuildContext context) {
-  return showDialog<TimerSetupResult>(
+  return showModalBottomSheet<TimerSetupResult>(
     context: context,
-    barrierDismissible: false,
-    builder: (context) => const _TimerSetupDialog(),
+    isScrollControlled: true,
+    enableDrag: false,
+    backgroundColor: Colors.white,
+    clipBehavior: Clip.antiAlias,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    ),
+    builder: (context) => const _TimerSetupSheet(),
   );
 }
 
-class _TimerSetupDialog extends StatefulWidget {
-  const _TimerSetupDialog();
+class _TimerSetupSheet extends StatefulWidget {
+  const _TimerSetupSheet();
 
   @override
-  State<_TimerSetupDialog> createState() => _TimerSetupDialogState();
+  State<_TimerSetupSheet> createState() => _TimerSetupSheetState();
 }
 
-class _TimerSetupDialogState extends State<_TimerSetupDialog> {
+class _TimerSetupSheetState extends State<_TimerSetupSheet> {
   final _reason = TextEditingController();
   var _minutes = AppConfig.timerDefaultMinutes;
 
@@ -47,6 +52,7 @@ class _TimerSetupDialogState extends State<_TimerSetupDialog> {
       AppConfig.timerMaxMinutes,
     );
     if (next == _minutes) return;
+    HapticFeedback.selectionClick();
     setState(() => _minutes = next);
   }
 
@@ -60,89 +66,85 @@ class _TimerSetupDialogState extends State<_TimerSetupDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      title: const Text(S.timer),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TimerClock(
-              key: const Key('timer-setup-clock'),
-              progress: _minutes / AppConfig.timerMaxMinutes,
-              label: S.countdown(_duration),
-              size: 200,
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  key: const Key('timer-minus'),
-                  onPressed: () => _setMinutes(_minutes - 1),
-                  icon: const Icon(Icons.remove_circle_rounded),
-                  color: AppColors.pinkDark,
-                  iconSize: 32,
-                ),
-                Text(
-                  S.minutesWord(_minutes),
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-                IconButton(
-                  key: const Key('timer-plus'),
-                  onPressed: () => _setMinutes(_minutes + 1),
-                  icon: const Icon(Icons.add_circle_rounded),
-                  color: AppColors.pinkDark,
-                  iconSize: 32,
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: [
-                for (final minutes in AppConfig.timerPresetsMinutes)
-                  ChoiceChip(
-                    key: Key('timer-preset-$minutes'),
-                    label: Text('$minutes'),
-                    selected: _minutes == minutes,
-                    onSelected: (_) => _setMinutes(minutes),
-                    selectedColor: AppColors.pink,
-                    labelStyle: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: _minutes == minutes ? Colors.white : AppColors.ink,
-                    ),
-                    side: const BorderSide(color: AppColors.blush, width: 2),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.blush,
+                    borderRadius: BorderRadius.circular(99),
                   ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            LabeledField(
-              key: const Key('timer-reason'),
-              controller: _reason,
-              label: '${S.timerReason} · ${S.timerReasonHint}',
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => _start(),
-            ),
-          ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              TimerClock(
+                key: const Key('timer-setup-clock'),
+                progress: _minutes / AppConfig.timerMaxMinutes,
+                label: S.countdown(_duration),
+                size: 148,
+                onMinutes: _setMinutes,
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                alignment: WrapAlignment.center,
+                children: [
+                  for (final minutes in AppConfig.timerPresetsMinutes)
+                    ChoiceChip(
+                      key: Key('timer-preset-$minutes'),
+                      label: Text('$minutes'),
+                      visualDensity: VisualDensity.compact,
+                      selected: _minutes == minutes,
+                      onSelected: (_) => _setMinutes(minutes),
+                      selectedColor: AppColors.pink,
+                      labelStyle: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: _minutes == minutes
+                            ? Colors.white
+                            : AppColors.ink,
+                      ),
+                      side: const BorderSide(color: AppColors.blush, width: 2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const Key('timer-reason'),
+                controller: _reason,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _start(),
+                style: const TextStyle(fontWeight: FontWeight.w800),
+                decoration: const InputDecoration(
+                  hintText: '${S.timerReason} · ${S.timerReasonHint}',
+                  prefixIcon: Icon(Icons.edit_rounded),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  key: const Key('timer-start'),
+                  onPressed: _start,
+                  child: const Text(S.timerStart),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text(S.cancel),
-        ),
-        FilledButton(
-          key: const Key('timer-start'),
-          onPressed: _start,
-          child: const Text(S.timerStart),
-        ),
-      ],
     );
   }
 }

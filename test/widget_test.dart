@@ -44,6 +44,7 @@ import 'package:app/widgets/game_plays_banner.dart';
 import 'package:app/widgets/game_scaffold.dart';
 import 'package:app/widgets/game_setup_body.dart';
 import 'package:app/widgets/task_icons.dart';
+import 'package:app/widgets/timer_clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -4174,6 +4175,13 @@ void main() {
     expect(restored.timer.active, isNull);
   });
 
+  test('clock drag maps around the face to minutes', () {
+    expect(TimerClock.minutesForOffset(const Offset(100, 20), size: 200), 60);
+    expect(TimerClock.minutesForOffset(const Offset(180, 100), size: 200), 15);
+    expect(TimerClock.minutesForOffset(const Offset(100, 180), size: 200), 30);
+    expect(TimerClock.minutesForOffset(const Offset(20, 100), size: 200), 45);
+  });
+
   test('Ukrainian timer records pluralization', () {
     expect(S.recordsWord(1), '1 запис');
     expect(S.recordsWord(2), '2 записи');
@@ -4196,17 +4204,17 @@ void main() {
     expect(find.byKey(const Key('timer-fab')), findsOneWidget);
     await tester.tap(find.byKey(const Key('timer-fab')));
     await tester.pump();
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     expect(find.byKey(const Key('timer-start')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('timer-preset-1')));
     await tester.enterText(find.byKey(const Key('timer-reason')), 'Читання');
     await tester.tap(find.byKey(const Key('timer-start')));
     await tester.pump();
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.byKey(const Key('timer-run-clock')), findsOneWidget);
-    expect(find.text('Читання'), findsOneWidget);
+    expect(find.text('Читання'), findsWidgets);
     expect(store.activeTimer, isNotNull);
 
     clock = clock.add(const Duration(seconds: 12));
@@ -4247,10 +4255,10 @@ void main() {
     await tester.pump();
     await tester.tap(find.byKey(const Key('timer-fab')));
     await tester.pump();
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     await tester.tap(find.byKey(const Key('timer-start')));
     await tester.pump();
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
     clock = clock.add(const Duration(seconds: 9));
     await tester.pump(const Duration(milliseconds: 250));
