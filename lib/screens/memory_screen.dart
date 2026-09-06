@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../config.dart';
+import '../data/audio_service.dart';
 import '../data/game_round.dart';
 import '../data/memory_deck.dart';
 import '../state/habit_scope.dart';
@@ -68,6 +69,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
 
   void _start() {
     if (HabitScope.of(context).gamesLocked) return;
+    AudioService.instance.play(SoundEffect.gameStart);
     _round.reset();
     _roundPoints = 0;
     _showSummary = false;
@@ -94,6 +96,9 @@ class _MemoryScreenState extends State<MemoryScreen> {
         AppConfig.memoryGame,
         points: AppConfig.memoryRoundPoints,
       );
+      if (_roundPoints > 0) {
+        AudioService.instance.play(SoundEffect.points);
+      }
       if (!mounted) return;
       setState(() {
         _showSummary = true;
@@ -113,6 +118,7 @@ class _MemoryScreenState extends State<MemoryScreen> {
     if (_busy || _showSummary) return;
     final tile = _tiles[index];
     if (tile.faceUp || tile.matched) return;
+    AudioService.instance.play(SoundEffect.tap);
 
     setState(() => tile.faceUp = true);
     final open = _tiles.where((item) => item.faceUp && !item.matched).toList();

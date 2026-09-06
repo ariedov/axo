@@ -345,6 +345,8 @@ class S {
   static const timerStart = 'Старт';
   static const timerPause = 'Пауза';
   static const timerResume = 'Далі';
+  static const timerMute = 'Вимкнути музику';
+  static const timerUnmute = 'Увімкнути музику';
   static const timerAbandon = 'Зупинити';
   static const timerAbandonTitle = 'Зупинити таймер?';
   static const timerAbandonBody =

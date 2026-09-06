@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../config.dart';
+import '../data/audio_service.dart';
 import '../data/screen_wake.dart';
 import '../data/timer_repository.dart';
 import '../state/habit_scope.dart';
@@ -35,13 +37,17 @@ class _TimerRunOverlayState extends State<TimerRunOverlay> {
   void initState() {
     super.initState();
     _ticker = Timer.periodic(const Duration(milliseconds: 200), (_) => _tick());
-    WidgetsBinding.instance.addPostFrameCallback((_) => _syncWake());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncWake();
+      _syncMusic();
+    });
   }
 
   @override
   void dispose() {
     _ticker?.cancel();
     unawaited(setScreenWake(false));
+    unawaited(AudioService.instance.stopMusic());
     super.dispose();
   }
 
@@ -54,6 +60,7 @@ class _TimerRunOverlayState extends State<TimerRunOverlay> {
       if (!mounted) return;
       setState(() => _done = true);
       await setScreenWake(false);
+      await AudioService.instance.stopMusic();
       return;
     }
     setState(() {});
@@ -66,15 +73,45 @@ class _TimerRunOverlayState extends State<TimerRunOverlay> {
     return setScreenWake(active != null && active.isRunning);
   }
 
+  Future<void> _syncMusic() async {
+    if (!mounted || _done) {
+      await AudioService.instance.stopMusic();
+      return;
+    }
+    final store = HabitScope.of(context);
+    final active = store.activeTimer;
+    if (active == null) {
+      await AudioService.instance.stopMusic();
+      return;
+    }
+    await AudioService.instance.playMusic(
+      AppConfig.timerMusic,
+      volume: store.timerMusicMuted ? 0 : 1,
+    );
+    if (active.status == TimerStatus.paused) {
+      await AudioService.instance.pauseMusic();
+    }
+  }
+
+  Future<void> _toggleMute() async {
+    final store = HabitScope.of(context);
+    final muted = !store.timerMusicMuted;
+    await store.setTimerMusicMuted(muted);
+    await AudioService.instance.setMusicVolume(muted ? 0 : 1);
+    if (mounted) setState(() {});
+  }
+
   Future<void> _pause() async {
     await HabitScope.of(context).pauseTimer();
     await setScreenWake(false);
+    await AudioService.instance.pauseMusic();
     if (mounted) setState(() {});
   }
 
   Future<void> _resume() async {
     await HabitScope.of(context).resumeTimer();
     await setScreenWake(true);
+    await AudioService.instance.resumeMusic();
     if (mounted) setState(() {});
   }
 
@@ -140,9 +177,32 @@ class _TimerRunOverlayState extends State<TimerRunOverlay> {
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
             child: Column(
               children: [
-                const Text(
-                  S.timer,
-                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22),
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const Text(
+                      S.timer,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 22,
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: IconButton(
+                        key: const Key('timer-mute'),
+                        tooltip: store.timerMusicMuted
+                            ? S.timerUnmute
+                            : S.timerMute,
+                        onPressed: _toggleMute,
+                        icon: Icon(
+                          store.timerMusicMuted
+                              ? Icons.volume_off_rounded
+                              : Icons.volume_up_rounded,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 if (reason != null) ...[
                   const SizedBox(height: 8),

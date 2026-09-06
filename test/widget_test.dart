@@ -45,6 +45,7 @@ import 'package:app/widgets/game_scaffold.dart';
 import 'package:app/widgets/game_setup_body.dart';
 import 'package:app/widgets/task_icons.dart';
 import 'package:app/widgets/timer_clock.dart';
+import 'package:app/widgets/timer_run_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -66,6 +67,7 @@ HabitStore testStore({
   DayHistory? history,
   TimerRepository? timerRepo,
   bool timerEnabled = AppConfig.defaultTimerEnabled,
+  bool timerMusicMuted = AppConfig.defaultTimerMusicMuted,
   List<TimerSession> timerHistory = const [],
   TimerSession? activeTimer,
   DateTime Function()? now,
@@ -106,6 +108,7 @@ HabitStore testStore({
         InMemoryTimerRepository(
           TimerSnapshot(
             enabled: timerEnabled,
+            musicMuted: timerMusicMuted,
             active: activeTimer,
             history: timerHistory,
           ),
@@ -4171,6 +4174,7 @@ void main() {
       },
     });
     expect(restored.timer.enabled, AppConfig.defaultTimerEnabled);
+    expect(restored.timer.musicMuted, AppConfig.defaultTimerMusicMuted);
     expect(restored.timer.history, isEmpty);
     expect(restored.timer.active, isNull);
   });
@@ -4214,6 +4218,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.byKey(const Key('timer-run-clock')), findsOneWidget);
+    expect(find.byKey(const Key('timer-mute')), findsOneWidget);
     expect(find.text('Читання'), findsWidgets);
     expect(store.activeTimer, isNotNull);
 
@@ -4310,5 +4315,67 @@ void main() {
     await tester.pumpWidget(AxolotlApp(store: store));
     await tester.pump();
     expect(find.byKey(const Key('timer-fab')), findsNothing);
+  });
+
+  test('timer music mute is remembered after a reload', () async {
+    final repo = InMemoryTimerRepository();
+    final store = testStore(timerRepo: repo);
+    await store.load();
+    expect(store.timerMusicMuted, isFalse);
+
+    await store.setTimerMusicMuted(true);
+    expect(store.timerMusicMuted, isTrue);
+
+    final again = testStore(timerRepo: repo);
+    await again.load();
+    expect(again.timerMusicMuted, isTrue);
+  });
+
+  test('backup round-trips timer music mute', () async {
+    final source = testStore();
+    await source.load();
+    await source.setTimerMusicMuted(true);
+
+    final target = testStore();
+    await target.load();
+    await target.importBackup(source.exportBackup());
+    expect(target.timerMusicMuted, isTrue);
+  });
+
+  testWidgets('timer mute stays off for the next round', (tester) async {
+    final repo = InMemoryTimerRepository();
+    final store = testStore(timerRepo: repo);
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await store.startTimer(duration: const Duration(minutes: 5));
+    await tester.pumpWidget(
+      HabitScope(
+        store: store,
+        child: MaterialApp(theme: AppTheme.cute, home: const TimerRunOverlay()),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byIcon(Icons.volume_up_rounded), findsOneWidget);
+    await tester.tap(find.byKey(const Key('timer-mute')));
+    await tester.pump();
+    expect(store.timerMusicMuted, isTrue);
+    expect(find.byIcon(Icons.volume_off_rounded), findsOneWidget);
+
+    await store.abandonTimer();
+    await store.startTimer(duration: const Duration(minutes: 5));
+    await tester.pumpWidget(
+      HabitScope(
+        store: store,
+        child: MaterialApp(theme: AppTheme.cute, home: const TimerRunOverlay()),
+      ),
+    );
+    await tester.pump();
+    expect(find.byIcon(Icons.volume_off_rounded), findsOneWidget);
+    expect(store.timerMusicMuted, isTrue);
   });
 }

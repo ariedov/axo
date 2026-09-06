@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../config.dart';
+import '../data/audio_service.dart';
 import '../data/game_round.dart';
 import '../data/memory_deck.dart';
 import '../data/simon_sequence.dart';
@@ -75,6 +76,7 @@ class _SimonScreenState extends State<SimonScreen> {
 
   void _start() {
     if (HabitScope.of(context).gamesLocked) return;
+    AudioService.instance.play(SoundEffect.gameStart);
     _demoId += 1;
     _round.reset();
     _roundPoints = 0;
@@ -150,6 +152,9 @@ class _SimonScreenState extends State<SimonScreen> {
         AppConfig.simonGame,
         points: AppConfig.simonRoundPoints,
       );
+      if (_roundPoints > 0) {
+        AudioService.instance.play(SoundEffect.points);
+      }
       if (!mounted) return;
       setState(() {
         _showSummary = true;
@@ -192,6 +197,7 @@ class _SimonScreenState extends State<SimonScreen> {
 
   Future<void> _pick(int pad) async {
     if (_busy || _showSummary || _lit != -1) return;
+    AudioService.instance.play(SoundEffect.tap);
     if (pad != _sequence[_step]) {
       HapticFeedback.heavyImpact();
       setState(() {

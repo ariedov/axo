@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../data/models.dart';
+import '../data/audio_service.dart';
 import '../state/habit_scope.dart';
 import '../strings.dart';
 import '../theme.dart';
@@ -23,7 +24,11 @@ Future<void> verifyTaskWithBonus(
   if (!awarded || !context.mounted) return;
   HapticFeedback.mediumImpact();
   final bonus = await store.verify(task.id, day: day);
-  if (!context.mounted || bonus <= 0) return;
+  if (!context.mounted) return;
+  if (bonus <= 0) {
+    AudioService.instance.play(SoundEffect.points);
+    return;
+  }
   await showCompletionBonusDialog(context, points: bonus);
 }
 
@@ -31,6 +36,7 @@ Future<void> showCompletionBonusDialog(
   BuildContext context, {
   required int points,
 }) {
+  AudioService.instance.play(SoundEffect.allDone);
   return showDialog<void>(
     context: context,
     barrierDismissible: false,

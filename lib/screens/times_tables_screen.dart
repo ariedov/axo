@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../config.dart';
+import '../data/audio_service.dart';
 import '../data/game_round.dart';
 import '../data/shuffled_deck.dart';
 import '../data/times_tables_problem.dart';
@@ -75,6 +76,7 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
 
   void _start() {
     if (HabitScope.of(context).gamesLocked) return;
+    AudioService.instance.play(SoundEffect.gameStart);
     _round.reset();
     _roundPoints = 0;
     _showSummary = false;
@@ -102,6 +104,9 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
     if (!_infinite && _round.isComplete) {
       _roundPoints = await HabitScope.of(context)
           .tryAwardGamePlay(AppConfig.timesTablesGame, points: _roundReward);
+      if (_roundPoints > 0) {
+        AudioService.instance.play(SoundEffect.points);
+      }
       if (!mounted) return;
       setState(() {
         _showSummary = true;

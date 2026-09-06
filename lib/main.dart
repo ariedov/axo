@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'config.dart';
+import 'data/audio_service.dart';
 import 'data/completion_bonus.dart';
 import 'data/day_history_repository.dart';
 import 'data/game_limit.dart';
@@ -24,6 +25,7 @@ import 'theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AudioService.instance.preload();
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
