@@ -106,22 +106,26 @@ class TimerSession {
 class TimerSnapshot {
   const TimerSnapshot({
     this.enabled = AppConfig.defaultTimerEnabled,
+    this.musicMuted = AppConfig.defaultTimerMusicMuted,
     this.active,
     this.history = const [],
   });
 
   final bool enabled;
+  final bool musicMuted;
   final TimerSession? active;
   final List<TimerSession> history;
 
   TimerSnapshot copyWith({
     bool? enabled,
+    bool? musicMuted,
     TimerSession? active,
     List<TimerSession>? history,
     bool clearActive = false,
   }) {
     return TimerSnapshot(
       enabled: enabled ?? this.enabled,
+      musicMuted: musicMuted ?? this.musicMuted,
       active: clearActive ? null : (active ?? this.active),
       history: history ?? this.history,
     );
@@ -129,6 +133,7 @@ class TimerSnapshot {
 
   Map<String, dynamic> toJson() => {
     'enabled': enabled,
+    'musicMuted': musicMuted,
     if (active != null) 'active': active!.toJson(),
     'history': [for (final session in history) session.toJson()],
   };
@@ -138,6 +143,8 @@ class TimerSnapshot {
     final rawHistory = json['history'] as List? ?? const [];
     return TimerSnapshot(
       enabled: json['enabled'] as bool? ?? AppConfig.defaultTimerEnabled,
+      musicMuted:
+          json['musicMuted'] as bool? ?? AppConfig.defaultTimerMusicMuted,
       active: rawActive == null ? null : TimerSession.fromJson(rawActive),
       history: [
         for (final item in rawHistory)

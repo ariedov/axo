@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../data/audio_service.dart';
 import '../strings.dart';
 import '../theme.dart';
 import 'axolotl_mascot.dart';
@@ -35,6 +36,7 @@ Future<void> showAnswerFlash(
       ),
     ),
   );
+  AudioService.instance.play(success ? SoundEffect.happy : SoundEffect.sad);
   overlay.insert(entry);
   return done.future;
 }
@@ -90,9 +92,10 @@ class _AnswerFlashState extends State<_AnswerFlash>
   @override
   Widget build(BuildContext context) {
     final color = widget.success ? AppColors.tealDark : AppColors.pinkDark;
-    final scale = Tween<double>(begin: 0.86, end: 1).animate(
-      CurvedAnimation(parent: _fade, curve: Curves.easeOutBack),
-    );
+    final scale = Tween<double>(
+      begin: 0.86,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _fade, curve: Curves.easeOutBack));
 
     return AbsorbPointer(
       child: FadeTransition(

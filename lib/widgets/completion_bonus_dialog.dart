@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../data/models.dart';
+import '../data/audio_service.dart';
 import '../state/habit_scope.dart';
 import '../strings.dart';
 import '../theme.dart';
@@ -31,6 +32,7 @@ Future<void> showCompletionBonusDialog(
   BuildContext context, {
   required int points,
 }) {
+  AudioService.instance.play(SoundEffect.allDone);
   return showDialog<void>(
     context: context,
     barrierDismissible: false,

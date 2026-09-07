@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../config.dart';
+import '../data/audio_service.dart';
 import '../data/division_problem.dart';
 import '../data/game_round.dart';
 import '../data/shuffled_deck.dart';
@@ -77,6 +78,7 @@ class _DivisionScreenState extends State<DivisionScreen> {
 
   void _start() {
     if (HabitScope.of(context).gamesLocked) return;
+    AudioService.instance.play(SoundEffect.gameStart);
     _round.reset();
     _roundPoints = 0;
     _showSummary = false;
@@ -101,6 +103,9 @@ class _DivisionScreenState extends State<DivisionScreen> {
     if (!_infinite && _round.isComplete) {
       _roundPoints = await HabitScope.of(context)
           .tryAwardGamePlay(AppConfig.divisionGame, points: _roundReward);
+      if (_roundPoints > 0) {
+        AudioService.instance.play(SoundEffect.points);
+      }
       if (!mounted) return;
       setState(() {
         _showSummary = true;

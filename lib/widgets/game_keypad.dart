@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../theme.dart';
+import '../data/audio_service.dart';
 
 class GameKeypad extends StatelessWidget {
   const GameKeypad({
@@ -36,6 +37,7 @@ class GameKeypad extends StatelessWidget {
                     child: FilledButton(
                       onPressed: () {
                         HapticFeedback.selectionClick();
+                        AudioService.instance.play(SoundEffect.tap);
                         if (key == '⌫') {
                           onBackspace();
                         } else if (key == '✓') {

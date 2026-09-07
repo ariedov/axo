@@ -77,6 +77,7 @@ class HabitStore extends ChangeNotifier {
   bool completionBonusEnabled = AppConfig.defaultCompletionBonusEnabled;
   int completionBonusPoints = AppConfig.defaultCompletionBonusPoints;
   bool timerEnabled = AppConfig.defaultTimerEnabled;
+  bool timerMusicMuted = AppConfig.defaultTimerMusicMuted;
   TimerSession? activeTimer;
   List<TimerSession> timerHistory = const [];
 
@@ -352,6 +353,13 @@ class HabitStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setTimerMusicMuted(bool muted) async {
+    if (muted == timerMusicMuted) return;
+    timerMusicMuted = muted;
+    await _persistTimer();
+    notifyListeners();
+  }
+
   Future<void> startTimer({
     required Duration duration,
     String reason = '',
@@ -439,6 +447,7 @@ class HabitStore extends ChangeNotifier {
   Future<void> _loadTimer() async {
     final snapshot = await timerRepo.load();
     timerEnabled = snapshot.enabled;
+    timerMusicMuted = snapshot.musicMuted;
     timerHistory = snapshot.history;
     final active = snapshot.active;
     if (active == null || !active.isOpen) {
@@ -464,6 +473,7 @@ class HabitStore extends ChangeNotifier {
     return timerRepo.save(
       TimerSnapshot(
         enabled: timerEnabled,
+        musicMuted: timerMusicMuted,
         active: activeTimer,
         history: timerHistory,
       ),
@@ -802,6 +812,7 @@ class HabitStore extends ChangeNotifier {
       completionBonusPoints: completionBonusPoints,
       timer: TimerSnapshot(
         enabled: timerEnabled,
+        musicMuted: timerMusicMuted,
         active: activeTimer,
         history: timerHistory,
       ),

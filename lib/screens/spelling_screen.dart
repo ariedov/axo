@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../config.dart';
+import '../data/audio_service.dart';
 import '../data/answer.dart';
 import '../data/game_round.dart';
 import '../data/models.dart';
@@ -91,6 +92,7 @@ class _SpellingScreenState extends State<SpellingScreen> {
 
   void _start() {
     if (HabitScope.of(context).gamesLocked) return;
+    AudioService.instance.play(SoundEffect.gameStart);
     _round.reset();
     _roundPoints = 0;
     _showSummary = false;
@@ -114,6 +116,9 @@ class _SpellingScreenState extends State<SpellingScreen> {
         AppConfig.spellingGame,
         points: AppConfig.spellingRoundPoints,
       );
+      if (_roundPoints > 0) {
+        AudioService.instance.play(SoundEffect.points);
+      }
       if (!mounted) return;
       setState(() {
         _showSummary = true;

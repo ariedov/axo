@@ -38,6 +38,8 @@ class AppConfig {
   static const simonRoundPoints = 3;
 
   static const defaultTimerEnabled = true;
+  static const defaultTimerMusicMuted = false;
+  static const timerMusic = 'sounds/timer.mp3';
   static const timerDefaultMinutes = 5;
   static const timerMinMinutes = 1;
   static const timerMaxMinutes = 60;
