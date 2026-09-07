@@ -76,6 +76,7 @@ HabitStore testStore({
     pointsRepo: InMemoryPointsRepository(points),
     taskRepo: InMemoryTaskRepository(
       TaskSnapshot(day: todayStamp(now?.call()), tasks: tasks),
+      now: now,
     ),
     parentAuth: InMemoryParentAuth(password),
     gamePlays: InMemoryGamePlaysRepository(),
@@ -114,7 +115,7 @@ HabitStore testStore({
           ),
         ),
     celebrateFor: Duration.zero,
-    now: now,
+    now: now ?? DateTime.now,
   );
 }
 
@@ -936,6 +937,83 @@ void main() {
     expect(yesterday.isPartial, isTrue);
     expect(store.history.activatedOn, '2026-08-27');
     expect(store.tasks.every((task) => task.isPending), isTrue);
+  });
+
+  test('a live store rolls tasks when the day changes', () async {
+    var clock = DateTime(2026, 8, 26, 22);
+    final store = testStore(
+      now: () => clock,
+      tasks: const [
+        HabitTask(
+          id: 'bed',
+          title: 'Застелити ліжко',
+          points: 10,
+          icon: 'bed',
+          status: TaskStatus.verified,
+        ),
+        HabitTask(
+          id: 'park',
+          title: 'Прогулянка',
+          points: 15,
+          icon: 'walk',
+          todayOnly: true,
+          status: TaskStatus.verified,
+        ),
+      ],
+    );
+    await store.load();
+    expect(store.tasks.map((task) => task.id), ['bed', 'park']);
+    expect(store.tasks.first.isVerified, isTrue);
+
+    clock = DateTime(2026, 8, 27, 8);
+    await store.ensureToday();
+
+    expect(store.tasks.map((task) => task.id), ['bed']);
+    expect(store.tasks.single.isPending, isTrue);
+    expect(store.progressFor('2026-08-26')?.completed, 2);
+    expect(store.progressFor('2026-08-26')?.total, 2);
+    expect(store.todayDailyTasks.single.isPending, isTrue);
+  });
+
+  test('mutating after midnight rolls first and keeps yesterday', () async {
+    var clock = DateTime(2026, 8, 26, 23);
+    final store = testStore(
+      now: () => clock,
+      tasks: const [
+        HabitTask(
+          id: 'bed',
+          title: 'Застелити ліжко',
+          points: 10,
+          icon: 'bed',
+          status: TaskStatus.verified,
+        ),
+        HabitTask(
+          id: 'park',
+          title: 'Прогулянка',
+          points: 15,
+          icon: 'walk',
+          todayOnly: true,
+        ),
+      ],
+    );
+    await store.load();
+
+    clock = DateTime(2026, 8, 27, 0, 1);
+    await store.submit('bed');
+
+    expect(store.tasks.map((task) => task.id), ['bed']);
+    expect(store.tasks.single.isSubmitted, isTrue);
+    expect(
+      store.days['2026-08-26']!.tasks
+          .singleWhere((task) => task.id == 'bed')
+          .isVerified,
+      isTrue,
+    );
+    expect(
+      store.days['2026-08-26']!.tasks.any((task) => task.id == 'park'),
+      isTrue,
+    );
+    expect(store.progressFor('2026-08-26')?.completed, 1);
   });
 
   test('verifying tasks fills today progress from none to full', () async {

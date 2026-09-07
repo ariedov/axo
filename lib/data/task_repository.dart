@@ -33,6 +33,34 @@ List<HabitTask> pendingRecurring(List<HabitTask> tasks) {
   ];
 }
 
+TodayLoad advanceToToday(Map<String, TaskSnapshot> days, String today) {
+  if (days.containsKey(today)) {
+    return TodayLoad(current: days[today]!, days: days);
+  }
+
+  final latest = days.keys.reduce((a, b) => a.compareTo(b) > 0 ? a : b);
+  final previous = days[latest]!;
+  if (latest.compareTo(today) > 0) {
+    final rolled = TaskSnapshot(
+      day: today,
+      tasks: pendingRecurring(previous.tasks),
+    );
+    days[today] = rolled;
+    return TodayLoad(current: rolled, days: days);
+  }
+
+  final template = pendingRecurring(previous.tasks);
+  var cursor = dateFromStamp(latest);
+  final end = dateFromStamp(today);
+  cursor = DateTime(cursor.year, cursor.month, cursor.day + 1);
+  while (!cursor.isAfter(end)) {
+    final stamp = stampFromDate(cursor);
+    days[stamp] = TaskSnapshot(day: stamp, tasks: template);
+    cursor = DateTime(cursor.year, cursor.month, cursor.day + 1);
+  }
+  return TodayLoad(current: days[today]!, previous: previous, days: days);
+}
+
 Map<String, TaskSnapshot> taskDaysFromJson(Map<String, dynamic> json) {
   return {
     for (final entry in json.entries)
@@ -82,32 +110,10 @@ class LocalTaskRepository implements TaskRepository {
       return TodayLoad(current: seeded, days: days);
     }
 
-    if (days.containsKey(today)) {
-      return TodayLoad(current: days[today]!, days: days);
-    }
-
-    final latest = days.keys.reduce((a, b) => a.compareTo(b) > 0 ? a : b);
-    final previous = days[latest]!;
-    if (latest.compareTo(today) > 0) {
-      final rolled = TaskSnapshot(
-        day: today,
-        tasks: pendingRecurring(previous.tasks),
-      );
-      days[today] = rolled;
-      await _writeDays(days);
-      return TodayLoad(current: rolled, days: days);
-    }
-
-    final template = pendingRecurring(previous.tasks);
-    var cursor = dateFromStamp(latest).add(const Duration(days: 1));
-    final end = dateFromStamp(today);
-    while (!cursor.isAfter(end)) {
-      final stamp = stampFromDate(cursor);
-      days[stamp] = TaskSnapshot(day: stamp, tasks: template);
-      cursor = cursor.add(const Duration(days: 1));
-    }
-    await _writeDays(days);
-    return TodayLoad(current: days[today]!, previous: previous, days: days);
+    final hadToday = days.containsKey(today);
+    final loaded = advanceToToday(days, today);
+    if (!hadToday) await _writeDays(loaded.days);
+    return loaded;
   }
 
   @override
@@ -160,16 +166,28 @@ class InMemoryTaskRepository implements TaskRepository {
   InMemoryTaskRepository(
     TaskSnapshot snapshot, {
     Map<String, TaskSnapshot>? days,
+    DateTime Function()? now,
   }) : days = {...?days, snapshot.day: snapshot},
-       currentDay = snapshot.day;
+       currentDay = snapshot.day,
+       _now = now ?? DateTime.now;
 
   String currentDay;
   Map<String, TaskSnapshot> days;
+  final DateTime Function() _now;
 
   @override
   Future<TodayLoad> loadToday() async {
-    final current = days[currentDay] ?? days.values.first;
-    return TodayLoad(current: current, days: days);
+    final today = todayStamp(_now());
+    if (days.isEmpty) {
+      final empty = TaskSnapshot(day: today, tasks: const []);
+      days[today] = empty;
+      currentDay = today;
+      return TodayLoad(current: empty, days: days);
+    }
+    final loaded = advanceToToday(days, today);
+    days = loaded.days;
+    currentDay = today;
+    return loaded;
   }
 
   @override

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../config.dart';
@@ -40,7 +42,8 @@ class HabitStore extends ChangeNotifier {
            completionBonusRepo ?? InMemoryCompletionBonusRepository(),
        gameRecents = gameRecents ?? InMemoryGameRecentsRepository(),
        timerRepo = timerRepo ?? InMemoryTimerRepository(),
-       now = now ?? DateTime.now;
+       now = now ?? DateTime.now,
+       _watchClock = now == null;
 
   final PointsRepository pointsRepo;
   final TaskRepository taskRepo;
@@ -56,6 +59,11 @@ class HabitStore extends ChangeNotifier {
   final TimerRepository timerRepo;
   final Duration celebrateFor;
   final DateTime Function() now;
+  final bool _watchClock;
+
+  String? _loadedDay;
+  Future<void>? _ensureTodayFuture;
+  Timer? _dayTimer;
 
   int totalPoints = 0;
   List<HabitTask> tasks = const [];
@@ -112,10 +120,13 @@ class HabitStore extends ChangeNotifier {
 
   /// Required tasks the child sees today — recurring tasks only on their
   /// days, one-offs always.
-  List<HabitTask> get todayDailyTasks => [
-    for (final task in tasks)
-      if (task.isMandatory && task.showsOn(now())) task,
-  ];
+  List<HabitTask> get todayDailyTasks {
+    _kickDayRoll();
+    return [
+      for (final task in tasks)
+        if (task.isMandatory && task.showsOn(now())) task,
+    ];
+  }
 
   /// Recurring mandatory tasks, used for editing and reordering. One-offs
   /// for today are managed from the home screen instead.
@@ -127,10 +138,14 @@ class HabitStore extends ChangeNotifier {
     for (final task in tasks)
       if (task.optional && !task.todayOnly) task,
   ];
-  List<HabitTask> get extraTasks => [
-    for (final task in tasks)
-      if (task.optional && task.showsOn(now())) task,
-  ];
+  List<HabitTask> get extraTasks {
+    _kickDayRoll();
+    return [
+      for (final task in tasks)
+        if (task.optional && task.showsOn(now())) task,
+    ];
+  }
+
   List<RewardGoal> get activeGoals => [
     for (final goal in goals)
       if (!goal.isCompleted) goal,
@@ -149,6 +164,7 @@ class HabitStore extends ChangeNotifier {
     final todayLoad = await taskRepo.loadToday();
     days = Map.of(todayLoad.days);
     tasks = todayLoad.current.tasks;
+    _loadedDay = todayLoad.current.day;
     goals = await goalRepo.load();
     parentPassword = await parentAuth.read();
     onboardingComplete = await onboardingFlags.isComplete();
@@ -175,7 +191,57 @@ class HabitStore extends ChangeNotifier {
     await _ensureActivated();
     await _syncTodayHistory();
     ready = true;
+    _armDayTimer();
     notifyListeners();
+  }
+
+  Future<void> ensureToday() {
+    if (!ready) return Future.value();
+    final today = todayStamp(now());
+    if (_loadedDay == today) return Future.value();
+    return _ensureTodayFuture ??= _rollToToday(today).whenComplete(() {
+      _ensureTodayFuture = null;
+    });
+  }
+
+  void _kickDayRoll() {
+    if (!ready) return;
+    if (_loadedDay == todayStamp(now())) return;
+    ensureToday();
+  }
+
+  Future<void> _rollToToday(String today) async {
+    final previousDay = _loadedDay;
+    if (previousDay != null && previousDay != today) {
+      final previous = TaskSnapshot(day: previousDay, tasks: tasks);
+      days = {...days, previous.day: previous};
+      await taskRepo.save(previous);
+    }
+    final todayLoad = await taskRepo.loadToday();
+    days = Map.of(todayLoad.days);
+    tasks = todayLoad.current.tasks;
+    _loadedDay = todayLoad.current.day;
+    for (final snapshot in days.values) {
+      history = history.withDay(
+        DayProgress.fromTasks(snapshot.day, snapshot.tasks),
+      );
+    }
+    await historyRepo.save(history);
+    await _loadStrikes();
+    await _syncTodayHistory();
+    _armDayTimer();
+    notifyListeners();
+  }
+
+  void _armDayTimer() {
+    if (!_watchClock) return;
+    _dayTimer?.cancel();
+    final current = now();
+    final next = DateTime(current.year, current.month, current.day + 1);
+    _dayTimer = Timer(next.difference(current), () {
+      ensureToday();
+      _armDayTimer();
+    });
   }
 
   Future<void> setParentPassword(String value) async {
@@ -602,6 +668,7 @@ class HabitStore extends ChangeNotifier {
   }
 
   Future<int> verify(String taskId, {String? day}) async {
+    await ensureToday();
     final task = _taskOn(taskId, day);
     if (task == null || !task.isSubmitted) return 0;
 
@@ -630,6 +697,7 @@ class HabitStore extends ChangeNotifier {
       unsubmit(taskId, day: day);
 
   Future<void> upsertTask(HabitTask task) async {
+    await ensureToday();
     final index = tasks.indexWhere((item) => item.id == task.id);
     if (index == -1) {
       tasks = _insertTask(task);
@@ -644,6 +712,7 @@ class HabitStore extends ChangeNotifier {
   }
 
   Future<void> deleteTask(String taskId) async {
+    await ensureToday();
     tasks = [
       for (final task in tasks)
         if (task.id != taskId) task,
@@ -654,6 +723,7 @@ class HabitStore extends ChangeNotifier {
   }
 
   Future<void> reorderTasks(int oldIndex, int newIndex) async {
+    await ensureToday();
     if (oldIndex == newIndex) return;
     final copy = [...tasks];
     final task = copy.removeAt(oldIndex);
@@ -664,6 +734,7 @@ class HabitStore extends ChangeNotifier {
   }
 
   Future<void> reorderDailyTasks(int oldIndex, int newIndex) async {
+    await ensureToday();
     if (oldIndex == newIndex) return;
     final daily = dailyTasks;
     final moved = daily.removeAt(oldIndex);
@@ -678,6 +749,7 @@ class HabitStore extends ChangeNotifier {
   }
 
   Future<void> reorderDailyOptionalTasks(int oldIndex, int newIndex) async {
+    await ensureToday();
     if (oldIndex == newIndex) return;
     final optional = dailyOptionalTasks;
     final moved = optional.removeAt(oldIndex);
@@ -792,7 +864,10 @@ class HabitStore extends ChangeNotifier {
   }
 
   BackupSnapshot exportBackup() {
-    final today = TaskSnapshot(day: todayStamp(now()), tasks: tasks);
+    final today = TaskSnapshot(
+      day: _loadedDay ?? todayStamp(now()),
+      tasks: tasks,
+    );
     return BackupSnapshot(
       exportedAt: now(),
       points: totalPoints,
@@ -858,7 +933,9 @@ class HabitStore extends ChangeNotifier {
   }
 
   Future<void> _syncTodayHistory() {
-    return _recordSnapshot(TaskSnapshot(day: todayStamp(now()), tasks: tasks));
+    return _recordSnapshot(
+      TaskSnapshot(day: _loadedDay ?? todayStamp(now()), tasks: tasks),
+    );
   }
 
   Future<void> _recordSnapshot(TaskSnapshot snapshot) async {
@@ -869,7 +946,10 @@ class HabitStore extends ChangeNotifier {
   }
 
   Future<void> _persist() {
-    final snapshot = TaskSnapshot(day: todayStamp(now()), tasks: tasks);
+    final snapshot = TaskSnapshot(
+      day: _loadedDay ?? todayStamp(now()),
+      tasks: tasks,
+    );
     days = {...days, snapshot.day: snapshot};
     return taskRepo.save(snapshot);
   }
@@ -920,6 +1000,7 @@ class HabitStore extends ChangeNotifier {
     HabitTask Function(HabitTask task) change, {
     String? day,
   }) async {
+    await ensureToday();
     if (_isToday(day)) {
       tasks = [
         for (final task in tasks)

@@ -112,17 +112,41 @@ Future<void> main() async {
   runApp(AxolotlApp(store: store));
 }
 
-class AxolotlApp extends StatelessWidget {
+class AxolotlApp extends StatefulWidget {
   const AxolotlApp({super.key, required this.store});
 
   final HabitStore store;
 
   @override
+  State<AxolotlApp> createState() => _AxolotlAppState();
+}
+
+class _AxolotlAppState extends State<AxolotlApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      widget.store.ensureToday();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return HabitScope(
-      store: store,
+      store: widget.store,
       child: AnimatedBuilder(
-        animation: store,
+        animation: widget.store,
         builder: (context, _) {
           return MaterialApp(
             title: AppConfig.appName,
@@ -135,7 +159,7 @@ class AxolotlApp extends StatelessWidget {
               GlobalCupertinoLocalizations.delegate,
             ],
             theme: AppTheme.cute,
-            home: store.needsOnboarding
+            home: widget.store.needsOnboarding
                 ? const OnboardingScreen()
                 : const HomeScreen(),
           );
