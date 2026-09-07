@@ -1,6 +1,6 @@
 import 'package:audioplayers/audioplayers.dart';
 
-enum SoundEffect { points, gameStart, tap, happy, sad, allDone }
+enum SoundEffect { points, gameStart, tap, happy, sad, allDone, taskComplete }
 
 /// Keeps short effects separate from the future looping music channel.
 class AudioService {
@@ -19,6 +19,7 @@ class AudioService {
     SoundEffect.happy: 'sounds/happy.wav',
     SoundEffect.sad: 'sounds/sad.wav',
     SoundEffect.allDone: 'sounds/all_done.wav',
+    SoundEffect.taskComplete: 'sounds/task_complete.wav',
   };
 
   Future<void> preload() async {
@@ -30,7 +31,11 @@ class AudioService {
   Future<void> play(SoundEffect effect) async {
     try {
       final player = await _playerFor(effect);
-      await player.stop();
+      if (player.state == PlayerState.playing ||
+          player.state == PlayerState.paused ||
+          player.state == PlayerState.completed) {
+        await player.stop();
+      }
       await player.resume();
     } catch (_) {}
   }

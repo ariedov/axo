@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../data/audio_service.dart';
 import '../state/habit_scope.dart';
 import '../strings.dart';
 import '../theme.dart';
@@ -109,6 +110,7 @@ Future<void> showParentTaskActions(
           ),
           FilledButton(
             onPressed: () {
+              AudioService.instance.play(SoundEffect.taskComplete);
               Navigator.pop(context);
               onAward();
             },
