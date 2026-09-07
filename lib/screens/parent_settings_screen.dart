@@ -11,6 +11,7 @@ import '../widgets/parent_goals_sheet.dart';
 import '../widgets/parent_tasks_sheet.dart';
 import '../widgets/password_settings_sheet.dart';
 import '../widgets/penalty_settings_section.dart';
+import '../widgets/settings_sheet.dart';
 import '../widgets/settings_tile.dart';
 import '../widgets/timer_history_sheet.dart';
 
@@ -32,6 +33,33 @@ class ParentSettingsScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _resetToday(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: const Text(S.resetTodayTitle),
+        content: const Text(S.resetTodayBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(S.cancel),
+          ),
+          FilledButton(
+            key: const Key('reset-today-confirm'),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(S.resetTodayConfirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    await HabitScope.of(context).resetToday();
+    if (!context.mounted) return;
+    showParentToast(ScaffoldMessenger.of(context), S.resetTodayDone);
   }
 
   @override
@@ -118,6 +146,11 @@ class ParentSettingsScreen extends StatelessWidget {
               TextButton(
                 onPressed: () => _privacy(context),
                 child: const Text(S.privacy),
+              ),
+              TextButton(
+                key: const Key('settings-reset-today'),
+                onPressed: () => _resetToday(context),
+                child: const Text(S.resetToday),
               ),
             ],
           ),

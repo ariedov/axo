@@ -975,6 +975,51 @@ void main() {
     expect(store.todayDailyTasks.single.isPending, isTrue);
   });
 
+  test('reset today rolls tasks as if it were a new day', () async {
+    final clock = DateTime(2026, 8, 26, 16);
+    final store = testStore(
+      points: 40,
+      strikes: 3,
+      strikeDay: '2026-08-26',
+      now: () => clock,
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+        HabitTask(
+          id: 'park',
+          title: 'Прогулянка',
+          points: 15,
+          icon: 'walk',
+          todayOnly: true,
+          optional: true,
+        ),
+      ],
+    );
+    await store.load();
+    await store.tryAwardGamePlay('english');
+    await store.submit('bed');
+    expect(await store.verify('bed'), 10);
+    expect(store.history.bonusOn('2026-08-26'), isTrue);
+    expect(store.windowUsed, 1);
+    expect(store.totalPoints, 65);
+
+    await store.resetToday();
+
+    expect(store.tasks.map((task) => task.id), ['bed']);
+    expect(store.tasks.single.isPending, isTrue);
+    expect(store.progressFor('2026-08-26')?.completed, 0);
+    expect(store.progressFor('2026-08-26')?.total, 1);
+    expect(store.history.bonusOn('2026-08-26'), isFalse);
+    expect(store.windowUsed, 0);
+    expect(store.playsUsed('english'), 0);
+    expect(store.strikes, 0);
+    expect(store.totalPoints, 65);
+
+    await store.submit('bed');
+    expect(await store.verify('bed'), 10);
+    expect(store.totalPoints, 85);
+    expect(store.history.bonusOn('2026-08-26'), isTrue);
+  });
+
   test('mutating after midnight rolls first and keeps yesterday', () async {
     var clock = DateTime(2026, 8, 26, 23);
     final store = testStore(
@@ -2495,13 +2540,14 @@ void main() {
     expect(find.text('Резервна копія'), findsOneWidget);
     expect(find.text('Експорт і імпорт'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text(S.privacy),
+      find.text(S.resetToday),
       200,
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Батьківський пароль'), findsOneWidget);
     expect(find.text('Змінити пароль'), findsOneWidget);
     expect(find.text(S.privacy), findsOneWidget);
+    expect(find.text(S.resetToday), findsOneWidget);
     expect(find.byKey(const Key('export-backup')), findsNothing);
     expect(find.byKey(const Key('import-backup')), findsNothing);
     expect(
@@ -2555,6 +2601,51 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text(S.importReplaceTitle), findsOneWidget);
     expect(find.text(S.importReplaceBody), findsOneWidget);
+  });
+
+  testWidgets('reset today dialog explains the new day', (tester) async {
+    final store = testStore(
+      tasks: const [
+        HabitTask(
+          id: 'bed',
+          title: 'Застелити ліжко',
+          points: 10,
+          icon: 'bed',
+          status: TaskStatus.verified,
+        ),
+        HabitTask(
+          id: 'park',
+          title: 'Прогулянка',
+          points: 15,
+          icon: 'walk',
+          todayOnly: true,
+        ),
+      ],
+    );
+    await store.load();
+    tester.view.physicalSize = const Size(800, 3200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await pumpParentSettings(tester, store);
+    await openParentSetting(tester, const Key('settings-reset-today'));
+    expect(find.text(S.resetTodayTitle), findsOneWidget);
+    expect(find.text(S.resetTodayBody), findsOneWidget);
+
+    await tester.tap(find.text(S.cancel));
+    await tester.pumpAndSettle();
+    expect(find.text(S.resetTodayTitle), findsNothing);
+    expect(store.tasks.map((task) => task.id), ['bed', 'park']);
+    expect(store.tasks.first.isVerified, isTrue);
+
+    await openParentSetting(tester, const Key('settings-reset-today'));
+    await tester.tap(find.byKey(const Key('reset-today-confirm')));
+    await tester.pumpAndSettle();
+    expect(find.text(S.resetTodayTitle), findsNothing);
+    expect(find.text(S.resetTodayDone), findsOneWidget);
+    expect(store.tasks.map((task) => task.id), ['bed']);
+    expect(store.tasks.single.isPending, isTrue);
   });
 
   testWidgets('parent settings hides today-only tasks', (tester) async {

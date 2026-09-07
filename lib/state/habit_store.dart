@@ -233,6 +233,33 @@ class HabitStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> resetToday() async {
+    await ensureToday();
+    final today = todayStamp(now());
+    tasks = pendingRecurring(tasks);
+    await _persist();
+    history = history.copyWith(
+      bonusDays: [
+        for (final day in history.bonusDays)
+          if (day != today) day,
+      ],
+    );
+    await _syncTodayHistory();
+    plays = GamePlaysSnapshot(
+      rounds: [
+        for (final play in plays.rounds)
+          if (todayStamp(play.at.toLocal()) != today) play,
+      ],
+    );
+    await gamePlays.save(plays);
+    if (strikes >= AppConfig.strikesToPenalty) {
+      strikes = 0;
+      await _persistStrikes();
+    }
+    celebrating = false;
+    notifyListeners();
+  }
+
   void _armDayTimer() {
     if (!_watchClock) return;
     _dayTimer?.cancel();
