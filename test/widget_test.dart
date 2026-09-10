@@ -1506,6 +1506,22 @@ void main() {
     expect(store.totalPoints, 15);
   });
 
+  test('strikes from yesterday reset when the day changes', () async {
+    var clock = DateTime(2026, 8, 29);
+    final store = testStore(points: 25, now: () => clock);
+    await store.load();
+
+    await store.addStrike();
+    await store.addStrike();
+    expect(store.strikes, 2);
+
+    clock = DateTime(2026, 8, 30);
+    await store.ensureToday();
+    expect(store.strikes, 0);
+    expect(store.canStrike, isTrue);
+    expect(store.totalPoints, 25);
+  });
+
   test(
     'strike penalty uses the parent amount and never goes below zero',
     () async {
