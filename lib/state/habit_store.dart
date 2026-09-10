@@ -386,7 +386,7 @@ class HabitStore extends ChangeNotifier {
     final snapshot = await strikesRepo.load();
     penaltyPoints = snapshot.penaltyPoints;
     final today = todayStamp(now());
-    if (snapshot.count >= AppConfig.strikesToPenalty && snapshot.day != today) {
+    if (snapshot.count > 0 && snapshot.day != null && snapshot.day != today) {
       strikes = 0;
       strikeDay = snapshot.day;
       await _persistStrikes();
