@@ -61,6 +61,7 @@ class _TimerRunOverlayState extends State<TimerRunOverlay> {
       setState(() => _done = true);
       await setScreenWake(false);
       await AudioService.instance.stopMusic();
+      await AudioService.instance.play(SoundEffect.timerDone);
       return;
     }
     setState(() {});
