@@ -4563,4 +4563,24 @@ void main() {
     expect(find.byIcon(Icons.volume_off_rounded), findsOneWidget);
     expect(store.timerMusicMuted, isTrue);
   });
+
+  testWidgets('muted timer still plays the done sound screen', (tester) async {
+    var clock = DateTime(2026, 9, 5, 12);
+    final store = testStore(now: () => clock, timerMusicMuted: true);
+    await store.load();
+    await store.startTimer(duration: const Duration(minutes: 1));
+    await tester.pumpWidget(
+      HabitScope(
+        store: store,
+        child: MaterialApp(theme: AppTheme.cute, home: const TimerRunOverlay()),
+      ),
+    );
+    await tester.pump();
+    expect(find.byIcon(Icons.volume_off_rounded), findsOneWidget);
+
+    clock = clock.add(const Duration(minutes: 1));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.byKey(const Key('timer-done')), findsOneWidget);
+    expect(store.timerHistory.single.status, TimerStatus.completed);
+  });
 }
