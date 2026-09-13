@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -9,11 +11,13 @@ import 'data/completion_bonus.dart';
 import 'data/day_history_repository.dart';
 import 'data/game_limit.dart';
 import 'data/goal_repository.dart';
+import 'data/local_reminders.dart';
 import 'data/onboarding_flags.dart';
 import 'data/parent_auth.dart';
 import 'data/points_repository.dart';
 import 'data/game_plays.dart';
 import 'data/game_recents.dart';
+import 'data/reminder_settings.dart';
 import 'data/strikes_repository.dart';
 import 'data/task_repository.dart';
 import 'data/timer_repository.dart';
@@ -107,6 +111,13 @@ Future<void> main() async {
     ) async {
       await prefs.setString(key, value);
     }),
+    reminderSettingsRepo: LocalReminderSettingsRepository(
+      (key) async => prefs.getString(key),
+      (key, value) async {
+        await prefs.setString(key, value);
+      },
+    ),
+    reminders: LocalReminderScheduler(),
   );
   await store.load();
   runApp(AxolotlApp(store: store));
@@ -126,6 +137,9 @@ class _AxolotlAppState extends State<AxolotlApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(widget.store.syncReminders());
+    });
   }
 
   @override
@@ -137,7 +151,9 @@ class _AxolotlAppState extends State<AxolotlApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      widget.store.ensureToday();
+      unawaited(
+        widget.store.ensureToday().whenComplete(widget.store.syncReminders),
+      );
     }
   }
 

@@ -11,6 +11,7 @@ import '../widgets/parent_goals_sheet.dart';
 import '../widgets/parent_tasks_sheet.dart';
 import '../widgets/password_settings_sheet.dart';
 import '../widgets/penalty_settings_section.dart';
+import '../widgets/reminder_settings_section.dart';
 import '../widgets/settings_sheet.dart';
 import '../widgets/settings_tile.dart';
 import '../widgets/timer_history_sheet.dart';
@@ -123,6 +124,17 @@ class ParentSettingsScreen extends StatelessWidget {
                           : S.recordsWord(store.timerHistory.length))
                     : S.off,
                 onTap: () => showTimerHistorySheet(context),
+              ),
+              SettingsTile(
+                key: const Key('settings-reminders'),
+                title: S.reminders,
+                subtitle: store.eveningReminderEnabled
+                    ? S.clockTime(
+                        store.eveningReminderHour,
+                        store.eveningReminderMinute,
+                      )
+                    : S.off,
+                onTap: () => showReminderSettingsSheet(context),
               ),
               SettingsTile(
                 key: const Key('penalty-settings'),

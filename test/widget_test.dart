@@ -22,6 +22,8 @@ import 'package:app/data/models.dart';
 import 'package:app/data/onboarding_flags.dart';
 import 'package:app/data/parent_auth.dart';
 import 'package:app/data/points_repository.dart';
+import 'package:app/data/reminder_settings.dart';
+import 'package:app/data/reminders.dart';
 import 'package:app/data/strikes_repository.dart';
 import 'package:app/data/task_repository.dart';
 import 'package:app/data/timer_repository.dart';
@@ -70,6 +72,11 @@ HabitStore testStore({
   bool timerMusicMuted = AppConfig.defaultTimerMusicMuted,
   List<TimerSession> timerHistory = const [],
   TimerSession? activeTimer,
+  ReminderSettingsRepository? reminderSettingsRepo,
+  ReminderScheduler? reminders,
+  bool eveningReminderEnabled = AppConfig.defaultEveningReminderEnabled,
+  int eveningReminderHour = AppConfig.defaultEveningReminderHour,
+  int eveningReminderMinute = AppConfig.defaultEveningReminderMinute,
   DateTime Function()? now,
 }) {
   return HabitStore(
@@ -114,6 +121,16 @@ HabitStore testStore({
             history: timerHistory,
           ),
         ),
+    reminderSettingsRepo:
+        reminderSettingsRepo ??
+        InMemoryReminderSettingsRepository(
+          ReminderSettingsSnapshot(
+            enabled: eveningReminderEnabled,
+            hour: eveningReminderHour,
+            minute: eveningReminderMinute,
+          ),
+        ),
+    reminders: reminders,
     celebrateFor: Duration.zero,
     now: now ?? DateTime.now,
   );
@@ -3158,7 +3175,8 @@ void main() {
   });
 
   testWidgets('first launch walks parents through setup once', (tester) async {
-    final store = testStore(password: null);
+    final reminders = InMemoryReminderScheduler();
+    final store = testStore(password: null, reminders: reminders);
     await store.load();
     tester.view.physicalSize = const Size(800, 1400);
     tester.view.devicePixelRatio = 1;
@@ -3214,8 +3232,49 @@ void main() {
     expect(store.needsOnboarding, isFalse);
     expect(store.goals.single.title, 'Морозиво');
     expect(store.history.activatedOn, todayStamp());
+
+    expect(find.text(S.remindersExplainTitle), findsOneWidget);
+    expect(find.text(S.remindersExplainBody), findsOneWidget);
+    await tester.tap(find.byKey(const Key('onboarding-reminders-allow')));
+    await tester.pump();
+
+    expect(reminders.requestCount, 1);
     expect(find.text('Завдання на сьогодні'), findsOneWidget);
     expect(find.text('Морозиво'), findsOneWidget);
+  });
+
+  testWidgets('onboarding asks to allow reminders once', (tester) async {
+    final reminders = InMemoryReminderScheduler();
+    final store = testStore(password: null, reminders: reminders);
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+    expect(reminders.requestCount, 0);
+
+    await tester.tap(find.text('Далі'));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField).at(1), 'mama');
+    await tester.enterText(find.byType(TextField).at(2), 'mama');
+    await tester.tap(find.text('Далі'));
+    await tester.pump();
+    await tester.tap(find.text('Далі'));
+    await tester.pump();
+    await tester.tap(find.text('Зрозуміло'));
+    await tester.pump();
+
+    expect(find.text(S.remindersExplainTitle), findsOneWidget);
+    expect(reminders.requestCount, 0);
+
+    await tester.tap(find.text(S.remindersLater));
+    await tester.pump();
+    expect(reminders.requestCount, 0);
+    expect(find.text('Завдання на сьогодні'), findsOneWidget);
+    expect(store.eveningReminderEnabled, isTrue);
   });
 
   testWidgets('first launch can skip the parent password', (tester) async {
@@ -3251,6 +3310,10 @@ void main() {
     await tester.tap(find.text('Далі'));
     await tester.pump();
     await tester.tap(find.text('Зрозуміло'));
+    await tester.pump();
+
+    expect(find.text(S.remindersExplainTitle), findsOneWidget);
+    await tester.tap(find.byKey(const Key('onboarding-reminders-allow')));
     await tester.pump();
 
     expect(store.hasParentPassword, isFalse);
@@ -4582,5 +4645,281 @@ void main() {
     await tester.pump(const Duration(milliseconds: 250));
     expect(find.byKey(const Key('timer-done')), findsOneWidget);
     expect(store.timerHistory.single.status, TimerStatus.completed);
+  });
+
+  test('evening leftover reminder is scheduled only for required tasks', () {
+    final now = DateTime(2026, 9, 12, 20);
+    expect(
+      nextEveningAt(
+        now: now,
+        hour: 21,
+        minute: 0,
+        enabled: true,
+        hasLeftovers: true,
+      ),
+      DateTime(2026, 9, 12, 21),
+    );
+    expect(
+      nextEveningAt(
+        now: DateTime(2026, 9, 12, 21),
+        hour: 21,
+        minute: 0,
+        enabled: true,
+        hasLeftovers: true,
+      ),
+      DateTime(2026, 9, 13, 21),
+    );
+    expect(
+      nextEveningAt(
+        now: now,
+        hour: 21,
+        minute: 0,
+        enabled: false,
+        hasLeftovers: true,
+      ),
+      isNull,
+    );
+    expect(
+      nextEveningAt(
+        now: now,
+        hour: 21,
+        minute: 0,
+        enabled: true,
+        hasLeftovers: false,
+      ),
+      isNull,
+    );
+  });
+
+  test(
+    'evening reminder tracks pending and submitted required tasks',
+    () async {
+      final reminders = InMemoryReminderScheduler();
+      var clock = DateTime(2026, 9, 12, 20);
+      final store = testStore(
+        now: () => clock,
+        reminders: reminders,
+        tasks: const [
+          HabitTask(id: 'bed', title: 'Ліжко', points: 10, icon: 'bed'),
+          HabitTask(
+            id: 'help',
+            title: 'Допомогти',
+            points: 5,
+            icon: 'star',
+            optional: true,
+          ),
+        ],
+      );
+      await store.load();
+      expect(
+        reminders.scheduled[ReminderId.eveningLeftovers]?.when,
+        DateTime(2026, 9, 12, 21),
+      );
+
+      await store.submit('bed');
+      expect(
+        reminders.scheduled.containsKey(ReminderId.eveningLeftovers),
+        isTrue,
+      );
+
+      await store.verify('bed');
+      expect(
+        reminders.scheduled.containsKey(ReminderId.eveningLeftovers),
+        isFalse,
+      );
+    },
+  );
+
+  test('optional leftovers do not schedule the evening reminder', () async {
+    final reminders = InMemoryReminderScheduler();
+    final store = testStore(
+      now: () => DateTime(2026, 9, 12, 20),
+      reminders: reminders,
+      tasks: const [
+        HabitTask(
+          id: 'help',
+          title: 'Допомогти',
+          points: 5,
+          icon: 'star',
+          optional: true,
+        ),
+      ],
+    );
+    await store.load();
+    expect(
+      reminders.scheduled.containsKey(ReminderId.eveningLeftovers),
+      isFalse,
+    );
+  });
+
+  test(
+    'timer reminder is scheduled while running and cancelled otherwise',
+    () async {
+      final reminders = InMemoryReminderScheduler();
+      var clock = DateTime(2026, 9, 12, 12);
+      final store = testStore(now: () => clock, reminders: reminders);
+      await store.load();
+
+      await store.startTimer(
+        duration: const Duration(minutes: 5),
+        reason: 'Читання',
+      );
+      expect(reminders.requestCount, 1);
+      expect(reminders.serviceStarts, 1);
+      expect(reminders.shown.single.id, ReminderId.timer);
+      expect(reminders.shown.single.title, S.timer);
+      expect(reminders.shown.single.body, 'Читання');
+      expect(reminders.shown.single.actionLabel, S.timerMute);
+      expect(
+        reminders.scheduled[ReminderId.timer]?.when,
+        DateTime(2026, 9, 12, 12, 5, 3),
+      );
+      expect(reminders.scheduled[ReminderId.timer]?.title, S.timerDone);
+
+      clock = clock.add(const Duration(seconds: 12));
+      await store.pauseTimer();
+      expect(reminders.serviceStops, 1);
+      expect(reminders.scheduled.containsKey(ReminderId.timer), isFalse);
+
+      clock = clock.add(const Duration(seconds: 30));
+      await store.resumeTimer();
+      expect(reminders.serviceStarts, 2);
+      expect(reminders.shown, hasLength(2));
+      expect(
+        reminders.scheduled[ReminderId.timer]?.when,
+        DateTime(2026, 9, 12, 12, 5, 33),
+      );
+
+      await store.abandonTimer();
+      expect(reminders.serviceStops, 2);
+      expect(reminders.scheduled.containsKey(ReminderId.timer), isFalse);
+    },
+  );
+
+  test('timer without a reason uses the default ongoing text', () async {
+    final reminders = InMemoryReminderScheduler();
+    final store = testStore(
+      now: () => DateTime(2026, 9, 12, 12),
+      reminders: reminders,
+    );
+    await store.load();
+    await store.startTimer(duration: const Duration(minutes: 2));
+    expect(reminders.shown.single.body, 'Йде таймер');
+  });
+
+  test(
+    'notification mute action toggles timer music and updates the label',
+    () async {
+      final reminders = InMemoryReminderScheduler();
+      final store = testStore(
+        now: () => DateTime(2026, 9, 12, 12),
+        reminders: reminders,
+      );
+      await store.load();
+      await store.startTimer(duration: const Duration(minutes: 5));
+      expect(store.timerMusicMuted, isFalse);
+
+      await reminders.fire(timerMuteAction);
+      expect(store.timerMusicMuted, isTrue);
+      expect(reminders.shown.last.actionLabel, S.timerUnmute);
+      expect(reminders.serviceStarts, 1);
+
+      await reminders.fire(timerMuteAction);
+      expect(store.timerMusicMuted, isFalse);
+      expect(reminders.shown.last.actionLabel, S.timerMute);
+    },
+  );
+
+  test('completing the timer cancels its notification', () async {
+    final reminders = InMemoryReminderScheduler();
+    var clock = DateTime(2026, 9, 12, 12);
+    final store = testStore(now: () => clock, reminders: reminders);
+    await store.load();
+    await store.startTimer(duration: const Duration(minutes: 1));
+    clock = clock.add(const Duration(minutes: 1));
+    await store.completeTimer();
+    expect(reminders.serviceStops, 1);
+    expect(reminders.scheduled.containsKey(ReminderId.timer), isFalse);
+  });
+
+  test('denied notification permission skips scheduling', () async {
+    final reminders = InMemoryReminderScheduler(permissionGranted: false);
+    final store = testStore(
+      now: () => DateTime(2026, 9, 12, 20),
+      reminders: reminders,
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Ліжко', points: 10, icon: 'bed'),
+      ],
+    );
+    await store.load();
+    await store.startTimer(duration: const Duration(minutes: 5));
+    expect(reminders.scheduled, isEmpty);
+  });
+
+  test('backup round-trips evening reminder settings', () async {
+    final source = testStore(
+      eveningReminderEnabled: false,
+      eveningReminderHour: 20,
+      eveningReminderMinute: 30,
+    );
+    await source.load();
+    final snapshot = source.exportBackup();
+    expect(snapshot.eveningReminderEnabled, isFalse);
+    expect(snapshot.eveningReminderHour, 20);
+    expect(snapshot.eveningReminderMinute, 30);
+
+    final restored = BackupSnapshot.fromJson(
+      jsonDecode(snapshot.encode()) as Map<String, dynamic>,
+    );
+    expect(restored.eveningReminderEnabled, isFalse);
+    expect(restored.eveningReminderHour, 20);
+    expect(restored.eveningReminderMinute, 30);
+
+    final old = BackupSnapshot.fromJson({
+      'app': 'axo',
+      'format': 1,
+      'exportedAt': '2026-08-29T00:00:00.000Z',
+      'data': {
+        'points': 10,
+        'onboardingComplete': true,
+        'tasks': TaskSnapshot(day: todayStamp(), tasks: const []).toJson(),
+        'goals': <dynamic>[],
+        'history': const DayHistory().toJson(),
+        'gamePlays': GamePlaysSnapshot.empty().toJson(),
+      },
+    });
+    expect(old.eveningReminderEnabled, AppConfig.defaultEveningReminderEnabled);
+    expect(old.eveningReminderHour, AppConfig.defaultEveningReminderHour);
+    expect(old.eveningReminderMinute, AppConfig.defaultEveningReminderMinute);
+
+    final target = testStore();
+    await target.load();
+    await target.importBackup(snapshot);
+    expect(target.eveningReminderEnabled, isFalse);
+    expect(target.eveningReminderHour, 20);
+    expect(target.eveningReminderMinute, 30);
+  });
+
+  testWidgets('parent settings can toggle the evening reminder', (
+    tester,
+  ) async {
+    final store = testStore();
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await pumpParentSettings(tester, store);
+    await openParentSetting(tester, const Key('settings-reminders'));
+    expect(find.text(S.eveningReminder), findsWidgets);
+    expect(store.eveningReminderEnabled, isTrue);
+
+    await tester.tap(find.byKey(const Key('evening-reminder-enabled')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('save-reminders')));
+    await tester.pumpAndSettle();
+    expect(store.eveningReminderEnabled, isFalse);
+    expect(find.text(S.off), findsOneWidget);
   });
 }

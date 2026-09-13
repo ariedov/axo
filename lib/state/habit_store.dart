@@ -14,10 +14,13 @@ import '../data/models.dart';
 import '../data/onboarding_flags.dart';
 import '../data/parent_auth.dart';
 import '../data/points_repository.dart';
+import '../data/reminder_settings.dart';
+import '../data/reminders.dart';
 import '../data/strikes_repository.dart';
 import '../data/task_repository.dart';
 import '../data/timer_repository.dart';
 import '../data/today.dart';
+import '../strings.dart';
 
 class HabitStore extends ChangeNotifier {
   HabitStore({
@@ -33,6 +36,8 @@ class HabitStore extends ChangeNotifier {
     CompletionBonusRepository? completionBonusRepo,
     GameRecentsRepository? gameRecents,
     TimerRepository? timerRepo,
+    ReminderSettingsRepository? reminderSettingsRepo,
+    ReminderScheduler? reminders,
     this.celebrateFor = const Duration(seconds: 3),
     DateTime Function()? now,
   }) : onboardingFlags = onboardingFlags ?? InMemoryOnboardingFlags(),
@@ -42,6 +47,9 @@ class HabitStore extends ChangeNotifier {
            completionBonusRepo ?? InMemoryCompletionBonusRepository(),
        gameRecents = gameRecents ?? InMemoryGameRecentsRepository(),
        timerRepo = timerRepo ?? InMemoryTimerRepository(),
+       reminderSettingsRepo =
+           reminderSettingsRepo ?? InMemoryReminderSettingsRepository(),
+       reminders = reminders ?? NoopReminderScheduler(),
        now = now ?? DateTime.now,
        _watchClock = now == null;
 
@@ -57,6 +65,8 @@ class HabitStore extends ChangeNotifier {
   final CompletionBonusRepository completionBonusRepo;
   final GameRecentsRepository gameRecents;
   final TimerRepository timerRepo;
+  final ReminderSettingsRepository reminderSettingsRepo;
+  final ReminderScheduler reminders;
   final Duration celebrateFor;
   final DateTime Function() now;
   final bool _watchClock;
@@ -88,6 +98,9 @@ class HabitStore extends ChangeNotifier {
   bool timerMusicMuted = AppConfig.defaultTimerMusicMuted;
   TimerSession? activeTimer;
   List<TimerSession> timerHistory = const [];
+  bool eveningReminderEnabled = AppConfig.defaultEveningReminderEnabled;
+  int eveningReminderHour = AppConfig.defaultEveningReminderHour;
+  int eveningReminderMinute = AppConfig.defaultEveningReminderMinute;
 
   Duration get playLimitWindow => Duration(minutes: playLimitMinutes);
 
@@ -160,6 +173,7 @@ class HabitStore extends ChangeNotifier {
   }
 
   Future<void> load() async {
+    reminders.onTimerAction = _handleTimerAction;
     totalPoints = await pointsRepo.fetchTotal();
     final todayLoad = await taskRepo.loadToday();
     days = Map.of(todayLoad.days);
@@ -181,6 +195,7 @@ class HabitStore extends ChangeNotifier {
     await _loadGameLimit();
     await _loadCompletionBonus();
     await _loadTimer();
+    await _loadReminderSettings();
     await _prunePlays();
     for (final snapshot in days.values) {
       history = history.withDay(
@@ -192,6 +207,7 @@ class HabitStore extends ChangeNotifier {
     await _syncTodayHistory();
     ready = true;
     _armDayTimer();
+    await syncReminders();
     notifyListeners();
   }
 
@@ -230,6 +246,7 @@ class HabitStore extends ChangeNotifier {
     await _loadStrikes();
     await _syncTodayHistory();
     _armDayTimer();
+    await syncReminders();
     notifyListeners();
   }
 
@@ -257,6 +274,7 @@ class HabitStore extends ChangeNotifier {
       await _persistStrikes();
     }
     celebrating = false;
+    await syncReminders();
     notifyListeners();
   }
 
@@ -450,6 +468,7 @@ class HabitStore extends ChangeNotifier {
     if (muted == timerMusicMuted) return;
     timerMusicMuted = muted;
     await _persistTimer();
+    await _syncTimerReminder();
     notifyListeners();
   }
 
@@ -468,6 +487,8 @@ class HabitStore extends ChangeNotifier {
       runningSince: stamp,
     );
     await _persistTimer();
+    await reminders.requestPermission();
+    await _syncTimerReminder();
     notifyListeners();
   }
 
@@ -480,6 +501,7 @@ class HabitStore extends ChangeNotifier {
       clearRunningSince: true,
     );
     await _persistTimer();
+    await _syncTimerReminder();
     notifyListeners();
   }
 
@@ -495,6 +517,7 @@ class HabitStore extends ChangeNotifier {
       runningSince: now().toIso8601String(),
     );
     await _persistTimer();
+    await _syncTimerReminder();
     notifyListeners();
   }
 
@@ -510,6 +533,7 @@ class HabitStore extends ChangeNotifier {
       ),
     );
     await _persistTimer();
+    await _syncTimerReminder();
     notifyListeners();
   }
 
@@ -526,6 +550,7 @@ class HabitStore extends ChangeNotifier {
       ),
     );
     await _persistTimer();
+    await _syncTimerReminder();
     notifyListeners();
   }
 
@@ -569,6 +594,122 @@ class HabitStore extends ChangeNotifier {
         musicMuted: timerMusicMuted,
         active: activeTimer,
         history: timerHistory,
+      ),
+    );
+  }
+
+  Future<void> setEveningReminder({
+    bool? enabled,
+    int? hour,
+    int? minute,
+  }) async {
+    if (hour != null && (hour < 0 || hour > 23)) return;
+    if (minute != null && (minute < 0 || minute > 59)) return;
+    var changed = false;
+    if (enabled != null && enabled != eveningReminderEnabled) {
+      eveningReminderEnabled = enabled;
+      changed = true;
+    }
+    if (hour != null && hour != eveningReminderHour) {
+      eveningReminderHour = hour;
+      changed = true;
+    }
+    if (minute != null && minute != eveningReminderMinute) {
+      eveningReminderMinute = minute;
+      changed = true;
+    }
+    if (!changed) return;
+    if (eveningReminderEnabled) {
+      await reminders.requestPermission();
+    }
+    await _persistReminderSettings();
+    await _syncEveningReminder();
+    notifyListeners();
+  }
+
+  Future<void> prepareReminders() async {
+    if (!ready) return;
+    if (eveningReminderEnabled || activeTimer != null) {
+      await reminders.requestPermission();
+    }
+    await syncReminders();
+  }
+
+  Future<void> syncReminders() async {
+    await _syncTimerReminder();
+    await _syncEveningReminder();
+  }
+
+  bool get hasEveningLeftovers => pendingCount + waitingCount > 0;
+
+  Future<void> _handleTimerAction(String actionId) async {
+    if (actionId != timerMuteAction) return;
+    await setTimerMusicMuted(!timerMusicMuted);
+  }
+
+  Future<void> _syncTimerReminder() async {
+    final active = activeTimer;
+    final done = timerDoneAt(now: now(), active: active);
+    if (done == null || !await reminders.hasPermission()) {
+      await reminders.stopTimerService();
+      await reminders.cancel(ReminderId.timer);
+      return;
+    }
+    final ongoing = ScheduledReminder(
+      id: ReminderId.timer,
+      when: done,
+      title: S.timer,
+      body: S.timerOngoing(active?.reason ?? ''),
+      actionId: timerMuteAction,
+      actionLabel: timerMusicMuted ? S.timerUnmute : S.timerMute,
+    );
+    await reminders.ensureTimerService(ongoing);
+    await reminders.showOngoing(ongoing);
+    await reminders.schedule(
+      ScheduledReminder(
+        id: ReminderId.timer,
+        when: done.add(timerDoneBuffer),
+        title: S.timerDone,
+        body: S.timerNotificationBody(active?.reason ?? ''),
+      ),
+    );
+  }
+
+  Future<void> _syncEveningReminder() async {
+    final when = nextEveningAt(
+      now: now(),
+      hour: eveningReminderHour,
+      minute: eveningReminderMinute,
+      enabled: eveningReminderEnabled,
+      hasLeftovers: hasEveningLeftovers,
+    );
+    if (when == null || !await reminders.hasPermission()) {
+      await reminders.cancel(ReminderId.eveningLeftovers);
+      return;
+    }
+    await reminders.schedule(
+      ScheduledReminder(
+        id: ReminderId.eveningLeftovers,
+        when: when,
+        title: AppConfig.appName,
+        body: S.eveningReminderBody,
+      ),
+    );
+  }
+
+  Future<void> _loadReminderSettings() async {
+    final snapshot = await reminderSettingsRepo.load();
+    eveningReminderEnabled = snapshot.enabled;
+    eveningReminderHour = snapshot.hour;
+    eveningReminderMinute = snapshot.minute;
+  }
+
+  Future<void> _persistReminderSettings() {
+    return reminderSettingsRepo.save(
+      ReminderSettingsSnapshot(
+        enabled: eveningReminderEnabled,
+        hour: eveningReminderHour,
+        minute: eveningReminderMinute,
       ),
     );
   }
@@ -735,6 +876,7 @@ class HabitStore extends ChangeNotifier {
     }
     await _persist();
     await _syncTodayHistory();
+    await _syncEveningReminder();
     notifyListeners();
   }
 
@@ -746,6 +888,7 @@ class HabitStore extends ChangeNotifier {
     ];
     await _persist();
     await _syncTodayHistory();
+    await _syncEveningReminder();
     notifyListeners();
   }
 
@@ -912,6 +1055,9 @@ class HabitStore extends ChangeNotifier {
       playLimitMinutes: playLimitMinutes,
       completionBonusEnabled: completionBonusEnabled,
       completionBonusPoints: completionBonusPoints,
+      eveningReminderEnabled: eveningReminderEnabled,
+      eveningReminderHour: eveningReminderHour,
+      eveningReminderMinute: eveningReminderMinute,
       timer: TimerSnapshot(
         enabled: timerEnabled,
         musicMuted: timerMusicMuted,
@@ -949,6 +1095,13 @@ class HabitStore extends ChangeNotifier {
       ),
     );
     await timerRepo.save(snapshot.timer);
+    await reminderSettingsRepo.save(
+      ReminderSettingsSnapshot(
+        enabled: snapshot.eveningReminderEnabled,
+        hour: snapshot.eveningReminderHour,
+        minute: snapshot.eveningReminderMinute,
+      ),
+    );
     await load();
   }
 
@@ -1035,6 +1188,7 @@ class HabitStore extends ChangeNotifier {
       ];
       await _persist();
       await _syncTodayHistory();
+      await _syncEveningReminder();
       notifyListeners();
       return;
     }

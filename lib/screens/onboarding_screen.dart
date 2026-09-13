@@ -120,6 +120,34 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       startingPoints: points,
       goal: _goal,
     );
+    if (!mounted) return;
+    await _askForReminders();
+  }
+
+  Future<void> _askForReminders() async {
+    final store = HabitScope.of(context);
+    final allow = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: const Text(S.remindersExplainTitle),
+        content: const Text(S.remindersExplainBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(S.remindersLater),
+          ),
+          FilledButton(
+            key: const Key('onboarding-reminders-allow'),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(S.remindersAllow),
+          ),
+        ],
+      ),
+    );
+    if (allow != true) return;
+    await store.prepareReminders();
   }
 
   @override

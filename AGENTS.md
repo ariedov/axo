@@ -32,9 +32,11 @@ Tasks are required unless `optional` (`HabitTask.isMandatory`); calendar complet
 
 Games: 10 items per round (`AppConfig.roundLength`). Two caps: a global window (`rewardedPlays` in `playLimitMinutes`) and a per-game daily cap. After the daily cap, practice mode (no points). Parent can turn limits off (`gameLimitEnabled`, default on); then play has no stops and always awards points. Award through `tryAwardGamePlay`. New game: id/points in `AppConfig`, catalog entry, screen (follow `GameScaffold` / `GameSetupBody` / `GameRound`), route in `miniGameScreen()`, strings on `S`, tests in `widget_test.dart`.
 
-Backup format 2, `app: axo`. Never export the parent password; import keeps the existing password. Newer format throws. Timer history and the parent enable flag ride along in `data.timer`.
+Backup format 2, `app: axo`. Never export the parent password; import keeps the existing password. Newer format throws. Timer history and the parent enable flag ride along in `data.timer`. Evening reminder prefs ride along as `eveningReminderEnabled` / `Hour` / `Minute`.
 
-Timer: FAB on home (parent can hide it). Duration + optional reason, counts up, pause/resume/abandon, screen stays on. History is in parent settings.
+Timer: FAB on home (parent can hide it). Duration + optional reason, counts up, pause/resume/abandon, screen stays on. History is in parent settings. While running, a persistent OS notification is shown (id `ReminderId.timer`) backed by an Android `mediaPlayback` foreground service (keeps music + countdown alive in background); the one-off done alarm replaces it (+3s buffer so in-app completion cancels first). The service notification has a mute action that toggles timer music. Onboarding ends with an explain dialog, then a permission request.
+
+Reminders are local-only (no push server). Evening leftovers ping required pending+submitted tasks; parent-gated time defaults to 21:00. Android/iOS only — web cannot schedule notifications. Inject `ReminderScheduler`; tests use `InMemoryReminderScheduler`.
 
 ## UI / assets
 

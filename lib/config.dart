@@ -45,4 +45,8 @@ class AppConfig {
   static const timerMaxMinutes = 60;
   static const timerHistoryLimit = 100;
   static const timerPresetsMinutes = [1, 2, 5, 10, 15, 20, 30, 60];
+
+  static const defaultEveningReminderEnabled = true;
+  static const defaultEveningReminderHour = 21;
+  static const defaultEveningReminderMinute = 0;
 }
