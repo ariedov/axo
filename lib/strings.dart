@@ -204,7 +204,7 @@ class S {
   static const importDone = 'Дані відновлено';
   static const privacy = 'Приватність';
   static const privacyBody =
-      'Аксо працює лише на цьому телефоні. Завдання, бали, цілі та батьківський пароль зберігаються локально. Ми не збираємо і не надсилаємо дані, не показуємо рекламу і не використовуємо рекламний ідентифікатор.';
+      'Аксо працює лише на цьому телефоні. Завдання, бали, цілі, батьківський пароль і нагадування зберігаються локально. Ми не збираємо і не надсилаємо дані, не показуємо рекламу і не використовуємо рекламний ідентифікатор.';
   static const resetToday = 'Скинути сьогодні';
   static const resetTodayTitle = 'Почати сьогодні заново?';
   static const resetTodayBody =
@@ -359,6 +359,38 @@ class S {
       'Таймер зупиниться, а запис з\'явиться в історії.';
   static const timerDone = 'Готово!';
   static const timerDoneBody = 'Час вийшов! Я пишаюся тобою!';
+  static String timerNotificationBody(String reason) =>
+      reason.isEmpty ? timerDoneBody : '$reason — час вийшов!';
+
+  static String timerOngoing(String reason) =>
+      reason.isEmpty ? 'Йде таймер' : reason;
+
+  static const timerChannelDescription = 'Живий показник таймера';
+
+  static const reminders = 'Нагадування';
+  static const remindersHint =
+      'Аксо нагадає на цьому телефоні, навіть якщо додаток згорнуто. Дозвольте сповіщення. На деяких телефонах система може затримати їх, щоб берегти батарею.';
+  static const remindersWebHint =
+      'Нагадування працюють у додатку на Android і iPhone, не в браузері.';
+  static const remindersExplainTitle = 'Нагадування';
+  static const remindersExplainBody =
+      'Аксо нагадає ввечері, якщо залишилися справи, і повідомить, коли таймер завершиться. Сповіщення лишаються на цьому телефоні.';
+  static const remindersAllow = 'Дозволити';
+  static const remindersLater = 'Не зараз';
+  static const eveningReminder = 'Вечірнє нагадування';
+  static const eveningReminderTime = 'Час';
+  static const eveningReminderBody = 'У тебе ще є справи на сьогодні';
+  static const remindersSaved = 'Нагадування збережено';
+  static const notificationsDenied =
+      'Сповіщення вимкнені. Увімкніть їх у налаштуваннях телефону.';
+  static const remindersChannelDescription = 'Нагадування Аксо';
+
+  static String clockTime(int hour, int minute) {
+    final h = hour.toString().padLeft(2, '0');
+    final m = minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
   static const timerNoHistory = 'Поки немає записів.';
   static const timerCompleted = 'Виконано';
   static const timerAbandoned = 'Зупинено';

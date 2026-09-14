@@ -32,6 +32,8 @@ class TimerRunOverlay extends StatefulWidget {
 class _TimerRunOverlayState extends State<TimerRunOverlay> {
   Timer? _ticker;
   var _done = false;
+  bool? _syncedMuted;
+  bool? _syncedPaused;
 
   @override
   void initState() {
@@ -63,6 +65,13 @@ class _TimerRunOverlayState extends State<TimerRunOverlay> {
       await AudioService.instance.stopMusic();
       await AudioService.instance.play(SoundEffect.timerDone);
       return;
+    }
+    final muted = store.timerMusicMuted;
+    final paused = store.activeTimer?.status != TimerStatus.running;
+    if (muted != _syncedMuted || paused != _syncedPaused) {
+      _syncedMuted = muted;
+      _syncedPaused = paused;
+      await _syncMusic();
     }
     setState(() {});
     await _syncWake();

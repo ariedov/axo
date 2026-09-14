@@ -1,12 +1,12 @@
 # Політика конфіденційності
 
-Додаток Аксо · оновлено 28 серпня 2026
+Додаток Аксо · оновлено 12 вересня 2026
 
 Аксо — сімейний трекер звичок для дітей і батьків. Ця політика пояснює, як додаток працює з даними.
 
 ## Що зберігається
 
-Аксо працює лише на вашому пристрої. Завдання, бали, цілі, історія днів, прогрес у іграх і батьківський пароль зберігаються локально. Ми не збираємо і не надсилаємо ці дані на свої сервери.
+Аксо працює лише на вашому пристрої. Завдання, бали, цілі, історія днів, прогрес у іграх, батьківський пароль і локальні нагадування зберігаються на телефоні. Ми не збираємо і не надсилаємо ці дані на свої сервери.
 
 ## Чого немає
 
@@ -35,13 +35,13 @@
 
 # Privacy Policy
 
-Axo app · last updated 28 August 2026
+Axo app · last updated 12 September 2026
 
 Axo is a family habit tracker for children and parents. This policy describes how the app handles data.
 
 ## What is stored
 
-Axo works only on your device. Tasks, points, goals, day history, game progress, and the parent password are stored locally. We do not collect or send this data to our servers.
+Axo works only on your device. Tasks, points, goals, day history, game progress, the parent password, and local reminders are stored on the phone. We do not collect or send this data to our servers.
 
 ## What we do not do
 

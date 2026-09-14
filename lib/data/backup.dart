@@ -26,6 +26,9 @@ class BackupSnapshot {
     this.playLimitMinutes = AppConfig.playLimitMinutes,
     this.completionBonusEnabled = AppConfig.defaultCompletionBonusEnabled,
     this.completionBonusPoints = AppConfig.defaultCompletionBonusPoints,
+    this.eveningReminderEnabled = AppConfig.defaultEveningReminderEnabled,
+    this.eveningReminderHour = AppConfig.defaultEveningReminderHour,
+    this.eveningReminderMinute = AppConfig.defaultEveningReminderMinute,
     this.timer = const TimerSnapshot(),
   });
 
@@ -48,6 +51,9 @@ class BackupSnapshot {
   final int playLimitMinutes;
   final bool completionBonusEnabled;
   final int completionBonusPoints;
+  final bool eveningReminderEnabled;
+  final int eveningReminderHour;
+  final int eveningReminderMinute;
   final TimerSnapshot timer;
 
   String get fileName => 'axo-${todayStamp(exportedAt)}.json';
@@ -77,6 +83,9 @@ class BackupSnapshot {
       'playLimitMinutes': playLimitMinutes,
       'completionBonusEnabled': completionBonusEnabled,
       'completionBonusPoints': completionBonusPoints,
+      'eveningReminderEnabled': eveningReminderEnabled,
+      'eveningReminderHour': eveningReminderHour,
+      'eveningReminderMinute': eveningReminderMinute,
       'timer': timer.toJson(),
     },
   };
@@ -132,6 +141,15 @@ class BackupSnapshot {
       completionBonusPoints:
           (data['completionBonusPoints'] as num?)?.toInt() ??
           AppConfig.defaultCompletionBonusPoints,
+      eveningReminderEnabled:
+          data['eveningReminderEnabled'] as bool? ??
+          AppConfig.defaultEveningReminderEnabled,
+      eveningReminderHour:
+          (data['eveningReminderHour'] as num?)?.toInt() ??
+          AppConfig.defaultEveningReminderHour,
+      eveningReminderMinute:
+          (data['eveningReminderMinute'] as num?)?.toInt() ??
+          AppConfig.defaultEveningReminderMinute,
       timer: data['timer'] is Map<String, dynamic>
           ? TimerSnapshot.fromJson(data['timer'] as Map<String, dynamic>)
           : const TimerSnapshot(),

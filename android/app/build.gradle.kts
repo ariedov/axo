@@ -18,6 +18,7 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -26,6 +27,7 @@ android {
         applicationId = "com.dleibovych.axo"
         minSdk = flutter.minSdkVersion
         targetSdk = 36
+        multiDexEnabled = true
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         resourceConfigurations += listOf("uk", "en")
@@ -75,6 +77,10 @@ kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
 
 flutter {
