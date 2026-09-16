@@ -1068,6 +1068,22 @@ class HabitStore extends ChangeNotifier {
   }
 
   Future<void> importBackup(BackupSnapshot snapshot) async {
+    final rollback = exportBackup();
+    try {
+      await _writeBackup(snapshot);
+      await load();
+    } catch (_) {
+      try {
+        await _writeBackup(rollback);
+      } catch (_) {}
+      try {
+        await load();
+      } catch (_) {}
+      rethrow;
+    }
+  }
+
+  Future<void> _writeBackup(BackupSnapshot snapshot) async {
     await pointsRepo.setTotal(snapshot.points);
     await taskRepo.replaceAll(snapshot.allTaskDays);
     await goalRepo.save(snapshot.goals);
@@ -1102,7 +1118,6 @@ class HabitStore extends ChangeNotifier {
         minute: snapshot.eveningReminderMinute,
       ),
     );
-    await load();
   }
 
   Future<void> _ensureActivated() async {

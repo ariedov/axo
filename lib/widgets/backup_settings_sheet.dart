@@ -13,6 +13,29 @@ Future<void> showBackupSettingsSheet(BuildContext context) {
   );
 }
 
+Future<void> showImportResultDialog(
+  BuildContext context, {
+  required String title,
+  required String body,
+}) {
+  return showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      title: Text(title),
+      content: Text(body),
+      actions: [
+        FilledButton(
+          key: const Key('import-result-ok'),
+          onPressed: () => Navigator.pop(context),
+          child: const Text(S.ok),
+        ),
+      ],
+    ),
+  );
+}
+
 Future<bool> showImportReplaceDialog(BuildContext context) async {
   final confirmed = await showDialog<bool>(
     context: context,
@@ -60,11 +83,26 @@ class BackupSettingsSheet extends StatelessWidget {
       final snapshot = await pickBackup();
       if (snapshot == null || !context.mounted) return;
       await HabitScope.of(context).importBackup(snapshot);
-      showParentToast(messenger, S.importDone);
+      if (!context.mounted) return;
+      await showImportResultDialog(
+        context,
+        title: S.importSuccessTitle,
+        body: S.importSuccessBody,
+      );
     } on FormatException {
-      showParentToast(messenger, S.importInvalid);
+      if (!context.mounted) return;
+      await showImportResultDialog(
+        context,
+        title: S.importErrorTitle,
+        body: S.importInvalid,
+      );
     } catch (_) {
-      showParentToast(messenger, S.importFailed);
+      if (!context.mounted) return;
+      await showImportResultDialog(
+        context,
+        title: S.importErrorTitle,
+        body: S.importErrorBody,
+      );
     }
   }
 

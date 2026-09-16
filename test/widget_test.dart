@@ -40,6 +40,7 @@ import 'package:app/strings.dart';
 import 'package:app/theme.dart';
 import 'package:app/widgets/answer_flash.dart';
 import 'package:app/widgets/axolotl_mascot.dart';
+import 'package:app/widgets/backup_settings_sheet.dart';
 import 'package:app/widgets/game_card.dart';
 import 'package:app/widgets/game_input_body.dart';
 import 'package:app/widgets/game_plays_banner.dart';
@@ -158,6 +159,20 @@ Future<void> pumpParentSettings(WidgetTester tester, HabitStore store) async {
     ),
   );
   await tester.pump();
+}
+
+class _FailingGoalRepository implements GoalRepository {
+  _FailingGoalRepository(this._inner);
+
+  final GoalRepository _inner;
+
+  @override
+  Future<List<RewardGoal>> load() => _inner.load();
+
+  @override
+  Future<void> save(List<RewardGoal> goals) async {
+    throw StateError('goal save failed');
+  }
 }
 
 void main() {
@@ -4921,5 +4936,109 @@ void main() {
     await tester.pumpAndSettle();
     expect(store.eveningReminderEnabled, isFalse);
     expect(find.text(S.off), findsOneWidget);
+  });
+
+  test('import backup rolls back when a write fails', () async {
+    final source = testStore(
+      points: 40,
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+      ],
+    );
+    await source.load();
+    final snapshot = source.exportBackup();
+
+    final pointsRepo = InMemoryPointsRepository(1);
+    final day = todayStamp();
+    final taskRepo = InMemoryTaskRepository(
+      TaskSnapshot(
+        day: day,
+        tasks: const [
+          HabitTask(id: 'other', title: 'Інше', points: 5, icon: 'star'),
+        ],
+      ),
+    );
+    final target = HabitStore(
+      pointsRepo: pointsRepo,
+      taskRepo: taskRepo,
+      parentAuth: InMemoryParentAuth('keep-me'),
+      gamePlays: InMemoryGamePlaysRepository(),
+      goalRepo: _FailingGoalRepository(InMemoryGoalRepository()),
+      historyRepo: InMemoryDayHistoryRepository(),
+      celebrateFor: Duration.zero,
+    );
+    await target.load();
+    expect(target.totalPoints, 1);
+    expect(target.tasks.single.id, 'other');
+
+    await expectLater(target.importBackup(snapshot), throwsStateError);
+
+    expect(target.totalPoints, 1);
+    expect(target.tasks.single.id, 'other');
+    expect(await pointsRepo.fetchTotal(), 1);
+    expect((await taskRepo.loadToday()).current.tasks.single.id, 'other');
+  });
+
+  testWidgets('import result dialog shows a single ok button', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.cute,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              key: const Key('show-result'),
+              onPressed: () => showImportResultDialog(
+                context,
+                title: S.importSuccessTitle,
+                body: S.importSuccessBody,
+              ),
+              child: const Text('show'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('show-result')));
+    await tester.pumpAndSettle();
+
+    expect(find.text(S.importSuccessTitle), findsOneWidget);
+    expect(find.text(S.importSuccessBody), findsOneWidget);
+    expect(find.byKey(const Key('import-result-ok')), findsOneWidget);
+    expect(find.text(S.ok), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('import-result-ok')));
+    await tester.pumpAndSettle();
+    expect(find.text(S.importSuccessTitle), findsNothing);
+  });
+
+  testWidgets('import error dialog shows the error copy', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.cute,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              key: const Key('show-error'),
+              onPressed: () => showImportResultDialog(
+                context,
+                title: S.importErrorTitle,
+                body: S.importErrorBody,
+              ),
+              child: const Text('show'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('show-error')));
+    await tester.pumpAndSettle();
+
+    expect(find.text(S.importErrorTitle), findsOneWidget);
+    expect(find.text(S.importErrorBody), findsOneWidget);
+    expect(find.byKey(const Key('import-result-ok')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('import-result-ok')));
+    await tester.pumpAndSettle();
+    expect(find.text(S.importErrorTitle), findsNothing);
   });
 }
