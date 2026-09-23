@@ -1,7 +1,7 @@
 name: app
 description: "Аксо — трекер звичок з рожевим аксолотлем."
 publish_to: "none"
-version: 1.2.9+15
+version: 1.2.10+16
 
 environment:
   sdk: ^3.13.1
