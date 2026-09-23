@@ -33,6 +33,9 @@ class S {
   static const wrongPassword = 'Неправильний пароль';
   static const awardPoints = 'Нарахувати бали';
   static const sendBack = 'Повернути';
+  static const approveCompleted = 'Підтвердити виконані';
+  static const approveCompletedPrompt =
+      'Введи пароль, щоб підтвердити виконані завдання';
   static const cancel = 'Скасувати';
   static const addTask = 'Додати завдання';
   static const addTodayTaskPrompt =
