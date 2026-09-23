@@ -387,6 +387,78 @@ void main() {
     expect(S.todayTaskPoints(10, 25), '10 / 25 балів');
   });
 
+  test(
+    'verifySubmittedDaily awards every waiting mandatory task once',
+    () async {
+      final store = testStore(
+        tasks: const [
+          HabitTask(
+            id: 'a',
+            title: 'Перше',
+            points: 5,
+            icon: 'star',
+            status: TaskStatus.submitted,
+          ),
+          HabitTask(id: 'b', title: 'Друге', points: 7, icon: 'bed'),
+          HabitTask(
+            id: 'c',
+            title: 'Третє',
+            points: 4,
+            icon: 'food',
+            status: TaskStatus.submitted,
+          ),
+          HabitTask(
+            id: 'help',
+            title: 'Допомогти',
+            points: 8,
+            icon: 'star',
+            optional: true,
+            status: TaskStatus.submitted,
+          ),
+        ],
+      );
+      await store.load();
+
+      expect(await store.verifySubmittedDaily(), 0);
+      expect(store.tasks.map((task) => task.status), [
+        TaskStatus.verified,
+        TaskStatus.pending,
+        TaskStatus.verified,
+        TaskStatus.submitted,
+      ]);
+      expect(store.totalPoints, 9);
+    },
+  );
+
+  test(
+    'verifySubmittedDaily awards the completion bonus when the day is done',
+    () async {
+      final store = testStore(
+        tasks: const [
+          HabitTask(
+            id: 'a',
+            title: 'Перше',
+            points: 5,
+            icon: 'star',
+            status: TaskStatus.submitted,
+          ),
+          HabitTask(
+            id: 'b',
+            title: 'Друге',
+            points: 5,
+            icon: 'bed',
+            status: TaskStatus.submitted,
+          ),
+        ],
+      );
+      await store.load();
+
+      expect(await store.verifySubmittedDaily(), 10);
+      expect(store.tasks.every((task) => task.isVerified), isTrue);
+      expect(store.totalPoints, 20);
+    },
+  );
+
   test('rejecting a task does not award points', () async {
     final store = testStore(
       tasks: const [
@@ -3587,6 +3659,103 @@ void main() {
     expect(find.text('Правопис'), findsOneWidget);
     expect(find.text('Англійська'), findsNothing);
     expect(find.byKey(const Key('all-games')), findsOneWidget);
+  });
+
+  testWidgets('home hides approve-completed until a daily task is waiting', (
+    tester,
+  ) async {
+    final store = testStore(
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+      ],
+    );
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+
+    expect(find.byKey(const Key('approve-completed')), findsNothing);
+
+    await tester.tap(find.text('Зробив!'));
+    await tester.pump();
+
+    expect(find.byKey(const Key('approve-completed')), findsOneWidget);
+    expect(find.text('Підтвердити виконані'), findsOneWidget);
+  });
+
+  testWidgets('home approves every waiting daily task after one password', (
+    tester,
+  ) async {
+    final store = testStore(
+      tasks: const [
+        HabitTask(
+          id: 'bed',
+          title: 'Застелити ліжко',
+          points: 10,
+          icon: 'bed',
+          status: TaskStatus.submitted,
+        ),
+        HabitTask(
+          id: 'teeth',
+          title: 'Почистити зуби',
+          points: 5,
+          icon: 'hygiene',
+          status: TaskStatus.submitted,
+        ),
+        HabitTask(
+          id: 'toys',
+          title: 'Прибрати іграшки',
+          points: 8,
+          icon: 'star',
+        ),
+        HabitTask(
+          id: 'help',
+          title: 'Допомогти вдома',
+          points: 8,
+          icon: 'star',
+          optional: true,
+          status: TaskStatus.submitted,
+        ),
+      ],
+    );
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('approve-completed')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('approve-completed')));
+    await tester.pump();
+    expect(
+      find.text('Введи пароль, щоб підтвердити виконані завдання'),
+      findsOneWidget,
+    );
+
+    await tester.enterText(find.byType(TextField), '4826');
+    await tester.tap(find.text('Перевірити').last);
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Нарахувати бали'), findsNothing);
+    expect(store.tasks[0].isVerified, isTrue);
+    expect(store.tasks[1].isVerified, isTrue);
+    expect(store.tasks[2].isPending, isTrue);
+    expect(store.tasks[3].isSubmitted, isTrue);
+    expect(store.totalPoints, 15);
+    expect(find.byKey(const Key('approve-completed')), findsNothing);
+    expect(find.text('Підтверджено'), findsAtLeastNWidgets(1));
   });
 
   testWidgets('home points label opens bonus screen after parent password', (

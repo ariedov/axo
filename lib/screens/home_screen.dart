@@ -153,6 +153,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     },
                   ),
+                  if (store.waitingCount > 0)
+                    const SliverToBoxAdapter(child: _ApproveCompleted()),
                   if (store.pendingCount == 0 && store.waitingCount == 0)
                     const SliverToBoxAdapter(
                       child: Padding(
@@ -374,6 +376,32 @@ class _SectionTitle extends StatelessWidget {
               color: AppColors.pinkDark,
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _ApproveCompleted extends StatelessWidget {
+  const _ApproveCompleted();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+      child: Align(
+        alignment: Alignment.center,
+        child: TextButton(
+          key: const Key('approve-completed'),
+          onPressed: () => verifySubmittedDailyWithBonus(context),
+          child: const Text(
+            S.approveCompleted,
+            style: TextStyle(
+              color: AppColors.muted,
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
+          ),
+        ),
       ),
     );
   }

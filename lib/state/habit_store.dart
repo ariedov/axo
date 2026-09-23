@@ -835,30 +835,16 @@ class HabitStore extends ChangeNotifier {
     );
   }
 
-  Future<int> verify(String taskId, {String? day}) async {
-    await ensureToday();
-    final task = _taskOn(taskId, day);
-    if (task == null || !task.isSubmitted) return 0;
+  Future<int> verify(String taskId, {String? day}) {
+    return _verifyAndCelebrate([taskId], day: day);
+  }
 
-    final wasComplete = _mandatoryComplete(day);
-    totalPoints = await pointsRepo.award(amount: task.points, taskId: task.id);
-    final isToday = _isToday(day);
-    celebrating = isToday;
-    await _update(
-      taskId,
-      (item) => item.copyWith(status: TaskStatus.verified),
-      day: day,
-    );
-    final bonus = await _maybeAwardCompletionBonus(
-      day: day,
-      wasComplete: wasComplete,
-    );
-    if (celebrating && celebrateFor > Duration.zero && bonus == 0) {
-      await Future<void>.delayed(celebrateFor);
-    }
-    celebrating = false;
-    notifyListeners();
-    return bonus;
+  Future<int> verifySubmittedDaily({String? day}) async {
+    await ensureToday();
+    return _verifyAndCelebrate([
+      for (final task in tasksOn(day ?? todayStamp(now())))
+        if (task.isMandatory && task.isSubmitted) task.id,
+    ], day: day);
   }
 
   Future<void> reject(String taskId, {String? day}) =>
@@ -1163,6 +1149,36 @@ class HabitStore extends ChangeNotifier {
         if (task.isMandatory) task,
     ];
     return mandatory.isNotEmpty && mandatory.every((task) => task.isVerified);
+  }
+
+  Future<int> _verifyAndCelebrate(List<String> taskIds, {String? day}) async {
+    if (taskIds.isEmpty) return 0;
+    var bonus = 0;
+    for (final taskId in taskIds) {
+      bonus = await _verifyOne(taskId, day: day);
+    }
+    if (celebrating && celebrateFor > Duration.zero && bonus == 0) {
+      await Future<void>.delayed(celebrateFor);
+    }
+    celebrating = false;
+    notifyListeners();
+    return bonus;
+  }
+
+  Future<int> _verifyOne(String taskId, {String? day}) async {
+    await ensureToday();
+    final task = _taskOn(taskId, day);
+    if (task == null || !task.isSubmitted) return 0;
+
+    final wasComplete = _mandatoryComplete(day);
+    totalPoints = await pointsRepo.award(amount: task.points, taskId: task.id);
+    celebrating = _isToday(day);
+    await _update(
+      taskId,
+      (item) => item.copyWith(status: TaskStatus.verified),
+      day: day,
+    );
+    return _maybeAwardCompletionBonus(day: day, wasComplete: wasComplete);
   }
 
   Future<int> _maybeAwardCompletionBonus({
