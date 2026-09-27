@@ -102,9 +102,12 @@ class ParentSettingsScreen extends StatelessWidget {
               SettingsTile(
                 key: const Key('completion-bonus-settings'),
                 title: S.completionBonus,
-                subtitle: store.completionBonusEnabled
-                    ? S.plusPoints(store.completionBonusPoints)
-                    : S.off,
+                subtitle: S.completionBonusSummary(
+                  enabled: store.completionBonusEnabled,
+                  points: store.completionBonusPoints,
+                  streakEnabled: store.streakBonusEnabled,
+                  streakMax: store.streakBonusMaxPoints,
+                ),
                 onTap: () => showCompletionBonusSettingsSheet(context),
               ),
               SettingsTile(

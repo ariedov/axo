@@ -8,6 +8,9 @@ class AppConfig {
   static const defaultPenaltyPoints = 10;
   static const defaultCompletionBonusEnabled = true;
   static const defaultCompletionBonusPoints = 10;
+  static const defaultStreakBonusEnabled = true;
+  static const defaultStreakBonusMaxPoints = 20;
+  static const streakBonusPerDay = 1;
 
   static const timesTablesMin = 1;
   static const timesTablesMax = 10;

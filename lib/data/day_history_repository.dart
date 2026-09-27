@@ -13,7 +13,7 @@ class DayHistory {
   final String? activatedOn;
   final Map<String, DayProgress> days;
 
-  /// Days the all-done completion bonus was already awarded.
+  /// Days an all-done bonus (daily and/or streak) was already awarded.
   final List<String> bonusDays;
 
   DayProgress? operator [](String day) => days[day];
@@ -64,9 +64,7 @@ class DayHistory {
 
   Map<String, dynamic> toJson() => {
     'activatedOn': activatedOn,
-    'days': {
-      for (final entry in days.entries) entry.key: entry.value.toJson(),
-    },
+    'days': {for (final entry in days.entries) entry.key: entry.value.toJson()},
     if (bonusDays.isNotEmpty) 'bonusDays': bonusDays,
   };
 

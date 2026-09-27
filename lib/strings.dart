@@ -163,16 +163,39 @@ class S {
   static const gameLimitSaved = 'Ліміт ігор збережено';
   static const invalidGameLimit = 'Вкажіть ціле число більше нуля';
   static const completionBonus = 'Бонус за всі завдання';
+  static const completionBonusDaily = 'За день';
   static const completionBonusHint =
       'Додаткові бали, якщо дитина виконала всі обов\'язкові завдання за день.';
   static const completionBonusEnabled = 'Нараховувати бонус';
   static const completionBonusPoints = 'Бонус у балах';
+  static const streakBonusSection = 'За серію';
+  static const streakBonusEnabled = 'Нараховувати бонус за серію';
+  static const streakBonusMax = 'Максимум балів за серію';
+  static const streakBonusHint =
+      '1 бал за кожен день поспіль, але не більше максимуму.';
   static const completionBonusSaved = 'Бонус збережено';
   static const invalidCompletionBonus = 'Вкажіть ціле число балів';
   static const completionBonusTitle = 'Усі завдання готові!';
 
   static String completionBonusEarned(int n) =>
       'Аксо пишається тобою! Ось ще ${pointsWord(n)}.';
+
+  static String streakBonusAwarded(int n) => '+${pointsWord(n)} за серію';
+
+  static String streakBonusCap(int n) => 'серія до ${pointsWord(n)}';
+
+  static String completionBonusSummary({
+    required bool enabled,
+    required int points,
+    required bool streakEnabled,
+    required int streakMax,
+  }) {
+    if (!enabled && !streakEnabled) return off;
+    return [
+      if (enabled) plusPoints(points),
+      if (streakEnabled) streakBonusCap(streakMax),
+    ].join(', ');
+  }
 
   static String strikesProgress(int n, int max) => '$n з $max';
 
