@@ -6,12 +6,21 @@ class CompletionBonusSnapshot {
   const CompletionBonusSnapshot({
     this.enabled = AppConfig.defaultCompletionBonusEnabled,
     this.points = AppConfig.defaultCompletionBonusPoints,
+    this.streakEnabled = AppConfig.defaultStreakBonusEnabled,
+    this.streakMaxPoints = AppConfig.defaultStreakBonusMaxPoints,
   });
 
   final bool enabled;
   final int points;
+  final bool streakEnabled;
+  final int streakMaxPoints;
 
-  Map<String, dynamic> toJson() => {'enabled': enabled, 'points': points};
+  Map<String, dynamic> toJson() => {
+    'enabled': enabled,
+    'points': points,
+    'streakEnabled': streakEnabled,
+    'streakMaxPoints': streakMaxPoints,
+  };
 
   factory CompletionBonusSnapshot.fromJson(Map<String, dynamic> json) {
     return CompletionBonusSnapshot(
@@ -20,6 +29,11 @@ class CompletionBonusSnapshot {
       points:
           (json['points'] as num?)?.toInt() ??
           AppConfig.defaultCompletionBonusPoints,
+      streakEnabled:
+          json['streakEnabled'] as bool? ?? AppConfig.defaultStreakBonusEnabled,
+      streakMaxPoints:
+          (json['streakMaxPoints'] as num?)?.toInt() ??
+          AppConfig.defaultStreakBonusMaxPoints,
     );
   }
 }

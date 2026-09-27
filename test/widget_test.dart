@@ -39,6 +39,7 @@ import 'package:app/state/habit_store.dart';
 import 'package:app/strings.dart';
 import 'package:app/theme.dart';
 import 'package:app/widgets/answer_flash.dart';
+import 'package:app/widgets/completion_bonus_dialog.dart';
 import 'package:app/widgets/axolotl_mascot.dart';
 import 'package:app/widgets/backup_settings_sheet.dart';
 import 'package:app/widgets/game_card.dart';
@@ -65,6 +66,8 @@ HabitStore testStore({
   int playLimitMinutes = AppConfig.playLimitMinutes,
   bool completionBonusEnabled = AppConfig.defaultCompletionBonusEnabled,
   int completionBonusPoints = AppConfig.defaultCompletionBonusPoints,
+  bool streakBonusEnabled = AppConfig.defaultStreakBonusEnabled,
+  int streakBonusMaxPoints = AppConfig.defaultStreakBonusMaxPoints,
   GameRecentsRepository? gameRecents,
   OnboardingFlags? onboardingFlags,
   DayHistory? history,
@@ -110,6 +113,8 @@ HabitStore testStore({
       CompletionBonusSnapshot(
         enabled: completionBonusEnabled,
         points: completionBonusPoints,
+        streakEnabled: streakBonusEnabled,
+        streakMaxPoints: streakBonusMaxPoints,
       ),
     ),
     timerRepo:
@@ -295,7 +300,7 @@ void main() {
 
     await store.verify('bed');
     expect(store.tasks.first.isVerified, isTrue);
-    expect(store.totalPoints, 20);
+    expect(store.totalPoints, 21);
     expect(store.todayEarnedPoints, 10);
     expect(store.todayPossiblePoints, 10);
   });
@@ -327,8 +332,9 @@ void main() {
       expect(store.totalPoints, 13);
 
       await store.submit('b');
-      expect(await store.verify('b'), 10);
-      expect(store.totalPoints, 28);
+      expect(await store.verify('b'), 11);
+      expect(store.lastStreakBonus, 1);
+      expect(store.totalPoints, 29);
     },
   );
 
@@ -336,6 +342,7 @@ void main() {
     final store = testStore(
       completionBonusEnabled: false,
       completionBonusPoints: 25,
+      streakBonusEnabled: false,
       tasks: const [
         HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
       ],
@@ -352,6 +359,7 @@ void main() {
     final again = testStore(
       completionBonusEnabled: true,
       completionBonusPoints: 25,
+      streakBonusEnabled: false,
       tasks: const [
         HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
       ],
@@ -365,7 +373,140 @@ void main() {
     expect(again.completionBonusEnabled, isFalse);
     await again.setCompletionBonus(points: 0);
     expect(again.completionBonusPoints, 25);
+    await again.setCompletionBonus(streakMaxPoints: 0);
+    expect(again.streakBonusMaxPoints, AppConfig.defaultStreakBonusMaxPoints);
   });
+
+  test('streak bonus is one point per day and stays within the cap', () async {
+    final clock = DateTime(2026, 8, 28);
+    final store = testStore(
+      now: () => clock,
+      completionBonusEnabled: false,
+      streakBonusMaxPoints: 3,
+      history: const DayHistory(
+        days: {
+          '2026-08-25': DayProgress(day: '2026-08-25', completed: 1, total: 1),
+          '2026-08-26': DayProgress(day: '2026-08-26', completed: 1, total: 1),
+          '2026-08-27': DayProgress(day: '2026-08-27', completed: 1, total: 1),
+        },
+      ),
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Ліжко', points: 10, icon: 'bed'),
+      ],
+    );
+    await store.load();
+    expect(store.streak, 3);
+
+    await store.submit('bed');
+    expect(await store.verify('bed'), 3);
+    expect(store.streak, 4);
+    expect(store.lastStreakBonus, 3);
+    expect(store.totalPoints, 13);
+    expect(store.history.bonusOn('2026-08-28'), isTrue);
+    expect(S.streakBonusAwarded(3), '+3 бали за серію');
+  });
+
+  test('daily and streak bonuses add when both are on', () async {
+    final clock = DateTime(2026, 8, 27);
+    final store = testStore(
+      now: () => clock,
+      history: const DayHistory(
+        days: {
+          '2026-08-25': DayProgress(day: '2026-08-25', completed: 1, total: 1),
+          '2026-08-26': DayProgress(day: '2026-08-26', completed: 1, total: 1),
+        },
+      ),
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Ліжко', points: 10, icon: 'bed'),
+      ],
+    );
+    await store.load();
+    await store.submit('bed');
+    expect(await store.verify('bed'), 13);
+    expect(store.lastStreakBonus, 3);
+    expect(store.totalPoints, 23);
+  });
+
+  test('streak bonus is awarded when the daily bonus is off or zero', () async {
+    final off = testStore(
+      completionBonusEnabled: false,
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Ліжко', points: 10, icon: 'bed'),
+      ],
+    );
+    await off.load();
+    await off.submit('bed');
+    expect(await off.verify('bed'), 1);
+    expect(off.lastStreakBonus, 1);
+    expect(off.totalPoints, 11);
+    expect(off.history.bonusOn(todayStamp()), isTrue);
+
+    final zero = testStore(
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Ліжко', points: 10, icon: 'bed'),
+      ],
+    );
+    await zero.load();
+    zero.completionBonusPoints = 0;
+    await zero.submit('bed');
+    expect(await zero.verify('bed'), 1);
+    expect(zero.lastStreakBonus, 1);
+    expect(zero.totalPoints, 11);
+  });
+
+  test('daily bonus is awarded when the streak bonus is off or zero', () async {
+    final off = testStore(
+      streakBonusEnabled: false,
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Ліжко', points: 10, icon: 'bed'),
+      ],
+    );
+    await off.load();
+    await off.submit('bed');
+    expect(await off.verify('bed'), 10);
+    expect(off.lastStreakBonus, 0);
+    expect(off.totalPoints, 20);
+
+    final zero = testStore(
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Ліжко', points: 10, icon: 'bed'),
+      ],
+    );
+    await zero.load();
+    zero.streakBonusMaxPoints = 0;
+    await zero.submit('bed');
+    expect(await zero.verify('bed'), 10);
+    expect(zero.lastStreakBonus, 0);
+    expect(zero.totalPoints, 20);
+  });
+
+  test(
+    'no all-done bonus when daily and streak bonuses are both off',
+    () async {
+      final store = testStore(
+        completionBonusEnabled: false,
+        streakBonusEnabled: false,
+        tasks: const [
+          HabitTask(id: 'bed', title: 'Ліжко', points: 10, icon: 'bed'),
+        ],
+      );
+      await store.load();
+      await store.submit('bed');
+      expect(await store.verify('bed'), 0);
+      expect(store.lastStreakBonus, 0);
+      expect(store.totalPoints, 10);
+      expect(store.history.bonusOn(todayStamp()), isFalse);
+      expect(
+        S.completionBonusSummary(
+          enabled: false,
+          points: 10,
+          streakEnabled: false,
+          streakMax: 20,
+        ),
+        S.off,
+      );
+    },
+  );
 
   test('today task points count verified against the full list', () async {
     final store = testStore(
@@ -453,9 +594,10 @@ void main() {
       );
       await store.load();
 
-      expect(await store.verifySubmittedDaily(), 10);
+      expect(await store.verifySubmittedDaily(), 11);
+      expect(store.lastStreakBonus, 1);
       expect(store.tasks.every((task) => task.isVerified), isTrue);
-      expect(store.totalPoints, 20);
+      expect(store.totalPoints, 21);
     },
   );
 
@@ -704,6 +846,14 @@ void main() {
       json['data']['completionBonusPoints'],
       AppConfig.defaultCompletionBonusPoints,
     );
+    expect(
+      json['data']['streakBonusEnabled'],
+      AppConfig.defaultStreakBonusEnabled,
+    );
+    expect(
+      json['data']['streakBonusMaxPoints'],
+      AppConfig.defaultStreakBonusMaxPoints,
+    );
 
     final encoded = snapshot.encode();
     expect(encoded.contains('secret-pass'), isFalse);
@@ -784,6 +934,8 @@ void main() {
       target.completionBonusPoints,
       AppConfig.defaultCompletionBonusPoints,
     );
+    expect(target.streakBonusEnabled, AppConfig.defaultStreakBonusEnabled);
+    expect(target.streakBonusMaxPoints, AppConfig.defaultStreakBonusMaxPoints);
   });
 
   test(
@@ -1101,10 +1253,10 @@ void main() {
     await store.load();
     await store.tryAwardGamePlay('english');
     await store.submit('bed');
-    expect(await store.verify('bed'), 10);
+    expect(await store.verify('bed'), 11);
     expect(store.history.bonusOn('2026-08-26'), isTrue);
     expect(store.windowUsed, 1);
-    expect(store.totalPoints, 65);
+    expect(store.totalPoints, 66);
 
     await store.resetToday();
 
@@ -1116,11 +1268,11 @@ void main() {
     expect(store.windowUsed, 0);
     expect(store.playsUsed('english'), 0);
     expect(store.strikes, 0);
-    expect(store.totalPoints, 65);
+    expect(store.totalPoints, 66);
 
     await store.submit('bed');
-    expect(await store.verify('bed'), 10);
-    expect(store.totalPoints, 85);
+    expect(await store.verify('bed'), 11);
+    expect(store.totalPoints, 87);
     expect(store.history.bonusOn('2026-08-26'), isTrue);
   });
 
@@ -1299,8 +1451,8 @@ void main() {
     await store.load();
 
     await store.submit('teeth');
-    expect(await store.verify('teeth'), 10);
-    expect(store.totalPoints, 20);
+    expect(await store.verify('teeth'), 11);
+    expect(store.totalPoints, 21);
     expect(store.progressFor('2026-08-31')?.isFull, isTrue);
   });
 
@@ -1312,8 +1464,8 @@ void main() {
     );
     await store.load();
     await store.submit('bed');
-    expect(await store.verify('bed'), 10);
-    expect(store.totalPoints, 20);
+    expect(await store.verify('bed'), 11);
+    expect(store.totalPoints, 21);
 
     final snapshot = store.exportBackup();
 
@@ -1328,7 +1480,7 @@ void main() {
     );
     await store.submit('dishes');
     expect(await store.verify('dishes'), 0);
-    expect(store.totalPoints, 25);
+    expect(store.totalPoints, 26);
     expect(store.progressFor(todayStamp())?.isFull, isTrue);
 
     final restored = BackupSnapshot.fromJson(
@@ -1337,7 +1489,7 @@ void main() {
     final target = testStore();
     await target.load();
     await target.importBackup(restored);
-    expect(target.totalPoints, 20);
+    expect(target.totalPoints, 21);
     await target.upsertTask(
       const HabitTask(
         id: 'dishes',
@@ -1349,7 +1501,7 @@ void main() {
     );
     await target.submit('dishes');
     expect(await target.verify('dishes'), 0);
-    expect(target.totalPoints, 25);
+    expect(target.totalPoints, 26);
   });
 
   test('streak counts consecutive full days and keeps today in progress', () {
@@ -1516,7 +1668,7 @@ void main() {
     await store.submit('bed', day: '2026-08-26');
     await store.verify('bed', day: '2026-08-26');
 
-    expect(store.totalPoints, 20);
+    expect(store.totalPoints, 21);
     expect(store.tasksOn('2026-08-26').first.isVerified, isTrue);
     expect(store.tasks.single.isPending, isTrue);
     expect(store.progressFor('2026-08-26')?.completed, 1);
@@ -1959,11 +2111,15 @@ void main() {
     final source = testStore(
       completionBonusEnabled: false,
       completionBonusPoints: 15,
+      streakBonusEnabled: false,
+      streakBonusMaxPoints: 8,
     );
     await source.load();
     final snapshot = source.exportBackup();
     expect(snapshot.completionBonusEnabled, isFalse);
     expect(snapshot.completionBonusPoints, 15);
+    expect(snapshot.streakBonusEnabled, isFalse);
+    expect(snapshot.streakBonusMaxPoints, 8);
 
     final encoded = snapshot.encode();
     final restored = BackupSnapshot.fromJson(
@@ -1971,6 +2127,8 @@ void main() {
     );
     expect(restored.completionBonusEnabled, isFalse);
     expect(restored.completionBonusPoints, 15);
+    expect(restored.streakBonusEnabled, isFalse);
+    expect(restored.streakBonusMaxPoints, 8);
 
     final old = BackupSnapshot.fromJson({
       'app': 'axo',
@@ -1987,15 +2145,21 @@ void main() {
     });
     expect(old.completionBonusEnabled, AppConfig.defaultCompletionBonusEnabled);
     expect(old.completionBonusPoints, AppConfig.defaultCompletionBonusPoints);
+    expect(old.streakBonusEnabled, AppConfig.defaultStreakBonusEnabled);
+    expect(old.streakBonusMaxPoints, AppConfig.defaultStreakBonusMaxPoints);
 
     final target = testStore(
       completionBonusEnabled: true,
       completionBonusPoints: 40,
+      streakBonusEnabled: true,
+      streakBonusMaxPoints: 20,
     );
     await target.load();
     await target.importBackup(snapshot);
     expect(target.completionBonusEnabled, isFalse);
     expect(target.completionBonusPoints, 15);
+    expect(target.streakBonusEnabled, isFalse);
+    expect(target.streakBonusMaxPoints, 8);
   });
 
   test('old daily play counts start a fresh window', () {
@@ -3596,6 +3760,54 @@ void main() {
     expect(find.text('Морозиво'), findsNothing);
   });
 
+  testWidgets('completion bonus dialog names the streak points', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            return Column(
+              children: [
+                TextButton(
+                  onPressed: () => showCompletionBonusDialog(
+                    context,
+                    points: 13,
+                    streakPoints: 3,
+                  ),
+                  child: const Text('both'),
+                ),
+                TextButton(
+                  onPressed: () => showCompletionBonusDialog(
+                    context,
+                    points: 3,
+                    streakPoints: 3,
+                  ),
+                  child: const Text('streak'),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('both'));
+    await tester.pump();
+    expect(find.text('+10 балів'), findsOneWidget);
+    expect(find.text('+3 бали за серію'), findsOneWidget);
+    expect(find.byKey(const Key('completion-bonus-streak')), findsOneWidget);
+    expect(find.text('Аксо пишається тобою! Ось ще 13 балів.'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('completion-bonus-ok')));
+    await tester.pump();
+
+    await tester.tap(find.text('streak'));
+    await tester.pump();
+    expect(find.text('+3 бали'), findsNothing);
+    expect(find.text('+3 бали за серію'), findsOneWidget);
+    expect(find.text('Аксо пишається тобою! Ось ще 3 бали.'), findsOneWidget);
+  });
+
   testWidgets('home shows points and todays tasks', (tester) async {
     final store = testStore(
       points: 42,
@@ -3636,12 +3848,19 @@ void main() {
     await tester.tap(find.text('Нарахувати бали'));
     await tester.pump();
     await tester.pump();
-    expect(store.totalPoints, 62);
+    expect(store.totalPoints, 63);
     expect(find.byKey(const Key('completion-bonus-dialog')), findsOneWidget);
     expect(
       find.descendant(
         of: find.byKey(const Key('completion-bonus-dialog')),
         matching: find.text('+10 балів'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('completion-bonus-dialog')),
+        matching: find.text('+1 бал за серію'),
       ),
       findsOneWidget,
     );
@@ -4022,6 +4241,8 @@ void main() {
     expect(find.text('Бонус за всі завдання'), findsWidgets);
     expect(store.completionBonusEnabled, isTrue);
     expect(store.completionBonusPoints, 10);
+    expect(store.streakBonusEnabled, isTrue);
+    expect(store.streakBonusMaxPoints, 20);
 
     TextField amountField() {
       return tester.widget<TextField>(
@@ -4037,15 +4258,33 @@ void main() {
       find.byKey(const Key('completion-bonus-amount')),
       '20',
     );
+    await tester.enterText(find.byKey(const Key('streak-bonus-max')), '7');
     await tester.pump();
     await tester.tap(find.byKey(const Key('completion-bonus-enabled')));
     await tester.pump();
     expect(amountField().enabled, isFalse);
+
+    TextField streakMaxField() {
+      return tester.widget<TextField>(
+        find.descendant(
+          of: find.byKey(const Key('streak-bonus-max')),
+          matching: find.byType(TextField),
+        ),
+      );
+    }
+
+    expect(streakMaxField().enabled, isTrue);
+    await tester.tap(find.byKey(const Key('streak-bonus-enabled')));
+    await tester.pump();
+    expect(streakMaxField().enabled, isFalse);
     await tester.tap(find.byKey(const Key('save-completion-bonus')));
     await tester.pumpAndSettle();
     expect(store.completionBonusEnabled, isFalse);
     expect(store.completionBonusPoints, 20);
+    expect(store.streakBonusEnabled, isFalse);
+    expect(store.streakBonusMaxPoints, 7);
     expect(find.text('Бонус збережено'), findsAtLeastNWidgets(1));
+    expect(find.text(S.off), findsOneWidget);
   });
 
   testWidgets('parent settings can turn off the password', (tester) async {
