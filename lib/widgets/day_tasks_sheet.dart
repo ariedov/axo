@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../data/models.dart';
 import '../state/habit_scope.dart';
+import '../state/habit_store.dart';
 import '../strings.dart';
 import '../theme.dart';
 import 'completion_bonus_dialog.dart';
+import 'parent_gate.dart';
 import 'task_tile.dart';
 
 Future<void> showDayTasksSheet(BuildContext context, String day) {
@@ -27,6 +29,7 @@ class DayTasksSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final store = HabitScope.of(context);
+    final locked = store.isDayLocked(day);
     final tasks = store.tasksOn(day);
     final daily = [
       for (final task in tasks)
@@ -59,13 +62,29 @@ class DayTasksSheet extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                child: Text(
-                  S.tasksForDay(day),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 20,
-                  ),
+                padding: const EdgeInsets.fromLTRB(20, 16, 4, 0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        S.tasksForDay(day),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 20,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      key: const Key('day-lock'),
+                      tooltip: locked ? S.dayUnlock : S.dayLock,
+                      onPressed: () => _toggleLock(context, store, locked),
+                      icon: Icon(
+                        locked ? Icons.lock_rounded : Icons.lock_open_rounded,
+                      ),
+                      color: locked ? AppColors.pinkDark : AppColors.muted,
+                    ),
+                  ],
                 ),
               ),
               if (progress.total > 0)
@@ -79,11 +98,11 @@ class DayTasksSheet extends StatelessWidget {
                     ),
                   ),
                 ),
-              const Padding(
-                padding: EdgeInsets.fromLTRB(20, 4, 20, 8),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
                 child: Text(
-                  S.pastDayHint,
-                  style: TextStyle(
+                  locked ? S.dayLockedHint : S.pastDayHint,
+                  style: const TextStyle(
                     color: AppColors.muted,
                     fontWeight: FontWeight.w700,
                   ),
@@ -96,11 +115,12 @@ class DayTasksSheet extends StatelessWidget {
                     for (final task in daily)
                       TaskTile(
                         task: task,
+                        enabled: !locked,
                         onSubmit: () => store.submit(task.id, day: day),
                         onUnsubmit: () => store.unsubmit(task.id, day: day),
                         onVerify: () => _verify(context, task),
                       ),
-                    if (daily.any((task) => task.isSubmitted))
+                    if (!locked && daily.any((task) => task.isSubmitted))
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
                         child: Align(
@@ -136,6 +156,7 @@ class DayTasksSheet extends StatelessWidget {
                       for (final task in extra)
                         TaskTile(
                           task: task,
+                          enabled: !locked,
                           onSubmit: () => store.submit(task.id, day: day),
                           onUnsubmit: () => store.unsubmit(task.id, day: day),
                           onVerify: () => _verify(context, task),
@@ -149,6 +170,47 @@ class DayTasksSheet extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _toggleLock(
+    BuildContext context,
+    HabitStore store,
+    bool locked,
+  ) async {
+    if (locked) {
+      final allowed = await askParent(context, message: S.dayUnlockPrompt);
+      if (!allowed || !context.mounted) return;
+      await store.setDayLocked(day, false);
+      return;
+    }
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          key: const Key('day-lock-dialog'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
+          title: const Text(S.dayLockTitle),
+          content: const Text(S.dayLockBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text(S.cancel),
+            ),
+            FilledButton(
+              key: const Key('day-lock-confirm'),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text(S.dayLockConfirm),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirm != true || !context.mounted) return;
+    final allowed = await askParent(context, message: S.dayLockPrompt);
+    if (!allowed || !context.mounted) return;
+    await store.setDayLocked(day, true);
   }
 
   Future<void> _verify(BuildContext context, HabitTask task) {

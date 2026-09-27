@@ -301,6 +301,16 @@ class S {
   static const calendarFull = 'Усі завдання';
   static const calendarPartial = 'Частина';
   static const pastDayHint = 'Можна підтвердити завдання, які зробили раніше.';
+  static const dayLockedHint =
+      'День заблоковано. Завдання не можна відзначити чи підтвердити, поки мама чи тато його не розблокують.';
+  static const dayLock = 'Заблокувати день';
+  static const dayUnlock = 'Розблокувати день';
+  static const dayLockTitle = 'Заблокувати день?';
+  static const dayLockBody =
+      'Заблокований день не можна буде змінити: завдання не можна буде відзначити чи підтвердити. Розблокувати його зможуть лише мама чи тато.';
+  static const dayLockConfirm = 'Заблокувати';
+  static const dayLockPrompt = 'Введи пароль, щоб заблокувати день';
+  static const dayUnlockPrompt = 'Введи пароль, щоб розблокувати день';
   static const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
   static const taskDays = 'Дні тижня';
   static const onlyToday = 'Лише сьогодні';
