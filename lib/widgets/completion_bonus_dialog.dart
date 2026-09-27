@@ -32,13 +32,16 @@ Future<void> verifyTaskWithBonus(
   );
 }
 
-Future<void> verifySubmittedDailyWithBonus(BuildContext context) async {
+Future<void> verifySubmittedDailyWithBonus(
+  BuildContext context, {
+  String? day,
+}) async {
   if (!await askParent(context, message: S.approveCompletedPrompt)) return;
   if (!context.mounted) return;
   HapticFeedback.mediumImpact();
   AudioService.instance.play(SoundEffect.taskComplete);
   final store = HabitScope.of(context);
-  final bonus = await store.verifySubmittedDaily();
+  final bonus = await store.verifySubmittedDaily(day: day);
   if (!context.mounted || bonus <= 0) return;
   await showCompletionBonusDialog(
     context,
