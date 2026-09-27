@@ -25,7 +25,11 @@ Future<void> verifyTaskWithBonus(
   HapticFeedback.mediumImpact();
   final bonus = await store.verify(task.id, day: day);
   if (!context.mounted || bonus <= 0) return;
-  await showCompletionBonusDialog(context, points: bonus);
+  await showCompletionBonusDialog(
+    context,
+    points: bonus,
+    streakPoints: store.lastStreakBonus,
+  );
 }
 
 Future<void> verifySubmittedDailyWithBonus(
@@ -36,15 +40,25 @@ Future<void> verifySubmittedDailyWithBonus(
   if (!context.mounted) return;
   HapticFeedback.mediumImpact();
   AudioService.instance.play(SoundEffect.taskComplete);
-  final bonus = await HabitScope.of(context).verifySubmittedDaily(day: day);
+  final store = HabitScope.of(context);
+  final bonus = await store.verifySubmittedDaily(day: day);
   if (!context.mounted || bonus <= 0) return;
-  await showCompletionBonusDialog(context, points: bonus);
+  await showCompletionBonusDialog(
+    context,
+    points: bonus,
+    streakPoints: store.lastStreakBonus,
+  );
 }
 
 Future<void> showCompletionBonusDialog(
   BuildContext context, {
   required int points,
+  int streakPoints = 0,
 }) {
+  final streak = streakPoints < 0
+      ? 0
+      : (streakPoints > points ? points : streakPoints);
+  final base = points - streak;
   AudioService.instance.play(SoundEffect.allDone);
   return showDialog<void>(
     context: context,
@@ -64,15 +78,29 @@ Future<void> showCompletionBonusDialog(
               style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22),
             ),
             const SizedBox(height: 8),
-            Text(
-              S.plusPoints(points),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 28,
-                color: AppColors.goldDeep,
+            if (base > 0)
+              Text(
+                S.plusPoints(base),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 28,
+                  color: AppColors.goldDeep,
+                ),
               ),
-            ),
+            if (streak > 0) ...[
+              if (base > 0) const SizedBox(height: 4),
+              Text(
+                S.streakBonusAwarded(streak),
+                key: const Key('completion-bonus-streak'),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: base > 0 ? 20 : 28,
+                  color: base > 0 ? AppColors.tealDark : AppColors.goldDeep,
+                ),
+              ),
+            ],
             const SizedBox(height: 8),
             Text(
               S.completionBonusEarned(points),

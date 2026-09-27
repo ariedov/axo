@@ -94,6 +94,11 @@ class HabitStore extends ChangeNotifier {
   int playLimitMinutes = AppConfig.playLimitMinutes;
   bool completionBonusEnabled = AppConfig.defaultCompletionBonusEnabled;
   int completionBonusPoints = AppConfig.defaultCompletionBonusPoints;
+  bool streakBonusEnabled = AppConfig.defaultStreakBonusEnabled;
+  int streakBonusMaxPoints = AppConfig.defaultStreakBonusMaxPoints;
+
+  /// Streak points included in the bonus returned by the latest [verify].
+  int lastStreakBonus = 0;
   bool timerEnabled = AppConfig.defaultTimerEnabled;
   bool timerMusicMuted = AppConfig.defaultTimerMusicMuted;
   TimerSession? activeTimer;
@@ -358,8 +363,14 @@ class HabitStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setCompletionBonus({bool? enabled, int? points}) async {
+  Future<void> setCompletionBonus({
+    bool? enabled,
+    int? points,
+    bool? streakEnabled,
+    int? streakMaxPoints,
+  }) async {
     if (points != null && points < 1) return;
+    if (streakMaxPoints != null && streakMaxPoints < 1) return;
     var changed = false;
     if (enabled != null && enabled != completionBonusEnabled) {
       completionBonusEnabled = enabled;
@@ -367,6 +378,14 @@ class HabitStore extends ChangeNotifier {
     }
     if (points != null && points != completionBonusPoints) {
       completionBonusPoints = points;
+      changed = true;
+    }
+    if (streakEnabled != null && streakEnabled != streakBonusEnabled) {
+      streakBonusEnabled = streakEnabled;
+      changed = true;
+    }
+    if (streakMaxPoints != null && streakMaxPoints != streakBonusMaxPoints) {
+      streakBonusMaxPoints = streakMaxPoints;
       changed = true;
     }
     if (!changed) return;
@@ -720,6 +739,10 @@ class HabitStore extends ChangeNotifier {
     completionBonusPoints = snapshot.points < 1
         ? AppConfig.defaultCompletionBonusPoints
         : snapshot.points;
+    streakBonusEnabled = snapshot.streakEnabled;
+    streakBonusMaxPoints = snapshot.streakMaxPoints < 1
+        ? AppConfig.defaultStreakBonusMaxPoints
+        : snapshot.streakMaxPoints;
   }
 
   Future<void> _persistCompletionBonus() {
@@ -727,6 +750,8 @@ class HabitStore extends ChangeNotifier {
       CompletionBonusSnapshot(
         enabled: completionBonusEnabled,
         points: completionBonusPoints,
+        streakEnabled: streakBonusEnabled,
+        streakMaxPoints: streakBonusMaxPoints,
       ),
     );
   }
@@ -1041,6 +1066,8 @@ class HabitStore extends ChangeNotifier {
       playLimitMinutes: playLimitMinutes,
       completionBonusEnabled: completionBonusEnabled,
       completionBonusPoints: completionBonusPoints,
+      streakBonusEnabled: streakBonusEnabled,
+      streakBonusMaxPoints: streakBonusMaxPoints,
       eveningReminderEnabled: eveningReminderEnabled,
       eveningReminderHour: eveningReminderHour,
       eveningReminderMinute: eveningReminderMinute,
@@ -1094,6 +1121,8 @@ class HabitStore extends ChangeNotifier {
       CompletionBonusSnapshot(
         enabled: snapshot.completionBonusEnabled,
         points: snapshot.completionBonusPoints,
+        streakEnabled: snapshot.streakBonusEnabled,
+        streakMaxPoints: snapshot.streakBonusMaxPoints,
       ),
     );
     await timerRepo.save(snapshot.timer);
@@ -1152,6 +1181,7 @@ class HabitStore extends ChangeNotifier {
   }
 
   Future<int> _verifyAndCelebrate(List<String> taskIds, {String? day}) async {
+    lastStreakBonus = 0;
     if (taskIds.isEmpty) return 0;
     var bonus = 0;
     for (final taskId in taskIds) {
@@ -1166,6 +1196,7 @@ class HabitStore extends ChangeNotifier {
   }
 
   Future<int> _verifyOne(String taskId, {String? day}) async {
+    lastStreakBonus = 0;
     await ensureToday();
     final task = _taskOn(taskId, day);
     if (task == null || !task.isSubmitted) return 0;
@@ -1185,18 +1216,41 @@ class HabitStore extends ChangeNotifier {
     required String? day,
     required bool wasComplete,
   }) async {
-    if (!completionBonusEnabled || completionBonusPoints < 1) return 0;
     if (wasComplete || !_mandatoryComplete(day)) return 0;
     final stamp = day ?? todayStamp(now());
     if (history.bonusOn(stamp)) return 0;
-    totalPoints = await pointsRepo.award(
-      amount: completionBonusPoints,
-      taskId: 'bonus:$stamp',
-    );
+
+    final base = completionBonusEnabled && completionBonusPoints > 0
+        ? completionBonusPoints
+        : 0;
+    final streakPoints = _streakBonusFor(stamp);
+    if (base == 0 && streakPoints == 0) return 0;
+
+    if (base > 0) {
+      totalPoints = await pointsRepo.award(
+        amount: base,
+        taskId: 'bonus:$stamp',
+      );
+    }
+    if (streakPoints > 0) {
+      totalPoints = await pointsRepo.award(
+        amount: streakPoints,
+        taskId: 'streak:$stamp',
+      );
+    }
     history = history.withBonusDay(stamp);
     await historyRepo.save(history);
+    lastStreakBonus = streakPoints;
     notifyListeners();
-    return completionBonusPoints;
+    return base + streakPoints;
+  }
+
+  int _streakBonusFor(String stamp) {
+    if (!streakBonusEnabled || streakBonusMaxPoints < 1) return 0;
+    final days = history.currentStreak(stamp);
+    if (days < 1) return 0;
+    final raw = days * AppConfig.streakBonusPerDay;
+    return raw < streakBonusMaxPoints ? raw : streakBonusMaxPoints;
   }
 
   HabitTask? _taskOn(String taskId, String? day) {
