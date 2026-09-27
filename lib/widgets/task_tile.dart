@@ -13,6 +13,7 @@ class TaskTile extends StatelessWidget {
     required this.onSubmit,
     required this.onUnsubmit,
     required this.onVerify,
+    this.enabled = true,
   });
 
   static const height = 128.0;
@@ -23,6 +24,7 @@ class TaskTile extends StatelessWidget {
   final VoidCallback onSubmit;
   final VoidCallback onUnsubmit;
   final VoidCallback onVerify;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -78,6 +80,7 @@ class TaskTile extends StatelessWidget {
                       onSubmit: onSubmit,
                       onUnsubmit: onUnsubmit,
                       onVerify: onVerify,
+                      enabled: enabled,
                     ),
                   ),
                 ],
@@ -159,12 +162,14 @@ class _Action extends StatelessWidget {
     required this.onSubmit,
     required this.onUnsubmit,
     required this.onVerify,
+    this.enabled = true,
   });
 
   final HabitTask task;
   final VoidCallback onSubmit;
   final VoidCallback onUnsubmit;
   final VoidCallback onVerify;
+  final bool enabled;
 
   static const _labelStyle = TextStyle(
     fontFamily: 'Nunito',
@@ -194,7 +199,7 @@ class _Action extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
-            onPressed: onUnsubmit,
+            onPressed: enabled ? onUnsubmit : null,
             tooltip: S.notYet,
             visualDensity: VisualDensity.compact,
             padding: EdgeInsets.zero,
@@ -203,10 +208,12 @@ class _Action extends StatelessWidget {
             color: AppColors.muted,
           ),
           FilledButton(
-            onPressed: () {
-              HapticFeedback.selectionClick();
-              onVerify();
-            },
+            onPressed: enabled
+                ? () {
+                    HapticFeedback.selectionClick();
+                    onVerify();
+                  }
+                : null,
             style: _buttonStyle.copyWith(
               backgroundColor: const WidgetStatePropertyAll(AppColors.goldDeep),
             ),
@@ -217,10 +224,12 @@ class _Action extends StatelessWidget {
     }
 
     return FilledButton(
-      onPressed: () {
-        HapticFeedback.lightImpact();
-        onSubmit();
-      },
+      onPressed: enabled
+          ? () {
+              HapticFeedback.lightImpact();
+              onSubmit();
+            }
+          : null,
       style: _buttonStyle,
       child: const Text(S.done),
     );

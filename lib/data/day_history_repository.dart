@@ -8,6 +8,7 @@ class DayHistory {
     this.activatedOn,
     this.days = const {},
     this.bonusDays = const [],
+    this.lockedDays = const [],
   });
 
   final String? activatedOn;
@@ -16,9 +17,15 @@ class DayHistory {
   /// Days an all-done bonus (daily and/or streak) was already awarded.
   final List<String> bonusDays;
 
+  /// Previous days locked by a parent: tasks cannot be marked or verified.
+  /// Empty by default (unlocked).
+  final List<String> lockedDays;
+
   DayProgress? operator [](String day) => days[day];
 
   bool bonusOn(String day) => bonusDays.contains(day);
+
+  bool lockedOn(String day) => lockedDays.contains(day);
 
   int currentStreak(String today) {
     var day = this[today]?.isFull == true ? today : previousStamp(today);
@@ -34,16 +41,23 @@ class DayHistory {
     String? activatedOn,
     Map<String, DayProgress>? days,
     List<String>? bonusDays,
+    List<String>? lockedDays,
   }) {
     return DayHistory(
       activatedOn: activatedOn ?? this.activatedOn,
       days: days ?? this.days,
       bonusDays: bonusDays ?? this.bonusDays,
+      lockedDays: lockedDays ?? this.lockedDays,
     );
   }
 
   DayHistory withActivatedOn(String day) {
-    return DayHistory(activatedOn: day, days: days, bonusDays: bonusDays);
+    return DayHistory(
+      activatedOn: day,
+      days: days,
+      bonusDays: bonusDays,
+      lockedDays: lockedDays,
+    );
   }
 
   DayHistory withDay(DayProgress progress) {
@@ -51,6 +65,7 @@ class DayHistory {
       activatedOn: activatedOn,
       days: {...days, progress.day: progress},
       bonusDays: bonusDays,
+      lockedDays: lockedDays,
     );
   }
 
@@ -59,6 +74,28 @@ class DayHistory {
       activatedOn: activatedOn,
       days: days,
       bonusDays: {...bonusDays, day}.toList()..sort(),
+      lockedDays: lockedDays,
+    );
+  }
+
+  DayHistory withLockedDay(String day) {
+    return DayHistory(
+      activatedOn: activatedOn,
+      days: days,
+      bonusDays: bonusDays,
+      lockedDays: {...lockedDays, day}.toList()..sort(),
+    );
+  }
+
+  DayHistory withUnlockedDay(String day) {
+    return DayHistory(
+      activatedOn: activatedOn,
+      days: days,
+      bonusDays: bonusDays,
+      lockedDays: [
+        for (final item in lockedDays)
+          if (item != day) item,
+      ],
     );
   }
 
@@ -66,11 +103,13 @@ class DayHistory {
     'activatedOn': activatedOn,
     'days': {for (final entry in days.entries) entry.key: entry.value.toJson()},
     if (bonusDays.isNotEmpty) 'bonusDays': bonusDays,
+    if (lockedDays.isNotEmpty) 'lockedDays': lockedDays,
   };
 
   factory DayHistory.fromJson(Map<String, dynamic> json) {
     final raw = json['days'] as Map<String, dynamic>? ?? {};
     final rawBonus = json['bonusDays'] as List?;
+    final rawLocked = json['lockedDays'] as List?;
     return DayHistory(
       activatedOn: json['activatedOn'] as String?,
       days: {
@@ -81,6 +120,7 @@ class DayHistory {
           ),
       },
       bonusDays: [for (final day in rawBonus ?? const []) day as String],
+      lockedDays: [for (final day in rawLocked ?? const []) day as String],
     );
   }
 }

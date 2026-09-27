@@ -1044,6 +1044,27 @@ class HabitStore extends ChangeNotifier {
     return days.containsKey(day);
   }
 
+  /// Previous days can be locked by a parent. Locked days cannot be
+  /// marked or verified. Today is never locked. Default is unlocked.
+  bool isDayLocked(String day) {
+    if (_isToday(day)) return false;
+    return history.lockedOn(day);
+  }
+
+  Future<void> setDayLocked(String day, bool locked) async {
+    if (_isToday(day)) return;
+    final next = locked
+        ? history.withLockedDay(day)
+        : history.withUnlockedDay(day);
+    if (next.lockedDays.length == history.lockedDays.length &&
+        next.lockedOn(day) == history.lockedOn(day)) {
+      return;
+    }
+    history = next;
+    await historyRepo.save(history);
+    notifyListeners();
+  }
+
   BackupSnapshot exportBackup() {
     final today = TaskSnapshot(
       day: _loadedDay ?? todayStamp(now()),
@@ -1198,6 +1219,7 @@ class HabitStore extends ChangeNotifier {
   Future<int> _verifyOne(String taskId, {String? day}) async {
     lastStreakBonus = 0;
     await ensureToday();
+    if (day != null && !_isToday(day) && history.lockedOn(day)) return 0;
     final task = _taskOn(taskId, day);
     if (task == null || !task.isSubmitted) return 0;
 
@@ -1266,6 +1288,7 @@ class HabitStore extends ChangeNotifier {
     String? day,
   }) async {
     await ensureToday();
+    if (day != null && !_isToday(day) && history.lockedOn(day)) return;
     if (_isToday(day)) {
       tasks = [
         for (final task in tasks)
