@@ -100,6 +100,28 @@ class DayTasksSheet extends StatelessWidget {
                         onUnsubmit: () => store.unsubmit(task.id, day: day),
                         onVerify: () => _verify(context, task),
                       ),
+                    if (daily.any((task) => task.isSubmitted))
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                        child: Align(
+                          alignment: Alignment.center,
+                          child: TextButton(
+                            key: const Key('approve-completed'),
+                            onPressed: () => verifySubmittedDailyWithBonus(
+                              context,
+                              day: day,
+                            ),
+                            child: const Text(
+                              S.approveCompleted,
+                              style: TextStyle(
+                                color: AppColors.muted,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     if (extra.isNotEmpty) ...[
                       const Padding(
                         padding: EdgeInsets.fromLTRB(20, 8, 20, 8),
