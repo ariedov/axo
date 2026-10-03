@@ -23,10 +23,14 @@ Future<void> verifyTaskWithBonus(
   );
   if (!awarded || !context.mounted) return;
   HapticFeedback.mediumImpact();
+  // Verifying the last waiting task removes the approve button (and possibly
+  // this tile) while the award is still being persisted. Capture the
+  // navigator up front so the bonus dialog can still be shown afterwards.
+  final navigator = Navigator.of(context);
   final bonus = await store.verify(task.id, day: day);
-  if (!context.mounted || bonus <= 0) return;
+  if (bonus <= 0 || !navigator.mounted) return;
   await showCompletionBonusDialog(
-    context,
+    navigator.context,
     points: bonus,
     streakPoints: store.lastStreakBonus,
   );
@@ -41,10 +45,14 @@ Future<void> verifySubmittedDailyWithBonus(
   HapticFeedback.mediumImpact();
   AudioService.instance.play(SoundEffect.taskComplete);
   final store = HabitScope.of(context);
+  // Approving the last waiting task removes this button while the awards are
+  // still being persisted, unmounting its context before the bonus is known.
+  // Capture the navigator up front so the bonus dialog can still be shown.
+  final navigator = Navigator.of(context);
   final bonus = await store.verifySubmittedDaily(day: day);
-  if (!context.mounted || bonus <= 0) return;
+  if (bonus <= 0 || !navigator.mounted) return;
   await showCompletionBonusDialog(
-    context,
+    navigator.context,
     points: bonus,
     streakPoints: store.lastStreakBonus,
   );
