@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -82,9 +83,10 @@ HabitStore testStore({
   int eveningReminderHour = AppConfig.defaultEveningReminderHour,
   int eveningReminderMinute = AppConfig.defaultEveningReminderMinute,
   DateTime Function()? now,
+  PointsRepository? pointsRepo,
 }) {
   return HabitStore(
-    pointsRepo: InMemoryPointsRepository(points),
+    pointsRepo: pointsRepo ?? InMemoryPointsRepository(points),
     taskRepo: InMemoryTaskRepository(
       TaskSnapshot(day: todayStamp(now?.call()), tasks: tasks),
       now: now,
@@ -178,6 +180,34 @@ class _FailingGoalRepository implements GoalRepository {
   Future<void> save(List<RewardGoal> goals) async {
     throw StateError('goal save failed');
   }
+}
+
+/// Delays the all-done bonus award until [gate] completes, while letting
+/// per-task awards through. Lets tests pump frames after the last task is
+/// verified but before the bonus dialog is shown.
+class _BonusGatedPointsRepository implements PointsRepository {
+  _BonusGatedPointsRepository(this._inner, this._gate);
+
+  final PointsRepository _inner;
+  final Future<void> _gate;
+
+  @override
+  Future<int> fetchTotal() => _inner.fetchTotal();
+
+  @override
+  Future<int> award({required int amount, required String taskId}) async {
+    if (taskId.startsWith('bonus:') || taskId.startsWith('streak:')) {
+      await _gate;
+    }
+    return _inner.award(amount: amount, taskId: taskId);
+  }
+
+  @override
+  Future<int> setTotal(int amount) => _inner.setTotal(amount);
+
+  @override
+  Future<int?> spend({required int amount, required String goalId}) =>
+      _inner.spend(amount: amount, goalId: goalId);
 }
 
 void main() {
@@ -3976,6 +4006,75 @@ void main() {
     expect(find.byKey(const Key('approve-completed')), findsNothing);
     expect(find.text('Підтверджено'), findsAtLeastNWidgets(1));
   });
+
+  testWidgets(
+    'complete-all shows the bonus dialog when its button unmounts mid-verify',
+    (tester) async {
+      final bonusGate = Completer<void>();
+      final store = testStore(
+        pointsRepo: _BonusGatedPointsRepository(
+          InMemoryPointsRepository(0),
+          bonusGate.future,
+        ),
+        tasks: const [
+          HabitTask(
+            id: 'a',
+            title: 'Перше',
+            points: 5,
+            icon: 'star',
+            status: TaskStatus.submitted,
+          ),
+          HabitTask(
+            id: 'b',
+            title: 'Друге',
+            points: 5,
+            icon: 'bed',
+            status: TaskStatus.submitted,
+          ),
+        ],
+      );
+      await store.load();
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(AxolotlApp(store: store));
+      await tester.pump();
+
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('approve-completed')),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      // Approving the last waiting tasks removes the button while the bonus
+      // award is still pending, unmounting its context. The dialog must still
+      // show once the bonus lands.
+      final buttonContext = tester.element(
+        find.byKey(const Key('approve-completed')),
+      );
+      await tester.tap(find.byKey(const Key('approve-completed')));
+      await tester.pump();
+      await tester.enterText(find.byType(TextField), '4826');
+      await tester.tap(find.text('Перевірити').last);
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      expect(store.tasks.every((task) => task.isVerified), isTrue);
+      expect(buttonContext.mounted, isFalse);
+
+      bonusGate.complete();
+      await tester.pump();
+      await tester.pump();
+      expect(store.totalPoints, 21);
+      expect(find.byKey(const Key('completion-bonus-dialog')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('completion-bonus-ok')));
+      await tester.pump();
+      await tester.pump();
+      expect(find.byKey(const Key('completion-bonus-dialog')), findsNothing);
+    },
+  );
 
   testWidgets('home points label opens bonus screen after parent password', (
     tester,
