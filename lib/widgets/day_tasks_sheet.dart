@@ -87,6 +87,11 @@ class DayTasksSheet extends StatelessWidget {
                   ],
                 ),
               ),
+              if (store.highlightOn(day) case final note?)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  child: _DayHighlightNote(note: note),
+                ),
               if (progress.total > 0)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
@@ -215,5 +220,57 @@ class DayTasksSheet extends StatelessWidget {
 
   Future<void> _verify(BuildContext context, HabitTask task) {
     return verifyTaskWithBonus(context, task, day: day);
+  }
+}
+
+class _DayHighlightNote extends StatelessWidget {
+  const _DayHighlightNote({required this.note});
+
+  final String note;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('day-highlight'),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: AppColors.waiting,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.auto_awesome_rounded,
+            color: AppColors.goldDeep,
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  S.dayHighlightHeading,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    color: AppColors.muted,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  note,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

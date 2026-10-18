@@ -13,6 +13,10 @@ class LabeledField extends StatefulWidget {
     this.obscureText = false,
     this.enabled = true,
     this.textInputAction = TextInputAction.next,
+    this.maxLines = 1,
+    this.minLines,
+    this.autofocus = false,
+    this.textCapitalization = TextCapitalization.none,
     this.onChanged,
     this.onSubmitted,
   });
@@ -24,6 +28,10 @@ class LabeledField extends StatefulWidget {
   final bool obscureText;
   final bool enabled;
   final TextInputAction textInputAction;
+  final int maxLines;
+  final int? minLines;
+  final bool autofocus;
+  final TextCapitalization textCapitalization;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
 
@@ -90,6 +98,10 @@ class _LabeledFieldState extends State<LabeledField> {
             keyboardType: widget.keyboardType,
             inputFormatters: widget.inputFormatters,
             textInputAction: widget.textInputAction,
+            maxLines: widget.maxLines,
+            minLines: widget.minLines,
+            autofocus: widget.autofocus,
+            textCapitalization: widget.textCapitalization,
             onChanged: widget.onChanged,
             onSubmitted: widget.onSubmitted,
             style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),

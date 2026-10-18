@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'config.dart';
 import 'data/audio_service.dart';
 import 'data/completion_bonus.dart';
+import 'data/day_highlight_settings.dart';
 import 'data/day_history_repository.dart';
 import 'data/game_limit.dart';
 import 'data/goal_repository.dart';
@@ -100,6 +101,12 @@ Future<void> main() async {
       },
     ),
     completionBonusRepo: LocalCompletionBonusRepository(
+      (key) async => prefs.getString(key),
+      (key, value) async {
+        await prefs.setString(key, value);
+      },
+    ),
+    dayHighlightSettingsRepo: LocalDayHighlightSettingsRepository(
       (key) async => prefs.getString(key),
       (key, value) async {
         await prefs.setString(key, value);

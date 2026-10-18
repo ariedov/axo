@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../config.dart';
 import '../data/backup.dart';
 import '../data/completion_bonus.dart';
+import '../data/day_highlight_settings.dart';
 import '../data/day_history_repository.dart';
 import '../data/game_limit.dart';
 import '../data/game_plays.dart';
@@ -34,6 +35,7 @@ class HabitStore extends ChangeNotifier {
     StrikesRepository? strikesRepo,
     GameLimitRepository? gameLimitRepo,
     CompletionBonusRepository? completionBonusRepo,
+    DayHighlightSettingsRepository? dayHighlightSettingsRepo,
     GameRecentsRepository? gameRecents,
     TimerRepository? timerRepo,
     ReminderSettingsRepository? reminderSettingsRepo,
@@ -45,6 +47,8 @@ class HabitStore extends ChangeNotifier {
        gameLimitRepo = gameLimitRepo ?? InMemoryGameLimitRepository(),
        completionBonusRepo =
            completionBonusRepo ?? InMemoryCompletionBonusRepository(),
+       dayHighlightSettingsRepo =
+           dayHighlightSettingsRepo ?? InMemoryDayHighlightSettingsRepository(),
        gameRecents = gameRecents ?? InMemoryGameRecentsRepository(),
        timerRepo = timerRepo ?? InMemoryTimerRepository(),
        reminderSettingsRepo =
@@ -63,6 +67,7 @@ class HabitStore extends ChangeNotifier {
   final StrikesRepository strikesRepo;
   final GameLimitRepository gameLimitRepo;
   final CompletionBonusRepository completionBonusRepo;
+  final DayHighlightSettingsRepository dayHighlightSettingsRepo;
   final GameRecentsRepository gameRecents;
   final TimerRepository timerRepo;
   final ReminderSettingsRepository reminderSettingsRepo;
@@ -96,9 +101,14 @@ class HabitStore extends ChangeNotifier {
   int completionBonusPoints = AppConfig.defaultCompletionBonusPoints;
   bool streakBonusEnabled = AppConfig.defaultStreakBonusEnabled;
   int streakBonusMaxPoints = AppConfig.defaultStreakBonusMaxPoints;
+  bool dayHighlightEnabled = AppConfig.defaultDayHighlightEnabled;
 
   /// Streak points included in the bonus returned by the latest [verify].
   int lastStreakBonus = 0;
+
+  /// Day that just became fully complete on the latest [verify], if a
+  /// highlight has not already been asked for that completion.
+  String? pendingHighlightDay;
   bool timerEnabled = AppConfig.defaultTimerEnabled;
   bool timerMusicMuted = AppConfig.defaultTimerMusicMuted;
   TimerSession? activeTimer;
@@ -199,6 +209,7 @@ class HabitStore extends ChangeNotifier {
     await _loadStrikes();
     await _loadGameLimit();
     await _loadCompletionBonus();
+    await _loadDayHighlightSettings();
     await _loadTimer();
     await _loadReminderSettings();
     await _prunePlays();
@@ -260,12 +271,14 @@ class HabitStore extends ChangeNotifier {
     final today = todayStamp(now());
     tasks = pendingRecurring(tasks);
     await _persist();
-    history = history.copyWith(
-      bonusDays: [
-        for (final day in history.bonusDays)
-          if (day != today) day,
-      ],
-    );
+    history = history
+        .copyWith(
+          bonusDays: [
+            for (final day in history.bonusDays)
+              if (day != today) day,
+          ],
+        )
+        .withoutHighlight(today);
     await _syncTodayHistory();
     plays = GamePlaysSnapshot(
       rounds: [
@@ -390,6 +403,15 @@ class HabitStore extends ChangeNotifier {
     }
     if (!changed) return;
     await _persistCompletionBonus();
+    notifyListeners();
+  }
+
+  Future<void> setDayHighlightEnabled(bool enabled) async {
+    if (enabled == dayHighlightEnabled) return;
+    dayHighlightEnabled = enabled;
+    await dayHighlightSettingsRepo.save(
+      DayHighlightSettingsSnapshot(enabled: dayHighlightEnabled),
+    );
     notifyListeners();
   }
 
@@ -756,6 +778,10 @@ class HabitStore extends ChangeNotifier {
     );
   }
 
+  Future<void> _loadDayHighlightSettings() async {
+    dayHighlightEnabled = (await dayHighlightSettingsRepo.load()).enabled;
+  }
+
   Future<void> _prunePlays() async {
     final pruned = plays.pruned(now(), window: playLimitWindow);
     if (pruned.rounds.length == plays.rounds.length) return;
@@ -1051,6 +1077,16 @@ class HabitStore extends ChangeNotifier {
     return history.lockedOn(day);
   }
 
+  String? highlightOn(String day) => history.highlightOn(day);
+
+  Future<void> saveDayHighlight(String day, String note) async {
+    final next = history.withHighlight(day, note);
+    if (identical(next, history)) return;
+    history = next;
+    await historyRepo.save(history);
+    notifyListeners();
+  }
+
   Future<void> setDayLocked(String day, bool locked) async {
     if (_isToday(day)) return;
     final next = locked
@@ -1089,6 +1125,7 @@ class HabitStore extends ChangeNotifier {
       completionBonusPoints: completionBonusPoints,
       streakBonusEnabled: streakBonusEnabled,
       streakBonusMaxPoints: streakBonusMaxPoints,
+      dayHighlightEnabled: dayHighlightEnabled,
       eveningReminderEnabled: eveningReminderEnabled,
       eveningReminderHour: eveningReminderHour,
       eveningReminderMinute: eveningReminderMinute,
@@ -1145,6 +1182,9 @@ class HabitStore extends ChangeNotifier {
         streakEnabled: snapshot.streakBonusEnabled,
         streakMaxPoints: snapshot.streakBonusMaxPoints,
       ),
+    );
+    await dayHighlightSettingsRepo.save(
+      DayHighlightSettingsSnapshot(enabled: snapshot.dayHighlightEnabled),
     );
     await timerRepo.save(snapshot.timer);
     await reminderSettingsRepo.save(
@@ -1203,6 +1243,7 @@ class HabitStore extends ChangeNotifier {
 
   Future<int> _verifyAndCelebrate(List<String> taskIds, {String? day}) async {
     lastStreakBonus = 0;
+    pendingHighlightDay = null;
     if (taskIds.isEmpty) return 0;
     var bonus = 0;
     for (final taskId in taskIds) {
@@ -1241,6 +1282,7 @@ class HabitStore extends ChangeNotifier {
     if (wasComplete || !_mandatoryComplete(day)) return 0;
     final stamp = day ?? todayStamp(now());
     if (history.bonusOn(stamp)) return 0;
+    pendingHighlightDay = stamp;
 
     final base = completionBonusEnabled && completionBonusPoints > 0
         ? completionBonusPoints

@@ -7,6 +7,7 @@ import 'package:app/config.dart';
 import 'package:app/data/answer.dart';
 import 'package:app/data/backup.dart';
 import 'package:app/data/completion_bonus.dart';
+import 'package:app/data/day_highlight_settings.dart';
 import 'package:app/data/day_history_repository.dart';
 import 'package:app/data/division_problem.dart';
 import 'package:app/data/game_catalog.dart';
@@ -69,6 +70,7 @@ HabitStore testStore({
   int completionBonusPoints = AppConfig.defaultCompletionBonusPoints,
   bool streakBonusEnabled = AppConfig.defaultStreakBonusEnabled,
   int streakBonusMaxPoints = AppConfig.defaultStreakBonusMaxPoints,
+  bool dayHighlightEnabled = AppConfig.defaultDayHighlightEnabled,
   GameRecentsRepository? gameRecents,
   OnboardingFlags? onboardingFlags,
   DayHistory? history,
@@ -118,6 +120,9 @@ HabitStore testStore({
         streakEnabled: streakBonusEnabled,
         streakMaxPoints: streakBonusMaxPoints,
       ),
+    ),
+    dayHighlightSettingsRepo: InMemoryDayHighlightSettingsRepository(
+      DayHighlightSettingsSnapshot(enabled: dayHighlightEnabled),
     ),
     timerRepo:
         timerRepo ??
@@ -364,6 +369,7 @@ void main() {
       await store.submit('b');
       expect(await store.verify('b'), 11);
       expect(store.lastStreakBonus, 1);
+      expect(store.pendingHighlightDay, todayStamp());
       expect(store.totalPoints, 29);
     },
   );
@@ -524,6 +530,7 @@ void main() {
       await store.submit('bed');
       expect(await store.verify('bed'), 0);
       expect(store.lastStreakBonus, 0);
+      expect(store.pendingHighlightDay, todayStamp());
       expect(store.totalPoints, 10);
       expect(store.history.bonusOn(todayStamp()), isFalse);
       expect(
@@ -883,6 +890,10 @@ void main() {
     expect(
       json['data']['streakBonusMaxPoints'],
       AppConfig.defaultStreakBonusMaxPoints,
+    );
+    expect(
+      json['data']['dayHighlightEnabled'],
+      AppConfig.defaultDayHighlightEnabled,
     );
 
     final encoded = snapshot.encode();
@@ -1534,6 +1545,63 @@ void main() {
     expect(target.totalPoints, 26);
   });
 
+  test('day highlights survive history updates, reset, and backup', () async {
+    final history = const DayHistory()
+        .withHighlight('2026-08-26', '  Побачив веселку  ')
+        .withDay(const DayProgress(day: '2026-08-26', completed: 1, total: 1))
+        .withBonusDay('2026-08-26')
+        .withLockedDay('2026-08-26')
+        .withActivatedOn('2026-08-01');
+    expect(history.highlightOn('2026-08-26'), 'Побачив веселку');
+    expect(history.highlightOn('2026-08-27'), isNull);
+    expect(history.withHighlight('2026-08-26', '   ').highlights, isEmpty);
+
+    final decoded = DayHistory.fromJson(history.toJson());
+    expect(decoded.highlightOn('2026-08-26'), 'Побачив веселку');
+    expect(decoded.bonusOn('2026-08-26'), isTrue);
+    expect(decoded.lockedOn('2026-08-26'), isTrue);
+    expect(decoded.toJson()['highlights'], {'2026-08-26': 'Побачив веселку'});
+
+    final old = DayHistory.fromJson({
+      'activatedOn': '2026-08-01',
+      'days': {
+        '2026-08-01': {'completed': 1, 'total': 1},
+      },
+    });
+    expect(old.highlights, isEmpty);
+    expect(
+      DayHistory.fromJson({
+        'highlights': {'2026-08-02': '  ', '2026-08-03': 4},
+      }).highlights,
+      isEmpty,
+    );
+
+    final clock = DateTime(2026, 8, 27);
+    final store = testStore(now: () => clock);
+    await store.load();
+    await store.saveDayHighlight('2026-08-27', '  Сьогодні було тихо  ');
+    await store.saveDayHighlight('2026-08-26', 'Вчора була веселка');
+    expect(store.highlightOn('2026-08-27'), 'Сьогодні було тихо');
+    expect(store.highlightOn('2026-08-25'), isNull);
+
+    final encoded = store.exportBackup().encode();
+    final restored = BackupSnapshot.fromJson(
+      jsonDecode(encoded) as Map<String, dynamic>,
+    );
+    expect(restored.history.highlightOn('2026-08-27'), 'Сьогодні було тихо');
+    expect(restored.history.highlightOn('2026-08-26'), 'Вчора була веселка');
+
+    final target = testStore(now: () => clock);
+    await target.load();
+    await target.importBackup(restored);
+    expect(target.highlightOn('2026-08-27'), 'Сьогодні було тихо');
+    expect(target.highlightOn('2026-08-26'), 'Вчора була веселка');
+
+    await target.resetToday();
+    expect(target.highlightOn('2026-08-27'), isNull);
+    expect(target.highlightOn('2026-08-26'), 'Вчора була веселка');
+  });
+
   test('streak counts consecutive full days and keeps today in progress', () {
     const history = DayHistory(
       days: {
@@ -1699,6 +1767,7 @@ void main() {
     await store.verify('bed', day: '2026-08-26');
 
     expect(store.totalPoints, 21);
+    expect(store.pendingHighlightDay, '2026-08-26');
     expect(store.tasksOn('2026-08-26').first.isVerified, isTrue);
     expect(store.tasks.single.isPending, isTrue);
     expect(store.progressFor('2026-08-26')?.completed, 1);
@@ -2190,6 +2259,38 @@ void main() {
     expect(target.completionBonusPoints, 15);
     expect(target.streakBonusEnabled, isFalse);
     expect(target.streakBonusMaxPoints, 8);
+  });
+
+  test('backup round-trips the day highlight setting', () async {
+    final source = testStore(dayHighlightEnabled: false);
+    await source.load();
+    final snapshot = source.exportBackup();
+    expect(snapshot.dayHighlightEnabled, isFalse);
+
+    final restored = BackupSnapshot.fromJson(
+      jsonDecode(snapshot.encode()) as Map<String, dynamic>,
+    );
+    expect(restored.dayHighlightEnabled, isFalse);
+
+    final old = BackupSnapshot.fromJson({
+      'app': 'axo',
+      'format': 1,
+      'exportedAt': '2026-08-29T00:00:00.000Z',
+      'data': {
+        'points': 10,
+        'onboardingComplete': true,
+        'tasks': TaskSnapshot(day: todayStamp(), tasks: const []).toJson(),
+        'goals': <dynamic>[],
+        'history': const DayHistory().toJson(),
+        'gamePlays': GamePlaysSnapshot.empty().toJson(),
+      },
+    });
+    expect(old.dayHighlightEnabled, AppConfig.defaultDayHighlightEnabled);
+
+    final target = testStore();
+    await target.load();
+    await target.importBackup(snapshot);
+    expect(target.dayHighlightEnabled, isFalse);
   });
 
   test('old daily play counts start a fresh window', () {
@@ -3751,6 +3852,182 @@ void main() {
     expect(store.tasksOn('2026-08-26').single.isSubmitted, isTrue);
   });
 
+  testWidgets('calendar day sheet shows a saved highlight near the top', (
+    tester,
+  ) async {
+    final clock = DateTime(2026, 8, 27);
+    final store = HabitStore(
+      pointsRepo: InMemoryPointsRepository(),
+      taskRepo: InMemoryTaskRepository(
+        const TaskSnapshot(
+          day: '2026-08-27',
+          tasks: [
+            HabitTask(
+              id: 'bed',
+              title: 'Застелити ліжко',
+              points: 10,
+              icon: 'bed',
+            ),
+          ],
+        ),
+        days: {
+          '2026-08-26': const TaskSnapshot(
+            day: '2026-08-26',
+            tasks: [
+              HabitTask(
+                id: 'teeth',
+                title: 'Почистити зуби',
+                points: 10,
+                icon: 'hygiene',
+              ),
+            ],
+          ),
+        },
+      ),
+      parentAuth: InMemoryParentAuth('4826'),
+      gamePlays: InMemoryGamePlaysRepository(),
+      goalRepo: InMemoryGoalRepository(),
+      historyRepo: InMemoryDayHistoryRepository(
+        const DayHistory(
+          activatedOn: '2026-08-26',
+          highlights: {'2026-08-26': 'Побачив веселку'},
+        ),
+      ),
+      celebrateFor: Duration.zero,
+      now: () => clock,
+    );
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('cal-2026-08-26')),
+      300,
+      scrollable: find.byType(Scrollable),
+    );
+    await tester.ensureVisible(find.byKey(const Key('cal-2026-08-26')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('cal-2026-08-26')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byKey(const Key('day-highlight')), findsOneWidget);
+    expect(find.text(S.dayHighlightHeading), findsOneWidget);
+    expect(find.text('Побачив веселку'), findsOneWidget);
+    expect(find.byKey(const Key('day-highlight-dialog')), findsNothing);
+    expect(
+      tester.getTopLeft(find.byKey(const Key('day-highlight'))).dy,
+      lessThan(tester.getTopLeft(find.text('Почистити зуби')).dy),
+    );
+  });
+
+  testWidgets('completing a past day asks about that day before the bonus', (
+    tester,
+  ) async {
+    final clock = DateTime(2026, 8, 27);
+    final store = HabitStore(
+      pointsRepo: InMemoryPointsRepository(),
+      taskRepo: InMemoryTaskRepository(
+        const TaskSnapshot(
+          day: '2026-08-27',
+          tasks: [
+            HabitTask(
+              id: 'bed',
+              title: 'Застелити ліжко',
+              points: 10,
+              icon: 'bed',
+            ),
+          ],
+        ),
+        days: {
+          '2026-08-26': const TaskSnapshot(
+            day: '2026-08-26',
+            tasks: [
+              HabitTask(
+                id: 'teeth',
+                title: 'Почистити зуби',
+                points: 10,
+                icon: 'hygiene',
+                status: TaskStatus.submitted,
+              ),
+            ],
+          ),
+        },
+      ),
+      parentAuth: InMemoryParentAuth('4826'),
+      gamePlays: InMemoryGamePlaysRepository(),
+      goalRepo: InMemoryGoalRepository(),
+      historyRepo: InMemoryDayHistoryRepository(
+        const DayHistory(activatedOn: '2026-08-26'),
+      ),
+      celebrateFor: Duration.zero,
+      now: () => clock,
+    );
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('cal-2026-08-26')),
+      300,
+      scrollable: find.byType(Scrollable),
+    );
+    await tester.ensureVisible(find.byKey(const Key('cal-2026-08-26')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('cal-2026-08-26')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('day-tasks-2026-08-26')),
+        matching: find.text(S.verify),
+      ),
+    );
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), '4826');
+    await tester.tap(find.text(S.verify).last);
+    await tester.pump();
+    await tester.tap(find.text(S.awardPoints));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(const Key('day-highlight-dialog')), findsOneWidget);
+    expect(find.text(S.dayHighlightThatDay), findsOneWidget);
+    expect(find.text(S.dayHighlightToday), findsNothing);
+    expect(find.byKey(const Key('completion-bonus-dialog')), findsNothing);
+
+    await tester.enterText(
+      find.byKey(const Key('day-highlight-field')),
+      'Побачив веселку',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('day-highlight-save')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(store.highlightOn('2026-08-26'), 'Побачив веселку');
+    expect(find.byKey(const Key('completion-bonus-dialog')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('completion-bonus-ok')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(const Key('day-highlight')), findsOneWidget);
+    expect(find.text('Побачив веселку'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.byKey(const Key('day-highlight'))).dy,
+      lessThan(tester.getTopLeft(find.text('Почистити зуби')).dy),
+    );
+  });
+
   testWidgets('home shows goal progress until it can be spent', (tester) async {
     final store = testStore(
       points: 20,
@@ -3879,6 +4156,13 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(store.totalPoints, 63);
+    expect(find.byKey(const Key('day-highlight-dialog')), findsOneWidget);
+    expect(find.text(S.dayHighlightToday), findsOneWidget);
+    expect(find.byKey(const Key('completion-bonus-dialog')), findsNothing);
+    await tester.tap(find.byKey(const Key('day-highlight-skip')));
+    await tester.pump();
+    await tester.pump();
+    expect(store.highlightOn(todayStamp()), isNull);
     expect(find.byKey(const Key('completion-bonus-dialog')), findsOneWidget);
     expect(
       find.descendant(
@@ -3908,6 +4192,138 @@ void main() {
     expect(find.text('Правопис'), findsOneWidget);
     expect(find.text('Англійська'), findsNothing);
     expect(find.byKey(const Key('all-games')), findsOneWidget);
+  });
+
+  testWidgets('saving today highlight still shows the bonus dialog', (
+    tester,
+  ) async {
+    final store = testStore(
+      tasks: const [
+        HabitTask(
+          id: 'bed',
+          title: 'Застелити ліжко',
+          points: 10,
+          icon: 'bed',
+          status: TaskStatus.submitted,
+        ),
+      ],
+    );
+    await store.load();
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+
+    await tester.tap(find.text(S.verify));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), '4826');
+    await tester.tap(find.text(S.verify).last);
+    await tester.pump();
+    await tester.tap(find.text(S.awardPoints));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text(S.dayHighlightToday), findsOneWidget);
+    expect(find.byKey(const Key('day-highlight-save')), findsOneWidget);
+    final field = tester.getRect(find.byKey(const Key('day-highlight-field')));
+    final skip = tester.getRect(find.byKey(const Key('day-highlight-skip')));
+    final save = tester.getRect(find.byKey(const Key('day-highlight-save')));
+    expect(skip.left, field.left);
+    expect(save.right, field.right);
+    expect(skip.right, lessThan(save.left));
+    expect(skip.width, save.width);
+    expect(
+      tester
+          .widget<FilledButton>(find.byKey(const Key('day-highlight-save')))
+          .onPressed,
+      isNull,
+    );
+    await tester.enterText(
+      find.byKey(const Key('day-highlight-field')),
+      '  Пограв з котом  ',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('day-highlight-save')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(store.highlightOn(todayStamp()), 'Пограв з котом');
+    expect(find.byKey(const Key('completion-bonus-dialog')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('completion-bonus-ok')));
+    await tester.pump();
+  });
+
+  testWidgets('all-done highlight asks even when no bonus is awarded', (
+    tester,
+  ) async {
+    final store = testStore(
+      completionBonusEnabled: false,
+      streakBonusEnabled: false,
+      tasks: const [
+        HabitTask(
+          id: 'bed',
+          title: 'Застелити ліжко',
+          points: 10,
+          icon: 'bed',
+          status: TaskStatus.submitted,
+        ),
+      ],
+    );
+    await store.load();
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+
+    await tester.tap(find.text(S.verify));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), '4826');
+    await tester.tap(find.text(S.verify).last);
+    await tester.pump();
+    await tester.tap(find.text(S.awardPoints));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(const Key('day-highlight-dialog')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('day-highlight-skip')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(const Key('completion-bonus-dialog')), findsNothing);
+    expect(store.highlightOn(todayStamp()), isNull);
+    expect(store.totalPoints, 10);
+  });
+
+  testWidgets('turning off the day highlight skips the prompt', (tester) async {
+    final store = testStore(
+      dayHighlightEnabled: false,
+      tasks: const [
+        HabitTask(
+          id: 'bed',
+          title: 'Застелити ліжко',
+          points: 10,
+          icon: 'bed',
+          status: TaskStatus.submitted,
+        ),
+      ],
+    );
+    await store.load();
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+
+    await tester.tap(find.text(S.verify));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), '4826');
+    await tester.tap(find.text(S.verify).last);
+    await tester.pump();
+    await tester.tap(find.text(S.awardPoints));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(const Key('day-highlight-dialog')), findsNothing);
+    expect(store.highlightOn(todayStamp()), isNull);
+    expect(find.byKey(const Key('completion-bonus-dialog')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('completion-bonus-ok')));
+    await tester.pump();
   });
 
   testWidgets('home hides approve-completed until a daily task is waiting', (
@@ -4067,6 +4483,10 @@ void main() {
       await tester.pump();
       await tester.pump();
       expect(store.totalPoints, 21);
+      expect(find.byKey(const Key('day-highlight-dialog')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('day-highlight-skip')));
+      await tester.pump();
+      await tester.pump();
       expect(find.byKey(const Key('completion-bonus-dialog')), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('completion-bonus-ok')));
@@ -4459,6 +4879,7 @@ void main() {
       Key('settings-goals'),
       Key('settings-bonus-points'),
       Key('completion-bonus-settings'),
+      Key('day-highlight-settings'),
       Key('game-limit-settings'),
       Key('penalty-settings'),
       Key('settings-password'),
@@ -5442,6 +5863,30 @@ void main() {
     await tester.tap(find.byKey(const Key('save-reminders')));
     await tester.pumpAndSettle();
     expect(store.eveningReminderEnabled, isFalse);
+    expect(find.text(S.off), findsOneWidget);
+  });
+
+  testWidgets('parent settings can turn off the day highlight prompt', (
+    tester,
+  ) async {
+    final store = testStore();
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await pumpParentSettings(tester, store);
+    await openParentSetting(tester, const Key('day-highlight-settings'));
+    expect(find.text(S.dayHighlightHeading), findsWidgets);
+    expect(store.dayHighlightEnabled, isTrue);
+
+    await tester.tap(find.byKey(const Key('day-highlight-enabled')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('save-day-highlight')));
+    await tester.pumpAndSettle();
+    expect(store.dayHighlightEnabled, isFalse);
+    expect(find.text(S.dayHighlightSaved), findsAtLeastNWidgets(1));
     expect(find.text(S.off), findsOneWidget);
   });
 

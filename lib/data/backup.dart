@@ -28,6 +28,7 @@ class BackupSnapshot {
     this.completionBonusPoints = AppConfig.defaultCompletionBonusPoints,
     this.streakBonusEnabled = AppConfig.defaultStreakBonusEnabled,
     this.streakBonusMaxPoints = AppConfig.defaultStreakBonusMaxPoints,
+    this.dayHighlightEnabled = AppConfig.defaultDayHighlightEnabled,
     this.eveningReminderEnabled = AppConfig.defaultEveningReminderEnabled,
     this.eveningReminderHour = AppConfig.defaultEveningReminderHour,
     this.eveningReminderMinute = AppConfig.defaultEveningReminderMinute,
@@ -55,6 +56,7 @@ class BackupSnapshot {
   final int completionBonusPoints;
   final bool streakBonusEnabled;
   final int streakBonusMaxPoints;
+  final bool dayHighlightEnabled;
   final bool eveningReminderEnabled;
   final int eveningReminderHour;
   final int eveningReminderMinute;
@@ -89,6 +91,7 @@ class BackupSnapshot {
       'completionBonusPoints': completionBonusPoints,
       'streakBonusEnabled': streakBonusEnabled,
       'streakBonusMaxPoints': streakBonusMaxPoints,
+      'dayHighlightEnabled': dayHighlightEnabled,
       'eveningReminderEnabled': eveningReminderEnabled,
       'eveningReminderHour': eveningReminderHour,
       'eveningReminderMinute': eveningReminderMinute,
@@ -153,6 +156,9 @@ class BackupSnapshot {
       streakBonusMaxPoints:
           (data['streakBonusMaxPoints'] as num?)?.toInt() ??
           AppConfig.defaultStreakBonusMaxPoints,
+      dayHighlightEnabled:
+          data['dayHighlightEnabled'] as bool? ??
+          AppConfig.defaultDayHighlightEnabled,
       eveningReminderEnabled:
           data['eveningReminderEnabled'] as bool? ??
           AppConfig.defaultEveningReminderEnabled,

@@ -176,6 +176,14 @@ class S {
   static const completionBonusSaved = 'Бонус збережено';
   static const invalidCompletionBonus = 'Вкажіть ціле число балів';
   static const completionBonusTitle = 'Усі завдання готові!';
+  static const dayHighlightToday = 'Щось хороше, що сталося сьогодні';
+  static const dayHighlightThatDay = 'Щось хороше, що сталося того дня';
+  static const dayHighlightSkip = 'Пропустити';
+  static const dayHighlightHeading = 'Щось хороше';
+  static const dayHighlightSettingsHint =
+      'Коли всі обов\'язкові завдання виконано, Аксо питає, що хорошого сталося за день. Записи видно в календарі.';
+  static const dayHighlightEnabled = 'Питати про хороше';
+  static const dayHighlightSaved = 'Збережено';
 
   static String completionBonusEarned(int n) =>
       'Аксо пишається тобою! Ось ще ${pointsWord(n)}.';

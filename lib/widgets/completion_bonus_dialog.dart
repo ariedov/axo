@@ -3,10 +3,13 @@ import 'package:flutter/services.dart';
 
 import '../data/models.dart';
 import '../data/audio_service.dart';
+import '../data/today.dart';
 import '../state/habit_scope.dart';
+import '../state/habit_store.dart';
 import '../strings.dart';
 import '../theme.dart';
 import 'axolotl_mascot.dart';
+import 'day_highlight_dialog.dart';
 import 'parent_gate.dart';
 
 Future<void> verifyTaskWithBonus(
@@ -25,15 +28,11 @@ Future<void> verifyTaskWithBonus(
   HapticFeedback.mediumImpact();
   // Verifying the last waiting task removes the approve button (and possibly
   // this tile) while the award is still being persisted. Capture the
-  // navigator up front so the bonus dialog can still be shown afterwards.
+  // navigator up front so the highlight and bonus dialogs can still be shown.
   final navigator = Navigator.of(context);
   final bonus = await store.verify(task.id, day: day);
-  if (bonus <= 0 || !navigator.mounted) return;
-  await showCompletionBonusDialog(
-    navigator.context,
-    points: bonus,
-    streakPoints: store.lastStreakBonus,
-  );
+  if (!navigator.mounted) return;
+  await _showCompletionCelebration(navigator, store, bonus: bonus);
 }
 
 Future<void> verifySubmittedDailyWithBonus(
@@ -47,14 +46,35 @@ Future<void> verifySubmittedDailyWithBonus(
   final store = HabitScope.of(context);
   // Approving the last waiting task removes this button while the awards are
   // still being persisted, unmounting its context before the bonus is known.
-  // Capture the navigator up front so the bonus dialog can still be shown.
+  // Capture the navigator up front so the highlight and bonus dialogs can
+  // still be shown.
   final navigator = Navigator.of(context);
   final bonus = await store.verifySubmittedDaily(day: day);
+  if (!navigator.mounted) return;
+  await _showCompletionCelebration(navigator, store, bonus: bonus);
+}
+
+Future<void> _showCompletionCelebration(
+  NavigatorState navigator,
+  HabitStore store, {
+  required int bonus,
+}) async {
+  final stamp = store.pendingHighlightDay;
+  final streakPoints = store.lastStreakBonus;
+  if (stamp != null && store.dayHighlightEnabled && navigator.mounted) {
+    final note = await showDayHighlightDialog(
+      navigator.context,
+      today: stamp == todayStamp(store.now()),
+    );
+    if (note != null) {
+      await store.saveDayHighlight(stamp, note);
+    }
+  }
   if (bonus <= 0 || !navigator.mounted) return;
   await showCompletionBonusDialog(
     navigator.context,
     points: bonus,
-    streakPoints: store.lastStreakBonus,
+    streakPoints: streakPoints,
   );
 }
 

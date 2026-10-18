@@ -6,6 +6,7 @@ import '../strings.dart';
 import '../widgets/backup_settings_sheet.dart';
 import '../widgets/bonus_points_section.dart';
 import '../widgets/completion_bonus_settings_section.dart';
+import '../widgets/day_highlight_settings_section.dart';
 import '../widgets/game_limit_settings_section.dart';
 import '../widgets/parent_goals_sheet.dart';
 import '../widgets/parent_tasks_sheet.dart';
@@ -109,6 +110,14 @@ class ParentSettingsScreen extends StatelessWidget {
                   streakMax: store.streakBonusMaxPoints,
                 ),
                 onTap: () => showCompletionBonusSettingsSheet(context),
+              ),
+              SettingsTile(
+                key: const Key('day-highlight-settings'),
+                title: S.dayHighlightHeading,
+                subtitle: store.dayHighlightEnabled
+                    ? S.dayHighlightEnabled
+                    : S.off,
+                onTap: () => showDayHighlightSettingsSheet(context),
               ),
               SettingsTile(
                 key: const Key('game-limit-settings'),
