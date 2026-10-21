@@ -13,7 +13,7 @@ class GamesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text(S.miniGames)),
+      appBar: AppBar(title: Text(S.miniGames)),
       body: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: LinearGradient(

@@ -66,7 +66,7 @@ class _DayHighlightSettingsSectionState
               ),
               child: Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       S.dayHighlightEnabled,
                       style: TextStyle(
@@ -87,7 +87,7 @@ class _DayHighlightSettingsSectionState
             FilledButton(
               key: const Key('save-day-highlight'),
               onPressed: _save,
-              child: const Text(S.save),
+              child: Text(S.save),
             ),
           ],
         ),

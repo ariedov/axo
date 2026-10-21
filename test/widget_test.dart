@@ -4,6 +4,8 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:app/config.dart';
+import 'package:app/data/app_language.dart';
+import 'package:app/data/language_repository.dart';
 import 'package:app/data/answer.dart';
 import 'package:app/data/backup.dart';
 import 'package:app/data/completion_bonus.dart';
@@ -86,6 +88,8 @@ HabitStore testStore({
   int eveningReminderMinute = AppConfig.defaultEveningReminderMinute,
   DateTime Function()? now,
   PointsRepository? pointsRepo,
+  AppLanguage? language,
+  Locale? deviceLocale,
 }) {
   return HabitStore(
     pointsRepo: pointsRepo ?? InMemoryPointsRepository(points),
@@ -144,6 +148,8 @@ HabitStore testStore({
           ),
         ),
     reminders: reminders,
+    languageRepo: InMemoryLanguageRepository(language?.code),
+    deviceLocale: deviceLocale,
     celebrateFor: Duration.zero,
     now: now ?? DateTime.now,
   );
@@ -240,6 +246,69 @@ void main() {
           reason: 'missing icon for $emoji in $path',
         );
       }
+    }
+  });
+
+  test('device locale is used until a parent chooses', () async {
+    addTearDown(() => S.language = AppLanguage.uk);
+    final english = testStore(deviceLocale: const Locale('en', 'US'));
+    await english.load();
+    expect(english.language, AppLanguage.en);
+    expect(english.languageChosen, isFalse);
+    expect(S.hello, 'Hi!');
+    expect(S.appName, 'Axo');
+
+    english.applyDeviceLocale(const Locale('de'));
+    expect(english.language, AppLanguage.uk);
+    expect(S.hello, 'Привіт!');
+
+    await english.setLanguage(AppLanguage.en);
+    expect(english.languageChosen, isTrue);
+    english.applyDeviceLocale(const Locale('uk'));
+    expect(english.language, AppLanguage.en);
+    expect(S.hello, 'Hi!');
+
+    final saved = testStore(
+      language: AppLanguage.uk,
+      deviceLocale: const Locale('en'),
+    );
+    await saved.load();
+    expect(saved.language, AppLanguage.uk);
+    expect(saved.languageChosen, isTrue);
+    S.language = AppLanguage.uk;
+  });
+
+  test('English pluralization', () {
+    addTearDown(() => S.language = AppLanguage.uk);
+    S.language = AppLanguage.en;
+    expect(S.pointsWord(1), '1 point');
+    expect(S.pointsWord(0), '0 points');
+    expect(S.pointsWord(2), '2 points');
+    expect(S.daysWord(1), '1 day');
+    expect(S.daysWord(5), '5 days');
+    expect(S.roundsWord(1), '1 round');
+    expect(S.minutesWord(1), '1 minute');
+    expect(S.minutesWord(15), '15 minutes');
+    expect(S.recordsWord(1), '1 record');
+    expect(S.recordsWord(2), '2 records');
+    expect(S.streak(5), '5 days in a row');
+    expect(S.strikesProgress(1, 3), '1 of 3');
+    expect(S.revealedAnswer('4'), 'It was 4. ${S.keepGoing}');
+    expect(
+      S.revealedAnswer('cat', quoted: true),
+      'It was "cat". ${S.keepGoing}',
+    );
+  });
+
+  test('every seed task has an English title', () {
+    final items = jsonDecode(
+      File('assets/data/tasks.json').readAsStringSync(),
+    ) as List<dynamic>;
+    for (final item in items) {
+      final map = item as Map<String, dynamic>;
+      final title = map['titleEn'];
+      expect(title, isA<String>(), reason: '${map['id']} is missing titleEn');
+      expect((title as String).trim(), isNotEmpty);
     }
   });
 
@@ -895,6 +964,7 @@ void main() {
       json['data']['dayHighlightEnabled'],
       AppConfig.defaultDayHighlightEnabled,
     );
+    expect(json['data']['language'], 'uk');
 
     final encoded = snapshot.encode();
     expect(encoded.contains('secret-pass'), isFalse);
@@ -2260,6 +2330,41 @@ void main() {
     expect(target.streakBonusEnabled, isFalse);
     expect(target.streakBonusMaxPoints, 8);
   });
+
+  test(
+    'backup round-trips language and old files keep the current one',
+    () async {
+      final source = testStore(language: AppLanguage.en);
+      await source.load();
+      final snapshot = source.exportBackup();
+      expect(snapshot.language, 'en');
+      expect(snapshot.encode().contains('"language": "en"'), isTrue);
+
+      final target = testStore(language: AppLanguage.uk);
+      await target.load();
+      await target.importBackup(snapshot);
+      expect(target.language, AppLanguage.en);
+      expect(S.hello, 'Hi!');
+
+      final old = BackupSnapshot.fromJson({
+        'app': 'axo',
+        'format': 2,
+        'exportedAt': '2026-08-29T00:00:00.000Z',
+        'data': {
+          'points': 3,
+          'onboardingComplete': true,
+          'tasks': TaskSnapshot(day: todayStamp(), tasks: const []).toJson(),
+          'goals': <dynamic>[],
+          'history': const DayHistory().toJson(),
+          'gamePlays': GamePlaysSnapshot.empty().toJson(),
+        },
+      });
+      expect(old.language, isNull);
+      await target.importBackup(old);
+      expect(target.language, AppLanguage.en);
+      S.language = AppLanguage.uk;
+    },
+  );
 
   test('backup round-trips the day highlight setting', () async {
     final source = testStore(dayHighlightEnabled: false);
@@ -5864,6 +5969,33 @@ void main() {
     await tester.pumpAndSettle();
     expect(store.eveningReminderEnabled, isFalse);
     expect(find.text(S.off), findsOneWidget);
+  });
+
+  testWidgets('parent settings can switch to English', (tester) async {
+    final store = testStore();
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(() => S.language = AppLanguage.uk);
+
+    await pumpParentSettings(tester, store);
+    expect(find.text('Мова'), findsOneWidget);
+    expect(find.text('Українська'), findsOneWidget);
+
+    await openParentSetting(tester, const Key('settings-language'));
+    expect(find.text(S.languageHint), findsOneWidget);
+    await tester.tap(find.byKey(const Key('language-en')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('save-language')));
+    await tester.pumpAndSettle();
+
+    expect(store.language, AppLanguage.en);
+    expect(store.languageChosen, isTrue);
+    expect(find.text('Language saved'), findsOneWidget);
+    expect(find.text('Parent section'), findsOneWidget);
+    expect(find.text('English'), findsOneWidget);
   });
 
   testWidgets('parent settings can turn off the day highlight prompt', (

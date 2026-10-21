@@ -60,7 +60,7 @@ class ParentTasksSheet extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+          Text(
             S.reorderTasksHint,
             style: TextStyle(
               color: AppColors.muted,
@@ -131,7 +131,10 @@ class _DailyTaskRow extends StatelessWidget {
                 index: index,
                 child: const Padding(
                   padding: EdgeInsets.only(right: 6),
-                  child: Icon(Icons.drag_handle_rounded, color: AppColors.muted),
+                  child: Icon(
+                    Icons.drag_handle_rounded,
+                    color: AppColors.muted,
+                  ),
                 ),
               ),
               CircleAvatar(

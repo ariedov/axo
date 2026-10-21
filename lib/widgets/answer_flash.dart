@@ -9,10 +9,11 @@ import 'axolotl_mascot.dart';
 
 Future<void> showAnswerFlash(
   BuildContext context, {
-  String message = S.correct,
+  String? message,
   bool success = true,
   Duration hold = const Duration(milliseconds: 700),
 }) {
+  final text = message ?? S.correct;
   final overlay = Overlay.of(context);
   final textStyle = DefaultTextStyle.of(context).style;
   final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
@@ -24,7 +25,7 @@ Future<void> showAnswerFlash(
       child: Material(
         type: MaterialType.transparency,
         child: _AnswerFlash(
-          message: message,
+          message: text,
           success: success,
           hold: hold,
           keyboardInset: keyboardInset,

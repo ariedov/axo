@@ -163,7 +163,7 @@ class _SpellingScreenState extends State<SpellingScreen> {
     await showAnswerFlash(
       context,
       message: misses >= 2
-          ? 'Було «${current.word}». ${S.keepGoing}'
+          ? S.revealedAnswer(current.word, quoted: true)
           : S.tryAgain,
       success: false,
       hold: Duration(milliseconds: misses >= 2 ? 1100 : 700),
@@ -246,8 +246,8 @@ class _SpellingScreenState extends State<SpellingScreen> {
               ),
               action: FilledButton(
                 onPressed: _busy ? null : _check,
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 6),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
                   child: Text(S.check),
                 ),
               ),

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 
+import '../strings.dart';
 import 'models.dart';
 import 'today.dart';
 
@@ -157,8 +158,15 @@ class LocalTaskRepository implements TaskRepository {
     final raw = await rootBundle.loadString(_seedAsset);
     final list = jsonDecode(raw) as List;
     return [
-      for (final item in list) HabitTask.fromJson(item as Map<String, dynamic>),
+      for (final item in list)
+        HabitTask.fromJson(_seedJson(item as Map<String, dynamic>)),
     ];
+  }
+
+  Map<String, dynamic> _seedJson(Map<String, dynamic> item) {
+    final english = item['titleEn'];
+    if (!S.isEnglish || english is! String || english.isEmpty) return item;
+    return {...item, 'title': english};
   }
 }
 

@@ -79,7 +79,7 @@ class _DayHighlightDialogState extends State<_DayHighlightDialog> {
                   child: OutlinedButton(
                     key: const Key('day-highlight-skip'),
                     onPressed: () => Navigator.pop(context),
-                    child: const Text(S.dayHighlightSkip),
+                    child: Text(S.dayHighlightSkip),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -87,7 +87,7 @@ class _DayHighlightDialogState extends State<_DayHighlightDialog> {
                   child: FilledButton(
                     key: const Key('day-highlight-save'),
                     onPressed: _canSave ? _save : null,
-                    child: const Text(S.save),
+                    child: Text(S.save),
                   ),
                 ),
               ],

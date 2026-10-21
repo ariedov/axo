@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../config.dart';
 import '../data/game_catalog.dart';
 import '../data/models.dart';
 import '../screens/bonus_points_screen.dart';
@@ -68,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
               backgroundColor: AppColors.pink,
               foregroundColor: Colors.white,
               icon: const Icon(Icons.timer_rounded),
-              label: const Text(S.timer),
+              label: Text(S.timer),
             )
           : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
@@ -91,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         const SizedBox(height: 8),
                         Text(
-                          AppConfig.appName,
+                          S.appName,
                           style: Theme.of(context).textTheme.headlineMedium
                               ?.copyWith(fontWeight: FontWeight.w900),
                         ),
@@ -113,9 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   if (store.activeGoals.isNotEmpty) ...[
-                    const SliverToBoxAdapter(
-                      child: _SectionTitle(title: S.goals),
-                    ),
+                    SliverToBoxAdapter(child: _SectionTitle(title: S.goals)),
                     SliverList.builder(
                       itemCount: store.activeGoals.length,
                       itemBuilder: (context, index) {
@@ -156,9 +153,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (store.waitingCount > 0)
                     const SliverToBoxAdapter(child: _ApproveCompleted()),
                   if (store.pendingCount == 0 && store.waitingCount == 0)
-                    const SliverToBoxAdapter(
+                    SliverToBoxAdapter(
                       child: Padding(
-                        padding: EdgeInsets.fromLTRB(24, 4, 24, 16),
+                        padding: const EdgeInsets.fromLTRB(24, 4, 24, 16),
                         child: Text(
                           S.allDone,
                           textAlign: TextAlign.center,
@@ -233,9 +230,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
-                  const SliverToBoxAdapter(
+                  SliverToBoxAdapter(
                     child: Padding(
-                      padding: EdgeInsets.only(top: 20),
+                      padding: const EdgeInsets.only(top: 20),
                       child: _SectionTitle(title: S.calendar),
                     ),
                   ),
@@ -393,7 +390,7 @@ class _ApproveCompleted extends StatelessWidget {
         child: TextButton(
           key: const Key('approve-completed'),
           onPressed: () => verifySubmittedDailyWithBonus(context),
-          child: const Text(
+          child: Text(
             S.approveCompleted,
             style: TextStyle(
               color: AppColors.muted,
@@ -427,7 +424,7 @@ class _ParentSection extends StatelessWidget {
             ),
           );
         },
-        child: const Text(
+        child: Text(
           S.parentSection,
           style: TextStyle(
             color: AppColors.muted,

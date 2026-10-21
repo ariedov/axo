@@ -90,9 +90,8 @@ class _BonusPointsSectionState extends State<BonusPointsSection> {
   Future<void> _adjust(bool add) async {
     final amount = int.tryParse(_amount.text.trim()) ?? 0;
     if (amount <= 0) return;
-    final applied = await HabitScope.of(context).adjustPoints(
-      add ? amount : -amount,
-    );
+    final applied = await HabitScope.of(context)
+        .adjustPoints(add ? amount : -amount);
     if (!mounted) return;
     _amount.clear();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -111,17 +110,14 @@ class _BonusPointsSectionState extends State<BonusPointsSection> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (widget.showHeading) ...[
-          const Text(
+          Text(
             S.bonusPoints,
-            style: TextStyle(
-              fontWeight: FontWeight.w900,
-              fontSize: 20,
-            ),
+            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
           ),
           const SizedBox(height: 4),
         ],
         if (widget.showHint) ...[
-          const Text(
+          Text(
             S.bonusPointsHint,
             style: TextStyle(
               color: AppColors.muted,
@@ -159,14 +155,14 @@ class _BonusPointsSectionState extends State<BonusPointsSection> {
             Expanded(
               child: OutlinedButton(
                 onPressed: _canAdjust ? () => _adjust(false) : null,
-                child: const Text(S.removePoints),
+                child: Text(S.removePoints),
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: FilledButton(
                 onPressed: _canAdjust ? () => _adjust(true) : null,
-                child: const Text(S.addPoints),
+                child: Text(S.addPoints),
               ),
             ),
           ],

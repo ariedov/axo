@@ -22,17 +22,17 @@ Future<bool> showSpendGoalDialog(BuildContext context, RewardGoal goal) async {
     barrierDismissible: false,
     builder: (context) => AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      title: const Text(S.spendGoalTitle),
+      title: Text(S.spendGoalTitle),
       content: Text(S.spendGoalConfirm(goal.title)),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text(S.cancel),
+          child: Text(S.cancel),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, true),
           style: FilledButton.styleFrom(backgroundColor: AppColors.goldDeep),
-          child: const Text(S.spendGoal),
+          child: Text(S.spendGoal),
         ),
       ],
     ),
@@ -59,10 +59,8 @@ class ParentGoalsSheet extends StatelessWidget {
   Future<void> _spend(BuildContext context, RewardGoal goal) async {
     final confirmed = await showSpendGoalDialog(context, goal);
     if (!confirmed || !context.mounted) return;
-    final spent = await HabitScope.of(context).spendGoal(
-      goal.id,
-      celebrate: false,
-    );
+    final spent = await HabitScope.of(context)
+        .spendGoal(goal.id, celebrate: false);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(spent ? S.spentGoal : S.notEnoughPoints)),
@@ -93,8 +91,8 @@ class ParentGoalsSheet extends StatelessWidget {
         ),
       ],
       child: goals.isEmpty
-          ? const Padding(
-              padding: EdgeInsets.only(bottom: 8),
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 8),
               child: Text(
                 S.noGoalsYet,
                 style: TextStyle(
@@ -171,7 +169,10 @@ class _GoalRow extends StatelessWidget {
                 index: index,
                 child: const Padding(
                   padding: EdgeInsets.only(right: 6),
-                  child: Icon(Icons.drag_handle_rounded, color: AppColors.muted),
+                  child: Icon(
+                    Icons.drag_handle_rounded,
+                    color: AppColors.muted,
+                  ),
                 ),
               ),
               CircleAvatar(
@@ -214,7 +215,7 @@ class _GoalRow extends StatelessWidget {
                       visualDensity: VisualDensity.compact,
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                     ),
-                    child: const Text(S.spendGoal),
+                    child: Text(S.spendGoal),
                   ),
                 ),
               const Icon(Icons.edit_rounded, color: AppColors.muted),

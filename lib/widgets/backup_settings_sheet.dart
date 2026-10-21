@@ -29,7 +29,7 @@ Future<void> showImportResultDialog(
         FilledButton(
           key: const Key('import-result-ok'),
           onPressed: () => Navigator.pop(context),
-          child: const Text(S.ok),
+          child: Text(S.ok),
         ),
       ],
     ),
@@ -42,16 +42,16 @@ Future<bool> showImportReplaceDialog(BuildContext context) async {
     barrierDismissible: false,
     builder: (context) => AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      title: const Text(S.importReplaceTitle),
-      content: const Text(S.importReplaceBody),
+      title: Text(S.importReplaceTitle),
+      content: Text(S.importReplaceBody),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text(S.cancel),
+          child: Text(S.cancel),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, true),
-          child: const Text(S.importConfirm),
+          child: Text(S.importConfirm),
         ),
       ],
     ),
@@ -118,13 +118,13 @@ class BackupSettingsSheet extends StatelessWidget {
           OutlinedButton(
             key: const Key('export-backup'),
             onPressed: () => _export(context),
-            child: const Text(S.exportBackup),
+            child: Text(S.exportBackup),
           ),
           const SizedBox(height: 10),
           OutlinedButton(
             key: const Key('import-backup'),
             onPressed: () => _import(context),
-            child: const Text(S.importBackup),
+            child: Text(S.importBackup),
           ),
         ],
       ),

@@ -136,7 +136,7 @@ class DayTasksSheet extends StatelessWidget {
                               context,
                               day: day,
                             ),
-                            child: const Text(
+                            child: Text(
                               S.approveCompleted,
                               style: TextStyle(
                                 color: AppColors.muted,
@@ -148,8 +148,8 @@ class DayTasksSheet extends StatelessWidget {
                         ),
                       ),
                     if (extra.isNotEmpty) ...[
-                      const Padding(
-                        padding: EdgeInsets.fromLTRB(20, 8, 20, 8),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
                         child: Text(
                           S.optionalTasks,
                           style: TextStyle(
@@ -196,17 +196,17 @@ class DayTasksSheet extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(28),
           ),
-          title: const Text(S.dayLockTitle),
-          content: const Text(S.dayLockBody),
+          title: Text(S.dayLockTitle),
+          content: Text(S.dayLockBody),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text(S.cancel),
+              child: Text(S.cancel),
             ),
             FilledButton(
               key: const Key('day-lock-confirm'),
               onPressed: () => Navigator.pop(context, true),
-              child: const Text(S.dayLockConfirm),
+              child: Text(S.dayLockConfirm),
             ),
           ],
         );
@@ -250,7 +250,7 @@ class _DayHighlightNote extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   S.dayHighlightHeading,
                   style: TextStyle(
                     fontWeight: FontWeight.w800,

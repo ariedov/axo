@@ -217,7 +217,7 @@ class _Action extends StatelessWidget {
             style: _buttonStyle.copyWith(
               backgroundColor: const WidgetStatePropertyAll(AppColors.goldDeep),
             ),
-            child: const Text(S.verify),
+            child: Text(S.verify),
           ),
         ],
       );
@@ -231,7 +231,7 @@ class _Action extends StatelessWidget {
             }
           : null,
       style: _buttonStyle,
-      child: const Text(S.done),
+      child: Text(S.done),
     );
   }
 }

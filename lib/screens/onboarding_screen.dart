@@ -68,17 +68,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(28),
           ),
-          title: const Text(S.skipPasswordTitle),
-          content: const Text(S.skipPasswordBody),
+          title: Text(S.skipPasswordTitle),
+          content: Text(S.skipPasswordBody),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text(S.cancel),
+              child: Text(S.cancel),
             ),
             FilledButton(
               key: const Key('onboarding-skip-password'),
               onPressed: () => Navigator.pop(context, true),
-              child: const Text(S.continueAction),
+              child: Text(S.continueAction),
             ),
           ],
         ),
@@ -131,17 +131,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        title: const Text(S.remindersExplainTitle),
-        content: const Text(S.remindersExplainBody),
+        title: Text(S.remindersExplainTitle),
+        content: Text(S.remindersExplainBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text(S.remindersLater),
+            child: Text(S.remindersLater),
           ),
           FilledButton(
             key: const Key('onboarding-reminders-allow'),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text(S.remindersAllow),
+            child: Text(S.remindersAllow),
           ),
         ],
       ),
@@ -232,7 +232,7 @@ class _TopBar extends StatelessWidget {
           ),
           Expanded(
             child: Text(
-              AppConfig.appName,
+              S.appName,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.headlineMedium
                   ?.copyWith(fontWeight: FontWeight.w900),
@@ -281,7 +281,7 @@ class _WelcomePage extends StatelessWidget {
       step: 0,
       mood: AxolotlMood.happy,
       bubble: S.onboardingHello,
-      children: const [
+      children: [
         Text(
           S.onboardingParentsBody,
           textAlign: TextAlign.center,
@@ -300,8 +300,8 @@ class _WelcomePage extends StatelessWidget {
       ],
       action: FilledButton(
         onPressed: onNext,
-        child: const Padding(
-          padding: EdgeInsets.symmetric(vertical: 6),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
           child: Text(S.next),
         ),
       ),
@@ -333,7 +333,7 @@ class _PasswordPage extends StatelessWidget {
       mood: AxolotlMood.happy,
       bubble: S.onboardingHello,
       children: [
-        const Text(
+        Text(
           S.onboardingBody,
           textAlign: TextAlign.center,
           style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
@@ -376,8 +376,8 @@ class _PasswordPage extends StatelessWidget {
       ],
       action: FilledButton(
         onPressed: onNext,
-        child: const Padding(
-          padding: EdgeInsets.symmetric(vertical: 6),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
           child: Text(S.next),
         ),
       ),
@@ -407,7 +407,7 @@ class _GoalPage extends StatelessWidget {
       children: [
         Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
                 S.onboardingGoalBody,
                 style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
@@ -429,8 +429,8 @@ class _GoalPage extends StatelessWidget {
       ],
       action: FilledButton(
         onPressed: onNext,
-        child: const Padding(
-          padding: EdgeInsets.symmetric(vertical: 6),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
           child: Text(S.next),
         ),
       ),
@@ -449,7 +449,7 @@ class _DonePage extends StatelessWidget {
       step: 3,
       mood: AxolotlMood.celebrate,
       bubble: S.onboardingDoneHello,
-      children: const [
+      children: [
         Text(
           S.onboardingDoneBody,
           textAlign: TextAlign.center,
@@ -458,8 +458,8 @@ class _DonePage extends StatelessWidget {
       ],
       action: FilledButton(
         onPressed: onDone,
-        child: const Padding(
-          padding: EdgeInsets.symmetric(vertical: 6),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
           child: Text(S.understood),
         ),
       ),

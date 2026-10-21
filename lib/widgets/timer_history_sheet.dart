@@ -36,7 +36,7 @@ class TimerHistorySheet extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     S.timerEnabled,
                     style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
@@ -52,8 +52,8 @@ class TimerHistorySheet extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           if (history.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
               child: Text(
                 S.timerNoHistory,
                 style: TextStyle(

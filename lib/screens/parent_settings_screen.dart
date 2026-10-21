@@ -8,6 +8,7 @@ import '../widgets/bonus_points_section.dart';
 import '../widgets/completion_bonus_settings_section.dart';
 import '../widgets/day_highlight_settings_section.dart';
 import '../widgets/game_limit_settings_section.dart';
+import '../widgets/language_settings_section.dart';
 import '../widgets/parent_goals_sheet.dart';
 import '../widgets/parent_tasks_sheet.dart';
 import '../widgets/password_settings_sheet.dart';
@@ -25,12 +26,12 @@ class ParentSettingsScreen extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        title: const Text(S.privacy),
-        content: const Text(S.privacyBody),
+        title: Text(S.privacy),
+        content: Text(S.privacyBody),
         actions: [
           FilledButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(S.ok),
+            child: Text(S.ok),
           ),
         ],
       ),
@@ -43,17 +44,17 @@ class ParentSettingsScreen extends StatelessWidget {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        title: const Text(S.resetTodayTitle),
-        content: const Text(S.resetTodayBody),
+        title: Text(S.resetTodayTitle),
+        content: Text(S.resetTodayBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text(S.cancel),
+            child: Text(S.cancel),
           ),
           FilledButton(
             key: const Key('reset-today-confirm'),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text(S.resetTodayConfirm),
+            child: Text(S.resetTodayConfirm),
           ),
         ],
       ),
@@ -69,13 +70,19 @@ class ParentSettingsScreen extends StatelessWidget {
     final store = HabitScope.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text(S.parentSection)),
+      appBar: AppBar(title: Text(S.parentSection)),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 440),
           child: ListView(
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
             children: [
+              SettingsTile(
+                key: const Key('settings-language'),
+                title: S.languageTitle,
+                subtitle: store.language.nativeName,
+                onTap: () => showLanguageSettingsSheet(context),
+              ),
               SettingsTile(
                 key: const Key('settings-daily-tasks'),
                 title: S.dailyTasks,
@@ -169,12 +176,12 @@ class ParentSettingsScreen extends StatelessWidget {
               ),
               TextButton(
                 onPressed: () => _privacy(context),
-                child: const Text(S.privacy),
+                child: Text(S.privacy),
               ),
               TextButton(
                 key: const Key('settings-reset-today'),
                 onPressed: () => _resetToday(context),
-                child: const Text(S.resetToday),
+                child: Text(S.resetToday),
               ),
             ],
           ),

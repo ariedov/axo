@@ -46,12 +46,12 @@ class CompletedGoalsSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 S.completedGoals,
                 style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 S.completedGoalsHint,
                 style: TextStyle(
                   color: AppColors.muted,
@@ -60,8 +60,8 @@ class CompletedGoalsSheet extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               if (completed.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Text(
                     S.noCompletedGoals,
                     style: TextStyle(

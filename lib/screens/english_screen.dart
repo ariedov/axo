@@ -178,7 +178,7 @@ class _EnglishScreenState extends State<EnglishScreen> {
 
     HapticFeedback.heavyImpact();
     final misses = _misses + 1;
-    final revealed = 'Було «$_answer». ${S.keepGoing}';
+    final revealed = S.revealedAnswer(_answer, quoted: true);
     setState(() {
       _misses = misses;
       _mood = AxolotlMood.cheer;
@@ -230,25 +230,19 @@ class _EnglishScreenState extends State<EnglishScreen> {
                       selected: _mode == _TranslateMode.both,
                       onTap: () => _setMode(_TranslateMode.both),
                       points: AppConfig.englishBothWaysPoints,
-                      child: const Text(S.bothWays),
+                      child: Text(S.bothWays),
                     ),
                     GameModeChip(
                       selected: _mode == _TranslateMode.toUk,
                       onTap: () => _setMode(_TranslateMode.toUk),
                       points: AppConfig.englishOneWayPoints,
-                      child: const _DirectionLabel(
-                        from: S.enLang,
-                        to: S.uaLang,
-                      ),
+                      child: _DirectionLabel(from: S.enLang, to: S.uaLang),
                     ),
                     GameModeChip(
                       selected: _mode == _TranslateMode.toEn,
                       onTap: () => _setMode(_TranslateMode.toEn),
                       points: AppConfig.englishOneWayPoints,
-                      child: const _DirectionLabel(
-                        from: S.uaLang,
-                        to: S.enLang,
-                      ),
+                      child: _DirectionLabel(from: S.uaLang, to: S.enLang),
                     ),
                   ],
                 ),
@@ -317,8 +311,8 @@ class _EnglishScreenState extends State<EnglishScreen> {
               ),
               action: FilledButton(
                 onPressed: _busy ? null : _check,
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 6),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
                   child: Text(S.check),
                 ),
               ),

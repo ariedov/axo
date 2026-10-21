@@ -20,7 +20,7 @@ class MiniGame {
   final Color color;
 }
 
-const miniGames = [
+List<MiniGame> get miniGames => [
   MiniGame(
     id: AppConfig.timesTablesGame,
     title: S.timesTables,
@@ -68,8 +68,9 @@ const miniGames = [
 List<MiniGame> pickRecentMiniGames(
   List<String> recentIds, {
   int limit = 2,
-  List<MiniGame> catalog = miniGames,
+  List<MiniGame>? catalog,
 }) {
+  final games = catalog ?? miniGames;
   final picked = <MiniGame>[];
   final seen = <String>{};
 
@@ -80,14 +81,14 @@ List<MiniGame> pickRecentMiniGames(
   }
 
   for (final id in recentIds) {
-    for (final game in catalog) {
+    for (final game in games) {
       if (game.id == id) {
         add(game);
         break;
       }
     }
   }
-  for (final game in catalog) {
+  for (final game in games) {
     add(game);
   }
   return picked;

@@ -5,13 +5,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'config.dart';
 import 'data/audio_service.dart';
 import 'data/completion_bonus.dart';
 import 'data/day_highlight_settings.dart';
 import 'data/day_history_repository.dart';
 import 'data/game_limit.dart';
 import 'data/goal_repository.dart';
+import 'data/language_repository.dart';
 import 'data/local_reminders.dart';
 import 'data/onboarding_flags.dart';
 import 'data/parent_auth.dart';
@@ -23,6 +23,7 @@ import 'data/strikes_repository.dart';
 import 'data/task_repository.dart';
 import 'data/timer_repository.dart';
 import 'screens/home_screen.dart';
+import 'strings.dart';
 import 'screens/onboarding_screen.dart';
 import 'state/habit_scope.dart';
 import 'state/habit_store.dart';
@@ -125,6 +126,13 @@ Future<void> main() async {
       },
     ),
     reminders: LocalReminderScheduler(),
+    languageRepo: LocalLanguageRepository((key) async => prefs.getString(key), (
+      key,
+      value,
+    ) async {
+      await prefs.setString(key, value);
+    }),
+    deviceLocale: WidgetsBinding.instance.platformDispatcher.locale,
   );
   await store.load();
   runApp(AxolotlApp(store: store));
@@ -156,6 +164,14 @@ class _AxolotlAppState extends State<AxolotlApp> with WidgetsBindingObserver {
   }
 
   @override
+  void didChangeLocales(List<Locale>? locales) {
+    final locale = locales != null && locales.isNotEmpty
+        ? locales.first
+        : WidgetsBinding.instance.platformDispatcher.locale;
+    widget.store.applyDeviceLocale(locale);
+  }
+
+  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(
@@ -172,9 +188,9 @@ class _AxolotlAppState extends State<AxolotlApp> with WidgetsBindingObserver {
         animation: widget.store,
         builder: (context, _) {
           return MaterialApp(
-            title: AppConfig.appName,
+            title: S.appName,
             debugShowCheckedModeBanner: false,
-            locale: const Locale('uk'),
+            locale: widget.store.language.locale,
             supportedLocales: const [Locale('uk'), Locale('en')],
             localizationsDelegates: const [
               GlobalMaterialLocalizations.delegate,
