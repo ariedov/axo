@@ -104,7 +104,7 @@ class ParentSettingsScreen extends StatelessWidget {
               SettingsTile(
                 key: const Key('settings-bonus-points'),
                 title: S.bonusPoints,
-                subtitle: S.pointsWord(store.totalPoints),
+                subtitle: S.bonusPointsSubtitle,
                 onTap: () => showBonusPointsSheet(context),
               ),
               SettingsTile(
@@ -130,7 +130,10 @@ class ParentSettingsScreen extends StatelessWidget {
                 key: const Key('game-limit-settings'),
                 title: S.gameLimitSettings,
                 subtitle: store.gameLimitEnabled
-                    ? '${S.roundsWord(store.rewardedPlays)}, ${S.minutesWord(store.playLimitMinutes)}'
+                    ? S.gameLimitSummary(
+                        store.rewardedPlays,
+                        store.playLimitMinutes,
+                      )
                     : S.off,
                 onTap: () => showGameLimitSettingsSheet(context),
               ),

@@ -2436,7 +2436,7 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(find.text('Раунди зараз'), findsOneWidget);
+    expect(find.text(S.gamePointsLeft), findsOneWidget);
     expect(find.text('0/${AppConfig.rewardedPlays}'), findsOneWidget);
 
     expect(await store.tryAwardGamePlay('spelling'), 5);
@@ -3880,8 +3880,8 @@ void main() {
     );
 
     expect(find.text(S.monthTitle(now.year, now.month)), findsOneWidget);
-    expect(find.text('Усі завдання'), findsOneWidget);
-    expect(find.text('Частина'), findsOneWidget);
+    expect(find.text(S.calendarFull), findsOneWidget);
+    expect(find.text(S.calendarPartial), findsOneWidget);
     expect(find.byIcon(Icons.check_circle_rounded), findsWidgets);
   });
 

@@ -94,10 +94,10 @@ class S {
 
   static String practiceOnly(int rounds, int minutes) => _t(
     'Можна зіграти ${roundsWord(rounds)}, далі ${minutesWord(minutes)} перерви. У раунді — 10 завдань.',
-    'You can play ${roundsWord(rounds)}, then a break of ${minutesWord(minutes)}. A round has 10 questions.',
+    'You can play ${roundsWord(rounds)}, then take a break of ${minutesWord(minutes)}. Each round has 10 challenges.',
   );
 
-  static String get gamePointsLeft => _t('Раунди зараз', 'Rounds now');
+  static String get gamePointsLeft => _t('Зіграно раундів', 'Rounds played');
 
   static String gamePointsGone(int rounds) => _t(
     'Наступні ${roundsWord(rounds)} через',
@@ -122,7 +122,7 @@ class S {
   static String get plusGamePoints => _t('балів за гру', 'points for the game');
   static String get roundDone => _t('Раунд завершено!', 'Round complete!');
   static String get correctCount => _t('Правильно', 'Correct');
-  static String get wrongCount => _t('Помилки', 'Mistakes');
+  static String get wrongCount => _t('Неправильно', 'Wrong');
   static String get practiceMode => _t('Тренування', 'Practice');
   static String get parentSection =>
       _t('Батьківський розділ', 'Parent section');
@@ -137,7 +137,7 @@ class S {
   );
   static String get onboardingBody => _t(
     'Мама або тато: скільки балів дати на старт і, за бажанням, пароль. Паролем ви підтверджуватимете завдання.',
-    'Parent: choose starting points and, if you want, a password. You will use the password to approve tasks.',
+    'Choose starting points and, optionally, a password. You\'ll use it to approve tasks.',
   );
   static String get onboardingPrivacy => _t(
     'Усі дані лишаються на цьому пристрої. Без реклами, без акаунтів і без інтернету.',
@@ -147,12 +147,12 @@ class S {
       _t('За що збираємо бали?', 'What are the points for?');
   static String get onboardingGoalBody => _t(
     'На що дитина збиратиме бали? Можна поставити нову ціль тут.',
-    'What will your child save points for? You can add a goal here.',
+    'Add a goal for your child to save up for.',
   );
   static String get onboardingDoneHello => _t('Усе готово!', 'All set!');
   static String get onboardingDoneBody => _t(
     'Налаштування завершено. Далі Аксо — для дитини: завдання, ігри й цілі. Батьківський розділ можна захистити паролем.',
-    'Setup is complete. From here Axo is for your child: tasks, games, and goals. You can protect the parent section with a password.',
+    'Axo is now ready for your child: tasks, games, and goals. You can protect the parent section with a password.',
   );
   static String get understood => _t('Зрозуміло', 'Got it');
   static String get choosePassword =>
@@ -162,7 +162,7 @@ class S {
   static String get skipPasswordTitle => _t('Без пароля?', 'No password?');
   static String get skipPasswordBody => _t(
     'Можна продовжити без пароля. Його можна створити пізніше в батьківському розділі.',
-    'You can continue without a password. You can create one later in the parent section.',
+    'You can continue without a password and add one later in the parent section.',
   );
   static String get startingPoints => _t('Початкові бали', 'Starting points');
   static String get invalidPoints =>
@@ -195,6 +195,8 @@ class S {
     'Нарахуйте або зніміть будь-яку кількість балів.',
     'Add or remove any number of points.',
   );
+  static String get bonusPointsSubtitle =>
+      _t('Додати або зняти бали', 'Add or remove points');
   static String get bonusPointsPrompt => _t(
     'Введи пароль, щоб нарахувати або зняти бали',
     'Enter the password to add or remove points',
@@ -204,7 +206,7 @@ class S {
   static String get pointsAmount => _t('Скільки балів', 'How many points');
 
   static String pointsNow(int n) =>
-      _t('Зараз ${pointsWord(n)}', 'Now ${pointsWord(n)}');
+      _t('Зараз ${pointsWord(n)}', 'Balance: ${pointsWord(n)}');
 
   static String pointsAdjusted(int delta) {
     if (delta > 0) {
@@ -226,8 +228,8 @@ class S {
   );
   static String get penaltySettings => _t('Штраф за страйки', 'Strike penalty');
   static String get penaltySettingsHint => _t(
-    'Після трьох страйків бали знімаються, а 3 з 3 лишається до наступного дня.',
-    'After three strikes, points are removed, and 3 of 3 stays until the next day.',
+    'Після трьох страйків бали знімаються, а лічильник лишається 3 з 3 до наступного дня.',
+    'After three strikes, points are removed, and the counter stays at 3 of 3 until the next day.',
   );
   static String get penaltyPoints => _t('Штраф у балах', 'Penalty in points');
   static String get penaltySaved => _t('Штраф збережено', 'Penalty saved');
@@ -238,7 +240,11 @@ class S {
   static String get gameLimitSettings => _t('Ліміт ігор', 'Game limit');
   static String get gameLimitSettingsHint => _t(
     'Скільки раундів можна зіграти підряд і скільки хвилин відпочинку після цього.',
-    'How many rounds can be played in a row, and how many minutes of rest after that.',
+    'How many rounds can be played in a row, and how long the break is afterwards.',
+  );
+  static String gameLimitSummary(int rounds, int minutes) => _t(
+    '${roundsWord(rounds)} · перерва $minutes хв',
+    '${roundsWord(rounds)} · $minutes-min break',
   );
   static String get gameLimitEnabled => _t('Обмежувати ігри', 'Limit games');
   static String get gameLimitRounds => _t('Раундів підряд', 'Rounds in a row');
@@ -299,11 +305,13 @@ class S {
     'Axo is proud of you! You earned ${pointsWord(n)} more.',
   );
 
+  static String streakBonusCap(int n) => _t(
+    'бонус за серію до ${pointsWord(n)}',
+    'streak bonus up to ${pointsWord(n)}',
+  );
+
   static String streakBonusAwarded(int n) =>
       _t('+${pointsWord(n)} за серію', '+${pointsWord(n)} for the streak');
-
-  static String streakBonusCap(int n) =>
-      _t('серія до ${pointsWord(n)}', 'streak up to ${pointsWord(n)}');
 
   static String completionBonusSummary({
     required bool enabled,
@@ -391,15 +399,15 @@ class S {
   static String get resetTodayTitle =>
       _t('Почати сьогодні заново?', 'Start today over?');
   static String get resetTodayBody => _t(
-    'Завдання знову стануть невиконаними, одноразові зникнуть. Бонус за всі справи можна буде отримати ще раз, ліміт ігор скинеться. Бали, цілі та історія інших днів лишаться. Це не можна скасувати.',
-    'Tasks will be unfinished again, and one-off tasks will disappear. The all-done bonus can be earned again, and the game limit will reset. Points, goals, and other days\' history stay. This cannot be undone.',
+    'Завдання знову стануть невиконаними, одноразові зникнуть. Бонус за всі завдання можна буде отримати ще раз, ліміт ігор скинеться. Бали, цілі та історія інших днів лишаться. Це не можна скасувати.',
+    'Tasks will be marked as not done, and one-off tasks will disappear. The bonus for all tasks can be earned again, and the game limit will reset. Points, goals, and other days\' history are kept. This cannot be undone.',
   );
   static String get resetTodayConfirm => _t('Скинути', 'Reset');
   static String get resetTodayDone => _t('Сьогодні скинуто', 'Today was reset');
   static String get dailyTasks => _t('Щоденні завдання', 'Daily tasks');
   static String get dailyTasksHint => _t(
     'Ці завдання з’являються щоранку. Бали дитина отримує лише після вашої перевірки.',
-    'These tasks appear every morning. Your child gets points only after you check them.',
+    'These tasks appear every morning. Your child gets points only after you check their work.',
   );
   static String get optionalTasks => _t('Додаткові завдання', 'Extra tasks');
   static String get optionalTasksHint => _t(
@@ -410,7 +418,7 @@ class S {
       _t('Щоденні додаткові завдання', 'Daily extra tasks');
   static String get dailyOptionalTasksHint => _t(
     'Ці завдання теж з’являються щоранку, але їх не обов’язково виконувати.',
-    'These tasks also appear every morning, but they do not have to be done.',
+    'These tasks also appear every morning, but they are optional.',
   );
   static String get reorderTasksHint => _t(
     'Потягніть за смужки зліва, щоб змінити порядок.',
@@ -419,36 +427,38 @@ class S {
   static String get goals => _t('Цілі', 'Goals');
   static String get goalsHint => _t(
     'На що дитина збирає бали. Коли вистачить — можна витратити.',
-    'What your child is saving points for. When there are enough, they can be spent.',
+    'What your child is saving up for. Once they have enough points, they can redeem it.',
   );
   static String get addGoal => _t('Додати ціль', 'Add a goal');
   static String get editGoal => _t('Змінити ціль', 'Edit goal');
   static String get goalCost => _t('Вартість у балах', 'Cost in points');
-  static String get spendGoal => _t('Видати', 'Give');
-  static String get spendGoalTitle => _t('Видати ціль?', 'Give this goal?');
-  static String get goalReady => _t('Можна отримати!', 'Ready to get!');
+  static String get spendGoal => _t('Видати', 'Redeem');
+  static String get spendGoalTitle => _t('Видати ціль?', 'Redeem this goal?');
+  static String get goalReady => _t('Можна отримати!', 'Ready to redeem!');
   static String get notEnoughPoints =>
       _t('Ще не вистачає балів', 'Not enough points yet');
-  static String get spentGoal => _t('Ціль отримано!', 'Goal received!');
+  static String get spentGoal => _t('Ціль отримано!', 'Goal redeemed!');
   static String get spendGoalPrompt => _t(
     'Видати цю ціль і списати бали?',
-    'Give this goal and spend the points?',
+    'Redeem this goal and spend the points?',
   );
 
   static String spendGoalConfirm(String title) => _t(
     'Видати «$title» і списати бали?',
-    'Give "$title" and spend the points?',
+    'Redeem "$title" and spend the points?',
   );
 
   static String get noGoalsYet => _t(
     'Поки немає цілей — додайте щось смачненьке.',
     'No goals yet — add something fun.',
   );
-  static String get completedGoals => _t('Видані цілі', 'Given goals');
-  static String get completedGoalsHint =>
-      _t('Цілі, які вже видали дитині.', 'Goals already given to your child.');
+  static String get completedGoals => _t('Видані цілі', 'Redeemed goals');
+  static String get completedGoalsHint => _t(
+    'Цілі, які вже видали дитині.',
+    'Goals your child has already redeemed.',
+  );
   static String get noCompletedGoals =>
-      _t('Поки немає виданих цілей.', 'No given goals yet.');
+      _t('Поки немає виданих цілей.', 'No goals redeemed yet.');
 
   static String completedGoalOn(String iso) {
     final date = DateTime.tryParse(iso);
@@ -456,7 +466,7 @@ class S {
     final day = date.day.toString().padLeft(2, '0');
     final month = date.month.toString().padLeft(2, '0');
     final stamp = '$day.$month.${date.year}';
-    return _t('Видано $stamp', 'Given on $stamp');
+    return _t('Видано $stamp', 'Redeemed on $stamp');
   }
 
   static String daysWord(int n) {
@@ -470,8 +480,8 @@ class S {
   static String get calendar => _t('Календар', 'Calendar');
   static String get previousMonth => _t('Попередній місяць', 'Previous month');
   static String get nextMonth => _t('Наступний місяць', 'Next month');
-  static String get calendarFull => _t('Усі завдання', 'All tasks');
-  static String get calendarPartial => _t('Частина', 'Some');
+  static String get calendarFull => _t('Усі виконано', 'All done');
+  static String get calendarPartial => _t('Частково', 'Partly done');
   static String get pastDayHint => _t(
     'Можна підтвердити завдання, які зробили раніше.',
     'You can approve tasks that were done earlier.',
@@ -579,7 +589,7 @@ class S {
     'Your child can start a timer from the home screen. Here you can see how much time has passed.',
   );
   static String get timerEnabled => _t('Показувати таймер', 'Show the timer');
-  static String get timerReason => _t('Навіщо', 'What for');
+  static String get timerReason => _t('Причина', 'Reason');
   static String get timerReasonHint => _t('Необов\'язково', 'Optional');
   static String get timerStart => _t('Старт', 'Start');
   static String get timerPause => _t('Пауза', 'Pause');
@@ -647,7 +657,7 @@ class S {
       _t('Поки немає записів.', 'No records yet.');
   static String get timerCompleted => _t('Виконано', 'Finished');
   static String get timerAbandoned => _t('Зупинено', 'Stopped');
-  static String get noReason => _t('Без назви', 'No name');
+  static String get noReason => _t('Без причини', 'No reason');
 
   static String timerOf(String elapsed, String target) =>
       _t('$elapsed з $target', '$elapsed of $target');
@@ -687,7 +697,7 @@ class S {
     if (waiting > 0) {
       return _t(
         'Клас! Тепер чекаємо перевірку — і ще трохи роботи.',
-        'Nice! Now we wait for a check — and a little more work.',
+        'Nice! Now we wait for a parent to check — and there\'s a little more to do.',
       );
     }
     if (verified > 0) {
