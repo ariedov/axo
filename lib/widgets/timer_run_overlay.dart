@@ -137,17 +137,17 @@ class _TimerRunOverlayState extends State<TimerRunOverlay> {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        title: const Text(S.timerAbandonTitle),
-        content: const Text(S.timerAbandonBody),
+        title: Text(S.timerAbandonTitle),
+        content: Text(S.timerAbandonBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text(S.cancel),
+            child: Text(S.cancel),
           ),
           FilledButton(
             key: const Key('timer-abandon-confirm'),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text(S.timerAbandon),
+            child: Text(S.timerAbandon),
           ),
         ],
       ),
@@ -190,7 +190,7 @@ class _TimerRunOverlayState extends State<TimerRunOverlay> {
                 Stack(
                   alignment: Alignment.center,
                   children: [
-                    const Text(
+                    Text(
                       S.timer,
                       style: TextStyle(
                         fontWeight: FontWeight.w900,
@@ -244,7 +244,7 @@ class _TimerRunOverlayState extends State<TimerRunOverlay> {
                       child: OutlinedButton(
                         key: const Key('timer-abandon'),
                         onPressed: _abandon,
-                        child: const Text(S.timerAbandon),
+                        child: Text(S.timerAbandon),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -285,13 +285,13 @@ class _DoneBody extends StatelessWidget {
               const Spacer(),
               const AxolotlMascot(mood: AxolotlMood.celebrate, size: 160),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 S.timerDone,
                 textAlign: TextAlign.center,
                 style: TextStyle(fontWeight: FontWeight.w900, fontSize: 28),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 S.timerDoneBody,
                 textAlign: TextAlign.center,
                 style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
@@ -300,7 +300,7 @@ class _DoneBody extends StatelessWidget {
               FilledButton(
                 key: const Key('timer-done'),
                 onPressed: onClose,
-                child: const Text(S.ok),
+                child: Text(S.ok),
               ),
             ],
           ),

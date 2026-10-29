@@ -32,6 +32,7 @@ class BackupSnapshot {
     this.eveningReminderEnabled = AppConfig.defaultEveningReminderEnabled,
     this.eveningReminderHour = AppConfig.defaultEveningReminderHour,
     this.eveningReminderMinute = AppConfig.defaultEveningReminderMinute,
+    this.language,
     this.timer = const TimerSnapshot(),
   });
 
@@ -60,6 +61,9 @@ class BackupSnapshot {
   final bool eveningReminderEnabled;
   final int eveningReminderHour;
   final int eveningReminderMinute;
+
+  /// `uk` or `en`. Null on backups from before the language setting.
+  final String? language;
   final TimerSnapshot timer;
 
   String get fileName => 'axo-${todayStamp(exportedAt)}.json';
@@ -95,6 +99,7 @@ class BackupSnapshot {
       'eveningReminderEnabled': eveningReminderEnabled,
       'eveningReminderHour': eveningReminderHour,
       'eveningReminderMinute': eveningReminderMinute,
+      if (language != null) 'language': language,
       'timer': timer.toJson(),
     },
   };
@@ -168,6 +173,7 @@ class BackupSnapshot {
       eveningReminderMinute:
           (data['eveningReminderMinute'] as num?)?.toInt() ??
           AppConfig.defaultEveningReminderMinute,
+      language: data['language'] as String?,
       timer: data['timer'] is Map<String, dynamic>
           ? TimerSnapshot.fromJson(data['timer'] as Map<String, dynamic>)
           : const TimerSnapshot(),

@@ -108,7 +108,7 @@ class _GameLimitSettingsSectionState extends State<GameLimitSettingsSection> {
               ),
               child: Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       S.gameLimitEnabled,
                       style: TextStyle(
@@ -155,7 +155,7 @@ class _GameLimitSettingsSectionState extends State<GameLimitSettingsSection> {
             FilledButton(
               key: const Key('save-game-limit'),
               onPressed: _save,
-              child: const Text(S.save),
+              child: Text(S.save),
             ),
           ],
         ),

@@ -157,7 +157,7 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
     });
     await showAnswerFlash(
       context,
-      message: misses >= 2 ? 'Було $_answer. ${S.keepGoing}' : S.tryAgain,
+      message: misses >= 2 ? S.revealedAnswer('$_answer') : S.tryAgain,
       success: false,
       hold: Duration(milliseconds: misses >= 2 ? 1100 : 700),
     );
@@ -204,19 +204,19 @@ class _TimesTablesScreenState extends State<TimesTablesScreen> {
                       selected: _min == 1 && _max == 5,
                       onTap: () => _setRange(1, 5),
                       points: AppConfig.timesTablesEasyPoints,
-                      child: const Text(S.easy),
+                      child: Text(S.easy),
                     ),
                     GameModeChip(
                       selected: _min == 1 && _max == 10,
                       onTap: () => _setRange(1, 10),
                       points: AppConfig.timesTablesNormalPoints,
-                      child: const Text(S.normal),
+                      child: Text(S.normal),
                     ),
                     GameModeChip(
                       selected: _min == 6 && _max == 10,
                       onTap: () => _setRange(6, 10),
                       points: AppConfig.timesTablesHardPoints,
-                      child: const Text(S.hard),
+                      child: Text(S.hard),
                     ),
                   ],
                 ),

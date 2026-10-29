@@ -2,7 +2,7 @@
 
 Flutter habit tracker for kids. Dart package name is `app` (`package:app/...`), not `axo`. No backend: SharedPreferences only. Do not add accounts, analytics, or network data collection.
 
-UI copy is Ukrainian in `lib/strings.dart` (`S`). Locale is hardcoded to `uk`; `flutter_localizations` is for Material widgets only, not app strings. Tunables live in `lib/config.dart`. Trust that over README / `docs/play-listing.md` when they disagree.
+UI copy is in `lib/strings.dart` (`S`), Ukrainian and English. A saved parent choice wins; otherwise the device locale is used when it is `uk` or `en`, and Ukrainian otherwise. `flutter_localizations` follows that locale. Tunables live in `lib/config.dart`. Trust that over README / `docs/play-listing.md` when they disagree.
 
 ## Commands
 
@@ -32,7 +32,7 @@ Tasks are required unless `optional` (`HabitTask.isMandatory`); calendar complet
 
 Games: 10 items per round (`AppConfig.roundLength`). Two caps: a global window (`rewardedPlays` in `playLimitMinutes`) and a per-game daily cap. After the daily cap, practice mode (no points). Parent can turn limits off (`gameLimitEnabled`, default on); then play has no stops and always awards points. Award through `tryAwardGamePlay`. New game: id/points in `AppConfig`, catalog entry, screen (follow `GameScaffold` / `GameSetupBody` / `GameRound`), route in `miniGameScreen()`, strings on `S`, tests in `widget_test.dart`.
 
-Backup format 2, `app: axo`. Never export the parent password; import keeps the existing password. Newer format throws. Timer history and the parent enable flag ride along in `data.timer`. Evening reminder prefs ride along as `eveningReminderEnabled` / `Hour` / `Minute`. Streak bonus prefs ride along as `streakBonusEnabled` / `streakBonusMaxPoints`. The day-highlight prompt can be turned off with `dayHighlightEnabled`.
+Backup format 2, `app: axo`. Never export the parent password; import keeps the existing password. Newer format throws. Timer history and the parent enable flag ride along in `data.timer`. Evening reminder prefs ride along as `eveningReminderEnabled` / `Hour` / `Minute`. Streak bonus prefs ride along as `streakBonusEnabled` / `streakBonusMaxPoints`. The day-highlight prompt can be turned off with `dayHighlightEnabled`. Language rides along as `language` (`uk` or `en`); if the field is missing, import keeps the current language.
 
 Timer: FAB on home (parent can hide it). Duration + optional reason, counts up, pause/resume/abandon, screen stays on. History is in parent settings. While running, a persistent OS notification is shown (id `ReminderId.timer`) backed by an Android `mediaPlayback` foreground service (keeps music + countdown alive in background); the one-off done alarm replaces it (+3s buffer so in-app completion cancels first). The service notification has a mute action that toggles timer music. Onboarding ends with an explain dialog, then a permission request.
 

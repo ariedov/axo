@@ -49,7 +49,7 @@ class _ParentGateDialogState extends State<_ParentGateDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      title: const Text(S.parentTitle),
+      title: Text(S.parentTitle),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -74,9 +74,9 @@ class _ParentGateDialogState extends State<_ParentGateDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text(S.cancel),
+          child: Text(S.cancel),
         ),
-        FilledButton(onPressed: _submit, child: const Text(S.verify)),
+        FilledButton(onPressed: _submit, child: Text(S.verify)),
       ],
     );
   }
@@ -95,18 +95,15 @@ Future<void> showParentTaskActions(
     builder: (context) {
       return AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        title: const Text(S.parentTitle),
-        content: const Text('Завдання виконано добре?'),
+        title: Text(S.parentTitle),
+        content: Text(S.taskDoneWell),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               onSendBack();
             },
-            child: const Text(
-              S.sendBack,
-              style: TextStyle(color: AppColors.muted),
-            ),
+            child: Text(S.sendBack, style: TextStyle(color: AppColors.muted)),
           ),
           FilledButton(
             onPressed: () {
@@ -114,7 +111,7 @@ Future<void> showParentTaskActions(
               Navigator.pop(context);
               onAward();
             },
-            child: const Text(S.awardPoints),
+            child: Text(S.awardPoints),
           ),
         ],
       );

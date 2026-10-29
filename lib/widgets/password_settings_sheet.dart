@@ -124,7 +124,7 @@ class _PasswordSettingsSheetState extends State<PasswordSettingsSheet> {
               ),
               child: Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       S.passwordEnabled,
                       style: TextStyle(
@@ -174,7 +174,7 @@ class _PasswordSettingsSheetState extends State<PasswordSettingsSheet> {
             FilledButton(
               key: const Key('save-password'),
               onPressed: _save,
-              child: const Text(S.save),
+              child: Text(S.save),
             ),
           ],
         ),

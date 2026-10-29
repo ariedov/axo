@@ -51,7 +51,7 @@ class GameSetupBody extends StatelessWidget {
                     ],
                     if (options.isNotEmpty) ...[
                       const SizedBox(height: 20),
-                      const Text(
+                      Text(
                         S.pickGameMode,
                         textAlign: TextAlign.center,
                         style: TextStyle(
@@ -65,8 +65,8 @@ class GameSetupBody extends StatelessWidget {
                     const SizedBox(height: 32),
                     FilledButton(
                       onPressed: canPlay ? onStart : null,
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 6),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
                         child: Text(S.letsGo),
                       ),
                     ),

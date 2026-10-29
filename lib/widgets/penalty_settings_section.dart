@@ -110,13 +110,13 @@ class _PenaltySettingsSectionState extends State<PenaltySettingsSection> {
             FilledButton(
               key: const Key('save-penalty'),
               onPressed: _save,
-              child: const Text(S.save),
+              child: Text(S.save),
             ),
             const SizedBox(height: 10),
             OutlinedButton(
               key: const Key('clear-strikes'),
               onPressed: store.strikes > 0 ? _clear : null,
-              child: const Text(S.clearStrikes),
+              child: Text(S.clearStrikes),
             ),
           ],
         ),

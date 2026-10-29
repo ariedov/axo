@@ -144,7 +144,8 @@ class _TaskEditorState extends State<_TaskEditor> {
       context,
       TaskEditResult.save(
         HabitTask(
-          id: widget.existing?.id ??
+          id:
+              widget.existing?.id ??
               DateTime.now().millisecondsSinceEpoch.toString(),
           title: title,
           points: points,
@@ -172,10 +173,8 @@ class _TaskEditorState extends State<_TaskEditor> {
             IconButton(
               tooltip: S.delete,
               visualDensity: VisualDensity.compact,
-              onPressed: () => Navigator.pop(
-                context,
-                const TaskEditResult.delete(),
-              ),
+              onPressed: () =>
+                  Navigator.pop(context, const TaskEditResult.delete()),
               icon: const Icon(
                 Icons.delete_outline_rounded,
                 color: AppColors.muted,
@@ -189,10 +188,7 @@ class _TaskEditorState extends State<_TaskEditor> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              LabeledField(
-                controller: _title,
-                label: S.taskTitle,
-              ),
+              LabeledField(controller: _title, label: S.taskTitle),
               const SizedBox(height: 12),
               LabeledField(
                 controller: _points,
@@ -245,9 +241,11 @@ class _TaskEditorState extends State<_TaskEditor> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  for (var weekday = DateTime.monday;
-                      weekday <= DateTime.sunday;
-                      weekday++)
+                  for (
+                    var weekday = DateTime.monday;
+                    weekday <= DateTime.sunday;
+                    weekday++
+                  )
                     Expanded(
                       child: Padding(
                         padding: EdgeInsets.only(
@@ -273,14 +271,11 @@ class _TaskEditorState extends State<_TaskEditor> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  TextButton(
-                    onPressed: _tryClose,
-                    child: const Text(S.cancel),
-                  ),
+                  TextButton(onPressed: _tryClose, child: Text(S.cancel)),
                   const SizedBox(width: 8),
                   FilledButton(
                     onPressed: _needsDay ? null : _save,
-                    child: const Text(S.save),
+                    child: Text(S.save),
                   ),
                 ],
               ),

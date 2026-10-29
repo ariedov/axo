@@ -71,7 +71,7 @@ class StrikesCard extends StatelessWidget {
                     minimumSize: const Size(0, 36),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  child: const Text(S.strike),
+                  child: Text(S.strike),
                 ),
               ],
             ),
@@ -127,17 +127,17 @@ Future<bool> showStrikePenaltyDialog(BuildContext context, int points) async {
     barrierDismissible: false,
     builder: (context) => AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      title: const Text(S.strikePenaltyTitle),
+      title: Text(S.strikePenaltyTitle),
       content: Text(S.strikePenaltyConfirm(points)),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text(S.cancel),
+          child: Text(S.cancel),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, true),
           style: FilledButton.styleFrom(backgroundColor: AppColors.pinkDark),
-          child: const Text(S.continueAction),
+          child: Text(S.continueAction),
         ),
       ],
     ),

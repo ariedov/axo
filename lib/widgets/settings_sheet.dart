@@ -26,16 +26,16 @@ Future<bool> confirmDiscardSettings(BuildContext context) async {
     barrierDismissible: false,
     builder: (context) => AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      title: const Text(S.unsavedSettingsTitle),
-      content: const Text(S.unsavedSettingsBody),
+      title: Text(S.unsavedSettingsTitle),
+      content: Text(S.unsavedSettingsBody),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text(S.cancel),
+          child: Text(S.cancel),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, true),
-          child: const Text(S.close),
+          child: Text(S.close),
         ),
       ],
     ),
@@ -43,10 +43,7 @@ Future<bool> confirmDiscardSettings(BuildContext context) async {
   return confirmed == true;
 }
 
-Future<void> closeSettings(
-  BuildContext context, {
-  required bool dirty,
-}) async {
+Future<void> closeSettings(BuildContext context, {required bool dirty}) async {
   if (dirty && !await confirmDiscardSettings(context)) return;
   if (context.mounted) Navigator.pop(context);
 }

@@ -120,8 +120,8 @@ class GamePlaysBanner extends StatelessWidget {
         final id = gameId;
         final used = id == null ? store.windowUsed : store.playsUsed(id);
         if (id != null && store.playsLeft(id) <= 0) {
-          return const Padding(
-            padding: EdgeInsets.only(bottom: 8),
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
             child: Text(
               S.practiceMode,
               textAlign: TextAlign.center,

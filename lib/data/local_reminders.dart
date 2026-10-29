@@ -221,7 +221,7 @@ class LocalReminderScheduler implements ReminderScheduler {
     if (!await _ensureReady()) return;
     final when = tz.TZDateTime.from(reminder.when, tz.local);
     if (!when.isAfter(tz.TZDateTime.now(tz.local))) return;
-    const details = NotificationDetails(
+    final details = NotificationDetails(
       android: AndroidNotificationDetails(
         'axo-reminders',
         S.reminders,

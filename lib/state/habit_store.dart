@@ -1,8 +1,9 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import '../config.dart';
+import '../data/app_language.dart';
 import '../data/backup.dart';
 import '../data/completion_bonus.dart';
 import '../data/day_highlight_settings.dart';
@@ -11,6 +12,7 @@ import '../data/game_limit.dart';
 import '../data/game_plays.dart';
 import '../data/game_recents.dart';
 import '../data/goal_repository.dart';
+import '../data/language_repository.dart';
 import '../data/models.dart';
 import '../data/onboarding_flags.dart';
 import '../data/parent_auth.dart';
@@ -40,6 +42,8 @@ class HabitStore extends ChangeNotifier {
     TimerRepository? timerRepo,
     ReminderSettingsRepository? reminderSettingsRepo,
     ReminderScheduler? reminders,
+    LanguageRepository? languageRepo,
+    Locale? deviceLocale,
     this.celebrateFor = const Duration(seconds: 3),
     DateTime Function()? now,
   }) : onboardingFlags = onboardingFlags ?? InMemoryOnboardingFlags(),
@@ -54,6 +58,8 @@ class HabitStore extends ChangeNotifier {
        reminderSettingsRepo =
            reminderSettingsRepo ?? InMemoryReminderSettingsRepository(),
        reminders = reminders ?? NoopReminderScheduler(),
+       languageRepo = languageRepo ?? InMemoryLanguageRepository(),
+       deviceLocale = deviceLocale ?? const Locale('uk'),
        now = now ?? DateTime.now,
        _watchClock = now == null;
 
@@ -72,6 +78,8 @@ class HabitStore extends ChangeNotifier {
   final TimerRepository timerRepo;
   final ReminderSettingsRepository reminderSettingsRepo;
   final ReminderScheduler reminders;
+  final LanguageRepository languageRepo;
+  Locale deviceLocale;
   final Duration celebrateFor;
   final DateTime Function() now;
   final bool _watchClock;
@@ -116,6 +124,8 @@ class HabitStore extends ChangeNotifier {
   bool eveningReminderEnabled = AppConfig.defaultEveningReminderEnabled;
   int eveningReminderHour = AppConfig.defaultEveningReminderHour;
   int eveningReminderMinute = AppConfig.defaultEveningReminderMinute;
+  AppLanguage language = AppLanguage.uk;
+  bool languageChosen = false;
 
   Duration get playLimitWindow => Duration(minutes: playLimitMinutes);
 
@@ -189,6 +199,7 @@ class HabitStore extends ChangeNotifier {
 
   Future<void> load() async {
     reminders.onTimerAction = _handleTimerAction;
+    await _loadLanguage();
     totalPoints = await pointsRepo.fetchTotal();
     final todayLoad = await taskRepo.loadToday();
     days = Map.of(todayLoad.days);
@@ -732,7 +743,7 @@ class HabitStore extends ChangeNotifier {
       ScheduledReminder(
         id: ReminderId.eveningLeftovers,
         when: when,
-        title: AppConfig.appName,
+        title: S.appName,
         body: S.eveningReminderBody,
       ),
     );
@@ -1129,6 +1140,7 @@ class HabitStore extends ChangeNotifier {
       eveningReminderEnabled: eveningReminderEnabled,
       eveningReminderHour: eveningReminderHour,
       eveningReminderMinute: eveningReminderMinute,
+      language: language.code,
       timer: TimerSnapshot(
         enabled: timerEnabled,
         musicMuted: timerMusicMuted,
@@ -1194,6 +1206,38 @@ class HabitStore extends ChangeNotifier {
         minute: snapshot.eveningReminderMinute,
       ),
     );
+    final imported = AppLanguage.tryParse(snapshot.language);
+    if (imported != null) await languageRepo.save(imported.code);
+  }
+
+  Future<void> _loadLanguage() async {
+    final saved = AppLanguage.tryParse(await languageRepo.load());
+    languageChosen = saved != null;
+    _applyLanguage(saved ?? AppLanguage.fromDevice(deviceLocale));
+  }
+
+  void _applyLanguage(AppLanguage next) {
+    language = next;
+    S.language = next;
+  }
+
+  /// Follow a device locale change unless a parent has already chosen.
+  void applyDeviceLocale(Locale locale) {
+    deviceLocale = locale;
+    if (languageChosen) return;
+    final next = AppLanguage.fromDevice(locale);
+    if (next == language) return;
+    _applyLanguage(next);
+    notifyListeners();
+    if (ready) unawaited(syncReminders());
+  }
+
+  Future<void> setLanguage(AppLanguage next) async {
+    languageChosen = true;
+    _applyLanguage(next);
+    await languageRepo.save(next.code);
+    if (ready) await syncReminders();
+    notifyListeners();
   }
 
   Future<void> _ensureActivated() async {

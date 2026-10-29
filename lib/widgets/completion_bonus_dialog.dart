@@ -100,7 +100,7 @@ Future<void> showCompletionBonusDialog(
           children: [
             const AxolotlMascot(mood: AxolotlMood.happy, size: 140),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               S.completionBonusTitle,
               textAlign: TextAlign.center,
               style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22),
@@ -142,7 +142,7 @@ Future<void> showCompletionBonusDialog(
           FilledButton(
             key: const Key('completion-bonus-ok'),
             onPressed: () => Navigator.pop(context),
-            child: const Text(S.ok),
+            child: Text(S.ok),
           ),
         ],
       );

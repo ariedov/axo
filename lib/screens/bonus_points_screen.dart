@@ -9,7 +9,7 @@ class BonusPointsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text(S.bonusPoints)),
+      appBar: AppBar(title: Text(S.bonusPoints)),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 440),

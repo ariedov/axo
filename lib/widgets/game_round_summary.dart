@@ -12,7 +12,7 @@ class GameRoundSummary extends StatelessWidget {
     required this.wrong,
     required this.points,
     required this.onContinue,
-    this.title = S.roundDone,
+    this.title,
     this.showCounts = true,
   });
 
@@ -21,7 +21,7 @@ class GameRoundSummary extends StatelessWidget {
   final int wrong;
   final int points;
   final VoidCallback onContinue;
-  final String title;
+  final String? title;
   final bool showCounts;
 
   @override
@@ -31,7 +31,7 @@ class GameRoundSummary extends StatelessWidget {
       children: [
         GamePlaysBanner(gameId: gameId),
         Text(
-          title,
+          title ?? S.roundDone,
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.headlineSmall
               ?.copyWith(fontWeight: FontWeight.w900),
@@ -80,8 +80,8 @@ class GameRoundSummary extends StatelessWidget {
         const SizedBox(height: 20),
         FilledButton(
           onPressed: onContinue,
-          child: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 6),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
             child: Text(S.next),
           ),
         ),

@@ -155,7 +155,7 @@ class _CompletionBonusSettingsSectionState
             FilledButton(
               key: const Key('save-completion-bonus'),
               onPressed: _save,
-              child: const Text(S.save),
+              child: Text(S.save),
             ),
           ],
         ),

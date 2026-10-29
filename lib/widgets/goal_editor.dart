@@ -78,7 +78,8 @@ class _GoalEditorState extends State<_GoalEditor> {
       context,
       GoalEditResult.save(
         RewardGoal(
-          id: widget.existing?.id ??
+          id:
+              widget.existing?.id ??
               DateTime.now().millisecondsSinceEpoch.toString(),
           title: title,
           cost: cost,
@@ -102,10 +103,8 @@ class _GoalEditorState extends State<_GoalEditor> {
             IconButton(
               tooltip: S.delete,
               visualDensity: VisualDensity.compact,
-              onPressed: () => Navigator.pop(
-                context,
-                const GoalEditResult.delete(),
-              ),
+              onPressed: () =>
+                  Navigator.pop(context, const GoalEditResult.delete()),
               icon: const Icon(
                 Icons.delete_outline_rounded,
                 color: AppColors.muted,
@@ -119,10 +118,7 @@ class _GoalEditorState extends State<_GoalEditor> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              LabeledField(
-                controller: _title,
-                label: S.taskTitle,
-              ),
+              LabeledField(controller: _title, label: S.taskTitle),
               const SizedBox(height: 12),
               LabeledField(
                 controller: _cost,
@@ -164,15 +160,9 @@ class _GoalEditorState extends State<_GoalEditor> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  TextButton(
-                    onPressed: _tryClose,
-                    child: const Text(S.cancel),
-                  ),
+                  TextButton(onPressed: _tryClose, child: Text(S.cancel)),
                   const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: _save,
-                    child: const Text(S.save),
-                  ),
+                  FilledButton(onPressed: _save, child: Text(S.save)),
                 ],
               ),
             ],

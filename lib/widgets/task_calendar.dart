@@ -128,7 +128,7 @@ class _TaskCalendarState extends State<TaskCalendar> {
                 },
               ),
               const SizedBox(height: 12),
-              const Row(
+              Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(

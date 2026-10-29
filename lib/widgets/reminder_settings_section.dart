@@ -102,7 +102,7 @@ class _ReminderSettingsSectionState extends State<ReminderSettingsSection> {
               ),
               child: Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       S.eveningReminder,
                       style: TextStyle(
@@ -138,7 +138,7 @@ class _ReminderSettingsSectionState extends State<ReminderSettingsSection> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         S.eveningReminderTime,
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
@@ -163,7 +163,7 @@ class _ReminderSettingsSectionState extends State<ReminderSettingsSection> {
             FilledButton(
               key: const Key('save-reminders'),
               onPressed: _save,
-              child: const Text(S.save),
+              child: Text(S.save),
             ),
           ],
         ),

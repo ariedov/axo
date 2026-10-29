@@ -126,9 +126,9 @@ class _TimerSetupSheetState extends State<_TimerSetupSheet> {
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _start(),
                 style: const TextStyle(fontWeight: FontWeight.w800),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: '${S.timerReason} · ${S.timerReasonHint}',
-                  prefixIcon: Icon(Icons.edit_rounded),
+                  prefixIcon: const Icon(Icons.edit_rounded),
                   isDense: true,
                 ),
               ),
@@ -138,7 +138,7 @@ class _TimerSetupSheetState extends State<_TimerSetupSheet> {
                 child: FilledButton(
                   key: const Key('timer-start'),
                   onPressed: _start,
-                  child: const Text(S.timerStart),
+                  child: Text(S.timerStart),
                 ),
               ),
             ],
