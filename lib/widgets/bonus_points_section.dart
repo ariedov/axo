@@ -87,9 +87,36 @@ class _BonusPointsSectionState extends State<BonusPointsSection> {
     return amount > 0;
   }
 
+  Future<bool> _confirm(int amount, {required bool add}) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: Text(add ? S.addPointsTitle : S.removePointsTitle),
+        content: Text(
+          add ? S.addPointsConfirm(amount) : S.removePointsConfirm(amount),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(S.cancel),
+          ),
+          FilledButton(
+            key: Key(add ? 'bonus-confirm-add' : 'bonus-confirm-remove'),
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(add ? S.addPoints : S.removePoints),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
+  }
+
   Future<void> _adjust(bool add) async {
     final amount = int.tryParse(_amount.text.trim()) ?? 0;
     if (amount <= 0) return;
+    if (!await _confirm(amount, add: add) || !mounted) return;
     final applied = await HabitScope.of(context)
         .adjustPoints(add ? amount : -amount);
     if (!mounted) return;

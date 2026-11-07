@@ -35,15 +35,55 @@ Future<void> verifyTaskWithBonus(
   await _showCompletionCelebration(navigator, store, bonus: bonus);
 }
 
+Future<bool> showApproveCompletedDialog(
+  BuildContext context, {
+  required int tasks,
+  required int points,
+}) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      title: Text(S.approveCompletedTitle),
+      content: Text(S.approveCompletedConfirm(tasks, points)),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: Text(S.cancel),
+        ),
+        FilledButton(
+          key: const Key('approve-completed-confirm'),
+          onPressed: () => Navigator.pop(context, true),
+          child: Text(S.approveCompleted),
+        ),
+      ],
+    ),
+  );
+  return confirmed == true;
+}
+
 Future<void> verifySubmittedDailyWithBonus(
   BuildContext context, {
   String? day,
 }) async {
   if (!await askParent(context, message: S.approveCompletedPrompt)) return;
   if (!context.mounted) return;
+  final store = HabitScope.of(context);
+  final pending = [
+    for (final task in store.tasksOn(day ?? todayStamp(store.now())))
+      if (task.isMandatory && task.isSubmitted) task,
+  ];
+  if (pending.isEmpty) return;
+  final points = pending.fold(0, (sum, task) => sum + task.points);
+  final confirmed = await showApproveCompletedDialog(
+    context,
+    tasks: pending.length,
+    points: points,
+  );
+  if (!confirmed || !context.mounted) return;
   HapticFeedback.mediumImpact();
   AudioService.instance.play(SoundEffect.taskComplete);
-  final store = HabitScope.of(context);
   // Approving the last waiting task removes this button while the awards are
   // still being persisted, unmounting its context before the bonus is known.
   // Capture the navigator up front so the highlight and bonus dialogs can

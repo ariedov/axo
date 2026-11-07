@@ -58,6 +58,13 @@ class S {
     'Введи пароль, щоб підтвердити виконані завдання',
     'Enter the password to approve finished tasks',
   );
+  static String get approveCompletedTitle =>
+      _t('Підтвердити всі виконані?', 'Approve all finished tasks?');
+
+  static String approveCompletedConfirm(int tasks, int points) => _t(
+    'Нарахувати ${pointsWord(points)} за ${tasksWord(tasks)}? Бонус за всі завдання може додатися окремо.',
+    'Award ${pointsWord(points)} for ${tasksWord(tasks)}? The all-done bonus may be added separately.',
+  );
   static String get cancel => _t('Скасувати', 'Cancel');
   static String get addTask => _t('Додати завдання', 'Add a task');
   static String get addTodayTaskPrompt => _t(
@@ -69,6 +76,13 @@ class S {
     'Enter the password to add a task',
   );
   static String get editTask => _t('Змінити завдання', 'Edit task');
+  static String get deleteTaskTitle => _t('Видалити завдання?', 'Delete task?');
+
+  static String deleteTaskBody(String title) => _t(
+    '«$title» зникне зі списку завдань. Це не можна скасувати.',
+    '"$title" will disappear from the task list. This cannot be undone.',
+  );
+
   static String get taskTitle => _t('Назва', 'Name');
   static String get taskPoints => _t('Бали', 'Points');
   static String get save => _t('Зберегти', 'Save');
@@ -204,6 +218,14 @@ class S {
   static String get addPoints => _t('Додати', 'Add');
   static String get removePoints => _t('Зняти', 'Remove');
   static String get pointsAmount => _t('Скільки балів', 'How many points');
+  static String get addPointsTitle => _t('Нарахувати бали?', 'Add points?');
+  static String get removePointsTitle => _t('Зняти бали?', 'Remove points?');
+
+  static String addPointsConfirm(int n) =>
+      _t('Нарахувати ${pointsWord(n)}?', 'Add ${pointsWord(n)}?');
+
+  static String removePointsConfirm(int n) =>
+      _t('Зняти ${pointsWord(n)}?', 'Remove ${pointsWord(n)}?');
 
   static String pointsNow(int n) =>
       _t('Зараз ${pointsWord(n)}', 'Balance: ${pointsWord(n)}');
@@ -235,6 +257,12 @@ class S {
   static String get penaltySaved => _t('Штраф збережено', 'Penalty saved');
   static String get clearStrikes => _t('Скинути страйки', 'Clear strikes');
   static String get strikesCleared => _t('Страйки скинуто', 'Strikes cleared');
+  static String get clearStrikesTitle =>
+      _t('Скинути страйки?', 'Clear strikes?');
+  static String get clearStrikesBody => _t(
+    'Лічильник страйків обнулиться. Бали не зміняться.',
+    'The strike counter will reset. Points stay the same.',
+  );
   static String get invalidPenalty =>
       _t('Вкажіть ціле число балів', 'Enter a whole number of points');
   static String get gameLimitSettings => _t('Ліміт ігор', 'Game limit');
@@ -431,6 +459,13 @@ class S {
   );
   static String get addGoal => _t('Додати ціль', 'Add a goal');
   static String get editGoal => _t('Змінити ціль', 'Edit goal');
+  static String get deleteGoalTitle => _t('Видалити ціль?', 'Delete goal?');
+
+  static String deleteGoalBody(String title) => _t(
+    '«$title» зникне зі списку цілей. Це не можна скасувати.',
+    '"$title" will disappear from your goals. This cannot be undone.',
+  );
+
   static String get goalCost => _t('Вартість у балах', 'Cost in points');
   static String get spendGoal => _t('Видати', 'Redeem');
   static String get spendGoalTitle => _t('Видати ціль?', 'Redeem this goal?');
@@ -563,6 +598,11 @@ class S {
   static String pointsWord(int n) {
     if (isEnglish) return _enPlural(n, 'point', 'points');
     return _ukPlural(n, 'бал', 'бали', 'балів');
+  }
+
+  static String tasksWord(int n) {
+    if (isEnglish) return _enPlural(n, 'task', 'tasks');
+    return _ukPlural(n, 'завдання', 'завдання', 'завдань');
   }
 
   static String roundsWord(int n) {

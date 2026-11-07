@@ -44,6 +44,7 @@ import 'package:app/strings.dart';
 import 'package:app/theme.dart';
 import 'package:app/widgets/answer_flash.dart';
 import 'package:app/widgets/completion_bonus_dialog.dart';
+import 'package:app/widgets/day_highlight_dialog.dart';
 import 'package:app/widgets/axolotl_mascot.dart';
 import 'package:app/widgets/backup_settings_sheet.dart';
 import 'package:app/widgets/game_card.dart';
@@ -3298,7 +3299,11 @@ void main() {
     await tester.enterText(find.byKey(const Key('bonus-amount')), '10');
     await tester.pump();
     await tester.tap(find.text('Додати'));
-    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(find.text(S.addPointsTitle), findsOneWidget);
+    expect(store.totalPoints, 20);
+    await tester.tap(find.byKey(const Key('bonus-confirm-add')));
+    await tester.pumpAndSettle();
     expect(store.totalPoints, 30);
     expect(find.text('Зараз 30 балів'), findsOneWidget);
     expect(find.text('Нараховано 10 балів'), findsOneWidget);
@@ -3306,9 +3311,21 @@ void main() {
     await tester.enterText(find.byKey(const Key('bonus-amount')), '15');
     await tester.pump();
     await tester.tap(find.text('Зняти'));
-    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(find.text(S.removePointsTitle), findsOneWidget);
+    expect(store.totalPoints, 30);
+    await tester.tap(find.byKey(const Key('bonus-confirm-remove')));
+    await tester.pumpAndSettle();
     expect(store.totalPoints, 15);
     expect(find.text('Зараз 15 балів'), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('bonus-amount')), '5');
+    await tester.pump();
+    await tester.tap(find.text('Додати'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(S.cancel));
+    await tester.pumpAndSettle();
+    expect(store.totalPoints, 15);
   });
 
   testWidgets('parent settings lists goals and can spend them', (tester) async {
@@ -3378,6 +3395,36 @@ void main() {
     expect(find.text('Морозиво'), findsOneWidget);
   });
 
+  testWidgets('deleting a goal asks first', (tester) async {
+    final store = testStore(
+      goals: const [
+        RewardGoal(id: 'ice', title: 'Морозиво', cost: 50, icon: 'gift'),
+      ],
+    );
+    await store.load();
+    await pumpParentSettings(tester, store);
+
+    await openParentSetting(tester, const Key('settings-goals'));
+    await tester.tap(find.text('Морозиво'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('goal-delete')));
+    await tester.pumpAndSettle();
+    expect(find.text(S.deleteGoalTitle), findsOneWidget);
+    expect(store.goals.single.id, 'ice');
+    await tester.tap(find.text(S.cancel).last);
+    await tester.pumpAndSettle();
+    expect(store.goals.single.id, 'ice');
+    expect(find.text('Змінити ціль'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('goal-delete')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('goal-delete-confirm')));
+    await tester.pumpAndSettle();
+    expect(store.goals, isEmpty);
+    expect(find.text('Морозиво'), findsNothing);
+  });
+
   testWidgets('task editor keeps delete away from cancel', (tester) async {
     final store = testStore(
       tasks: const [
@@ -3412,6 +3459,36 @@ void main() {
     await tester.enterText(find.byType(TextField).first, 'Нова назва завдання');
     await tester.pump();
     expect(tester.getSize(find.byType(AlertDialog)), dialog);
+  });
+
+  testWidgets('deleting a task asks first', (tester) async {
+    final store = testStore(
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+      ],
+    );
+    await store.load();
+    await pumpParentSettings(tester, store);
+
+    await openParentSetting(tester, const Key('settings-daily-tasks'));
+    await tester.tap(find.text('Застелити ліжко').hitTestable());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('task-delete')));
+    await tester.pumpAndSettle();
+    expect(find.text(S.deleteTaskTitle), findsOneWidget);
+    expect(store.dailyTasks.single.id, 'bed');
+    await tester.tap(find.text(S.cancel).last);
+    await tester.pumpAndSettle();
+    expect(store.dailyTasks.single.id, 'bed');
+    expect(find.text('Змінити завдання'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('task-delete')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('task-delete-confirm')));
+    await tester.pumpAndSettle();
+    expect(store.dailyTasks, isEmpty);
+    expect(find.text('Застелити ліжко'), findsNothing);
   });
 
   testWidgets('task editor can set recurring days', (tester) async {
@@ -4166,6 +4243,17 @@ void main() {
     await tester.pump();
     await tester.pump();
 
+    expect(find.text(S.spendGoalTitle), findsOneWidget);
+    expect(store.totalPoints, 50);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Видати'),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
     expect(store.totalPoints, 0);
     expect(store.activeGoals, isEmpty);
     expect(store.completedGoals.single.id, 'ice');
@@ -4397,6 +4485,46 @@ void main() {
     expect(store.totalPoints, 10);
   });
 
+  testWidgets('day highlight buttons fit their labels on a narrow phone', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.cute,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: FilledButton(
+                onPressed: () => showDayHighlightDialog(context, today: true),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final skip = tester.getRect(find.byKey(const Key('day-highlight-skip')));
+    final save = tester.getRect(find.byKey(const Key('day-highlight-save')));
+    final skipLabel = tester.getRect(find.text(S.dayHighlightSkip));
+    final saveLabel = tester.getRect(find.text(S.save));
+
+    expect(skip.width, save.width);
+    // A wrapped label would be at least two 16px lines tall.
+    expect(skipLabel.height, lessThan(30));
+    expect(saveLabel.height, lessThan(30));
+    expect(skipLabel.width, lessThanOrEqualTo(skip.width));
+    expect(saveLabel.width, lessThanOrEqualTo(save.width));
+  });
+
   testWidgets('turning off the day highlight skips the prompt', (tester) async {
     final store = testStore(
       dayHighlightEnabled: false,
@@ -4517,6 +4645,24 @@ void main() {
     await tester.tap(find.text('Перевірити').last);
     await tester.pump();
     await tester.pump();
+    expect(find.text(S.approveCompletedTitle), findsOneWidget);
+    expect(store.totalPoints, 0);
+    await tester.tap(find.text(S.cancel));
+    await tester.pump();
+    await tester.pump();
+    expect(store.totalPoints, 0);
+    expect(find.byKey(const Key('approve-completed')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('approve-completed')));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), '4826');
+    await tester.tap(find.text('Перевірити').last);
+    await tester.pump();
+    await tester.pump();
+    expect(find.text(S.approveCompletedTitle), findsOneWidget);
+    await tester.tap(find.byKey(const Key('approve-completed-confirm')));
+    await tester.pump();
+    await tester.pump();
 
     expect(find.text('Нарахувати бали'), findsNothing);
     expect(store.tasks[0].isVerified, isTrue);
@@ -4525,6 +4671,9 @@ void main() {
     expect(store.tasks[3].isSubmitted, isTrue);
     expect(store.totalPoints, 15);
     expect(find.byKey(const Key('approve-completed')), findsNothing);
+
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, 3000));
+    await tester.pump();
     expect(find.text('Підтверджено'), findsAtLeastNWidgets(1));
   });
 
@@ -4580,6 +4729,10 @@ void main() {
       await tester.tap(find.text('Перевірити').last);
       await tester.pump();
       await tester.pump();
+      expect(find.text(S.approveCompletedTitle), findsOneWidget);
+      await tester.tap(find.byKey(const Key('approve-completed-confirm')));
+      await tester.pump();
+      await tester.pump();
       await tester.pump();
       expect(store.tasks.every((task) => task.isVerified), isTrue);
       expect(buttonContext.mounted, isFalse);
@@ -4627,7 +4780,10 @@ void main() {
     await tester.enterText(find.byKey(const Key('bonus-amount')), '8');
     await tester.pump();
     await tester.tap(find.text('Додати'));
-    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(find.text(S.addPointsTitle), findsOneWidget);
+    await tester.tap(find.byKey(const Key('bonus-confirm-add')));
+    await tester.pumpAndSettle();
     expect(store.totalPoints, 50);
     expect(find.text('Нараховано 8 балів'), findsAtLeastNWidgets(1));
   });
@@ -4761,6 +4917,16 @@ void main() {
 
     await openParentSetting(tester, const Key('penalty-settings'));
     await tester.tap(find.byKey(const Key('clear-strikes')));
+    await tester.pumpAndSettle();
+    expect(find.text(S.clearStrikesTitle), findsOneWidget);
+    expect(store.strikes, 2);
+    await tester.tap(find.text(S.cancel));
+    await tester.pumpAndSettle();
+    expect(store.strikes, 2);
+
+    await tester.tap(find.byKey(const Key('clear-strikes')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('clear-strikes-confirm')));
     await tester.pumpAndSettle();
     expect(store.strikes, 0);
     expect(find.text('Страйки скинуто'), findsAtLeastNWidgets(1));

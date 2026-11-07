@@ -89,6 +89,33 @@ class _GoalEditorState extends State<_GoalEditor> {
     );
   }
 
+  Future<void> _delete() async {
+    final title = _title.text.trim();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: Text(S.deleteGoalTitle),
+        content: Text(S.deleteGoalBody(title.isEmpty ? '' : title)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(S.cancel),
+          ),
+          FilledButton(
+            key: const Key('goal-delete-confirm'),
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.pinkDark),
+            child: Text(S.delete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    Navigator.pop(context, const GoalEditResult.delete());
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -101,10 +128,10 @@ class _GoalEditorState extends State<_GoalEditor> {
           ),
           if (widget.existing != null)
             IconButton(
+              key: const Key('goal-delete'),
               tooltip: S.delete,
               visualDensity: VisualDensity.compact,
-              onPressed: () =>
-                  Navigator.pop(context, const GoalEditResult.delete()),
+              onPressed: _delete,
               icon: const Icon(
                 Icons.delete_outline_rounded,
                 color: AppColors.muted,

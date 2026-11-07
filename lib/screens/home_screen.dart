@@ -14,6 +14,7 @@ import '../widgets/game_card.dart';
 import '../widgets/game_plays_banner.dart';
 import '../widgets/goal_tile.dart';
 import '../widgets/parent_gate.dart';
+import '../widgets/parent_goals_sheet.dart';
 import '../widgets/points_hero.dart';
 import '../widgets/strikes_card.dart';
 import '../widgets/task_calendar.dart';
@@ -297,6 +298,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final store = HabitScope.of(context);
     if (!goal.canAfford(store.totalPoints)) return;
     if (!await askParent(context, message: S.spendGoalPrompt)) return;
+    if (!context.mounted) return;
+    if (!await showSpendGoalDialog(context, goal)) return;
     if (!context.mounted) return;
     await store.spendGoal(goal.id);
   }

@@ -69,6 +69,28 @@ class _PenaltySettingsSectionState extends State<PenaltySettingsSection> {
   }
 
   Future<void> _clear() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: Text(S.clearStrikesTitle),
+        content: Text(S.clearStrikesBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(S.cancel),
+          ),
+          FilledButton(
+            key: const Key('clear-strikes-confirm'),
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.pinkDark),
+            child: Text(S.clearStrikes),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     await HabitScope.of(context).clearStrikes();
     if (!mounted) return;
     _toast(S.strikesCleared);
