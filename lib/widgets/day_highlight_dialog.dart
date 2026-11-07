@@ -48,6 +48,7 @@ class _DayHighlightDialogState extends State<_DayHighlightDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       key: const Key('day-highlight-dialog'),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       content: SingleChildScrollView(
         child: Column(
@@ -78,16 +79,34 @@ class _DayHighlightDialogState extends State<_DayHighlightDialog> {
                 Expanded(
                   child: OutlinedButton(
                     key: const Key('day-highlight-skip'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 14,
+                      ),
+                    ),
                     onPressed: () => Navigator.pop(context),
-                    child: Text(S.dayHighlightSkip),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(S.dayHighlightSkip, maxLines: 1),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
                     key: const Key('day-highlight-save'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 14,
+                      ),
+                    ),
                     onPressed: _canSave ? _save : null,
-                    child: Text(S.save),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(S.save, maxLines: 1),
+                    ),
                   ),
                 ),
               ],
