@@ -27,10 +27,14 @@ class _ReminderSettingsSectionState extends State<ReminderSettingsSection> {
   var _enabled = true;
   var _hour = 21;
   var _minute = 0;
+  var _moodNudges = true;
+  var _missesYou = true;
   var _seeded = false;
   var _initialEnabled = true;
   var _initialHour = 21;
   var _initialMinute = 0;
+  var _initialMoodNudges = true;
+  var _initialMissesYou = true;
 
   @override
   void didChangeDependencies() {
@@ -40,16 +44,22 @@ class _ReminderSettingsSectionState extends State<ReminderSettingsSection> {
     _enabled = store.eveningReminderEnabled;
     _hour = store.eveningReminderHour;
     _minute = store.eveningReminderMinute;
+    _moodNudges = store.moodNudgesEnabled;
+    _missesYou = store.missesYouEnabled;
     _initialEnabled = _enabled;
     _initialHour = _hour;
     _initialMinute = _minute;
+    _initialMoodNudges = _moodNudges;
+    _initialMissesYou = _missesYou;
     _seeded = true;
   }
 
   bool get _dirty =>
       _enabled != _initialEnabled ||
       _hour != _initialHour ||
-      _minute != _initialMinute;
+      _minute != _initialMinute ||
+      _moodNudges != _initialMoodNudges ||
+      _missesYou != _initialMissesYou;
 
   void _toast(String text) => showParentToast(widget.messenger, text);
 
@@ -73,8 +83,9 @@ class _ReminderSettingsSectionState extends State<ReminderSettingsSection> {
       hour: _hour,
       minute: _minute,
     );
+    await store.setMoodNudges(enabled: _moodNudges, missesYou: _missesYou);
     if (!mounted) return;
-    if (_enabled && !await store.reminders.hasPermission()) {
+    if ((_enabled || _moodNudges) && !await store.reminders.hasPermission()) {
       _toast(S.notificationsDenied);
     } else {
       _toast(S.remindersSaved);
@@ -157,6 +168,76 @@ class _ReminderSettingsSectionState extends State<ReminderSettingsSection> {
                     ],
                   ),
                 ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppColors.blush, width: 2),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      S.moodNudges,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  Switch(
+                    key: const Key('mood-nudges-enabled'),
+                    value: _moodNudges,
+                    onChanged: canSchedule
+                        ? (value) => setState(() => _moodNudges = value)
+                        : null,
+                  ),
+                ],
+              ),
+            ),
+            if (_moodNudges) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppColors.blush, width: 2),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        S.missesYouNudges,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                    Switch(
+                      key: const Key('misses-you-enabled'),
+                      value: _missesYou,
+                      onChanged: canSchedule
+                          ? (value) => setState(() => _missesYou = value)
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 8),
+            Text(
+              S.moodNudgesHint,
+              style: const TextStyle(
+                color: AppColors.muted,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                height: 1.3,
               ),
             ),
             const SizedBox(height: 12),

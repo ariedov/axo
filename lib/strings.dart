@@ -1,5 +1,7 @@
 import 'config.dart';
 import 'data/app_language.dart';
+import 'data/axo_mood.dart';
+import 'data/badges.dart';
 
 /// UI copy. [language] is Ukrainian unless the device locale or a parent
 /// setting says otherwise. Call sites keep using `S.foo`.
@@ -328,6 +330,107 @@ class S {
       _t('Питати про хороше', 'Ask about something good');
   static String get dayHighlightSaved => _t('Збережено', 'Saved');
 
+  static String get goodThings => _t('Хороші речі', 'Good things');
+  static String get goodThingsHint =>
+      _t('Усе хороше, що ти помітив', 'All the good things you noticed');
+  static String get goodThingsEmpty => _t(
+    'Тут з\'являться хороші речі, які ти запишеш. Навіть маленькі.',
+    'The good things you write down will show up here. Even tiny ones.',
+  );
+  static String get goodThingAdd =>
+      _t('Що хорошого сталося сьогодні?', 'What good thing happened today?');
+  static String get goodThingAddHint =>
+      _t('Запиши — і Аксо порадіє', 'Write it down and Axo will cheer');
+  static String get goodThingToday => _t('Сьогодні', 'Today');
+  static String get goodThingEdit => _t('Змінити запис', 'Edit the note');
+  static String get goodThingsAddToday =>
+      _t('Записати хороше за сьогодні', 'Add today\'s good thing');
+
+  static String goodThingsCount(int n) => notesWord(n);
+
+  static String get badges => _t('Нагороди', 'Badges');
+  static String get allBadges => _t('Усі нагороди', 'All badges');
+  static String get badgeAllEarned => _t('Усі зібрано!', 'All collected!');
+  static String get badgeEarnedTitle => _t('Нова нагорода!', 'New badge!');
+  static String get badgeEarnedBody => _t(
+    'Аксо пишається тобою. Так тримати!',
+    'Axo is proud of you. Keep it up!',
+  );
+
+  static String badgeProgress(int value, int target) => '$value / $target';
+
+  static String badgeEarnedOn(String date) =>
+      _t('Отримано $date', 'Earned $date');
+
+  static String badgeKindLabel(BadgeKind kind) => switch (kind) {
+    BadgeKind.tasks => _t('Завдання', 'Tasks'),
+    BadgeKind.streak => _t('Серія днів', 'Day streak'),
+    BadgeKind.goodThings => _t('Хороші речі', 'Good things'),
+    BadgeKind.games => _t('Ігри', 'Games'),
+    BadgeKind.perfectDays => _t('Ідеальні дні', 'Perfect days'),
+    BadgeKind.points => _t('Бали', 'Points'),
+    BadgeKind.goals => _t('Отримані цілі', 'Rewards won'),
+    BadgeKind.activeDays => _t('Активні дні', 'Active days'),
+    BadgeKind.timerMinutes => _t('Таймер', 'Timer'),
+    BadgeKind.goodStreak => _t('Серія хороших днів', 'Good-day streak'),
+    BadgeKind.perfectWeekends => _t('Ідеальні вихідні', 'Perfect weekends'),
+    BadgeKind.daysWithAxo => _t('Дні з Аксо', 'Days with Axo'),
+  };
+
+  static String badgeRequirement(BadgeKind kind, int target) => switch (kind) {
+    BadgeKind.tasks => tasksWord(target),
+    BadgeKind.streak => _t(
+      '${daysWord(target)} поспіль',
+      '${daysWord(target)} in a row',
+    ),
+    BadgeKind.goodThings => goodThingsWord(target),
+    BadgeKind.games => gamesWord(target),
+    BadgeKind.perfectDays => perfectDaysWord(target),
+    BadgeKind.points => pointsWord(target),
+    BadgeKind.goals => rewardsWord(target),
+    BadgeKind.activeDays => activeDaysWord(target),
+    BadgeKind.timerMinutes => _t(
+      '${minutesWord(target)} з таймером',
+      '${minutesWord(target)} with the timer',
+    ),
+    BadgeKind.goodStreak => _t(
+      '${daysWord(target)} з хорошими речами',
+      '${daysWord(target)} with good things',
+    ),
+    BadgeKind.perfectWeekends => weekendsWord(target),
+    BadgeKind.daysWithAxo => _t(
+      '${daysWord(target)} з Аксо',
+      '${daysWord(target)} with Axo',
+    ),
+  };
+
+  static List<String> get badgeTiers => isEnglish
+      ? const [
+          'First step',
+          'Beginner',
+          'Hard worker',
+          'Master',
+          'Champion',
+          'Legend',
+          'Superstar',
+        ]
+      : const [
+          'Перший крок',
+          'Початківець',
+          'Старанний',
+          'Майстер',
+          'Чемпіон',
+          'Легенда',
+          'Суперзірка',
+        ];
+
+  static String badgeTierName(int tier) {
+    final tiers = badgeTiers;
+    if (tier < 1) return tiers.first;
+    if (tier > tiers.length) return tiers.last;
+    return tiers[tier - 1];
+  }
+
   static String completionBonusEarned(int n) => _t(
     'Аксо пишається тобою! Ось ще ${pointsWord(n)}.',
     'Axo is proud of you! You earned ${pointsWord(n)} more.',
@@ -582,6 +685,59 @@ class S {
 
   static String monthTitle(int year, int month) => '${months[month - 1]} $year';
 
+  static List<String> get fullWeekdays => isEnglish
+      ? const [
+          'Monday',
+          'Tuesday',
+          'Wednesday',
+          'Thursday',
+          'Friday',
+          'Saturday',
+          'Sunday',
+        ]
+      : const [
+          'Понеділок',
+          'Вівторок',
+          'Середа',
+          'Четвер',
+          'П\'ятниця',
+          'Субота',
+          'Неділя',
+        ];
+
+  static List<String> get _monthNames => isEnglish
+      ? months
+      : const [
+          'січня',
+          'лютого',
+          'березня',
+          'квітня',
+          'травня',
+          'червня',
+          'липня',
+          'серпня',
+          'вересня',
+          'жовтня',
+          'листопада',
+          'грудня',
+        ];
+
+  /// "Середа, 26 серпня 2026" / "Wednesday, August 26, 2026".
+  static String longDate(DateTime date) {
+    final weekday = fullWeekdays[date.weekday - 1];
+    final month = _monthNames[date.month - 1];
+    if (isEnglish) return '$weekday, $month ${date.day}, ${date.year}';
+    return '$weekday, ${date.day} $month ${date.year}';
+  }
+
+  /// "26 серпня" / "Aug 26".
+  static String shortDate(DateTime date) {
+    if (isEnglish) {
+      return '${months[date.month - 1].substring(0, 3)} ${date.day}';
+    }
+    return '${date.day} ${_monthNames[date.month - 1]}';
+  }
+
   static String dayTasksProgress(int done, int total) =>
       _t('$done з $total', '$done of $total');
 
@@ -603,6 +759,46 @@ class S {
   static String tasksWord(int n) {
     if (isEnglish) return _enPlural(n, 'task', 'tasks');
     return _ukPlural(n, 'завдання', 'завдання', 'завдань');
+  }
+
+  static String notesWord(int n) {
+    if (isEnglish) return _enPlural(n, 'note', 'notes');
+    return _ukPlural(n, 'запис', 'записи', 'записів');
+  }
+
+  static String gamesWord(int n) {
+    if (isEnglish) return _enPlural(n, 'game', 'games');
+    return _ukPlural(n, 'гра', 'ігри', 'ігор');
+  }
+
+  static String goodThingsWord(int n) {
+    if (isEnglish) return _enPlural(n, 'good thing', 'good things');
+    return _ukPlural(n, 'хороша річ', 'хороші речі', 'хороших речей');
+  }
+
+  static String rewardsWord(int n) {
+    if (isEnglish) return _enPlural(n, 'reward', 'rewards');
+    return _ukPlural(n, 'нагорода', 'нагороди', 'нагород');
+  }
+
+  static String activeDaysWord(int n) {
+    if (isEnglish) return _enPlural(n, 'active day', 'active days');
+    return _ukPlural(n, 'активний день', 'активні дні', 'активних днів');
+  }
+
+  static String weekendsWord(int n) {
+    if (isEnglish) return _enPlural(n, 'perfect weekend', 'perfect weekends');
+    return _ukPlural(
+      n,
+      'ідеальні вихідні',
+      'ідеальні вихідні',
+      'ідеальних вихідних',
+    );
+  }
+
+  static String perfectDaysWord(int n) {
+    if (isEnglish) return _enPlural(n, 'perfect day', 'perfect days');
+    return _ukPlural(n, 'ідеальний день', 'ідеальні дні', 'ідеальних днів');
   }
 
   static String roundsWord(int n) {
@@ -668,8 +864,8 @@ class S {
   );
   static String get remindersExplainTitle => _t('Нагадування', 'Reminders');
   static String get remindersExplainBody => _t(
-    'Аксо нагадає ввечері, якщо залишилися справи, і повідомить, коли таймер завершиться. Сповіщення лишаються на цьому телефоні.',
-    'Axo will remind you in the evening if tasks are left, and will let you know when the timer finishes. Notifications stay on this phone.',
+    'Аксо нагадає ввечері, якщо залишилися справи, порадіє разом із тобою і повідомить, коли таймер завершиться. Сповіщення лишаються на цьому телефоні.',
+    'Axo will remind you in the evening if tasks are left, celebrate with you, and let you know when the timer finishes. Notifications stay on this phone.',
   );
   static String get remindersAllow => _t('Дозволити', 'Allow');
   static String get remindersLater => _t('Не зараз', 'Not now');
@@ -678,6 +874,41 @@ class S {
   static String get eveningReminderTime => _t('Час', 'Time');
   static String get eveningReminderBody =>
       _t('У тебе ще є справи на сьогодні', 'You still have tasks for today');
+  static String get waitingNudgeBody => _t(
+    'Ти все зробив! Хай мама чи тато перевірять — і серія збережеться.',
+    'You did everything! A grown-up just needs to check, and the streak is safe.',
+  );
+
+  static String streakNudgeBody(int streak, int pending) {
+    final days = streak == 1 ? '1 day' : '$streak days';
+    return _t(
+      'Серія: $streak. Залишилось ${tasksWord(pending)} — Аксо вболіває.',
+      '$days in a row. ${tasksWord(pending)} left — Axo is cheering.',
+    );
+  }
+
+  static String get moodNudges => _t('Настрої Аксо', 'Axo mood nudges');
+  static String get moodNudgesHint => _t(
+    'Коли Аксо радіє або сумує, він може тихо нагадати про це, навіть якщо додаток згорнуто.',
+    'When Axo is proud or misses you, he can gently let you know even when the app is closed.',
+  );
+  static String get missesYouNudges =>
+      _t('Сумує, якщо ти зник', 'Misses you when you are away');
+  static String get missesYouBody => _t(
+    'Аксо сумує за тобою. Одного маленького завдання вистачить.',
+    'Axo misses you. One tiny task is enough.',
+  );
+
+  static String proudNudgeBody(int streak) {
+    if (streak > 1) {
+      return _t(
+        'Аксо танцює від щастя! $streak днів поспіль.',
+        'Axo is dancing! $streak days in a row.',
+      );
+    }
+    return _t('Аксо дуже пишається тобою!', 'Axo is so proud of you!');
+  }
+
   static String get remindersSaved =>
       _t('Нагадування збережено', 'Reminders saved');
   static String get notificationsDenied => _t(
@@ -721,35 +952,64 @@ class S {
     required int remaining,
     required int waiting,
     required int verified,
+    AxolotlMood mood = AxolotlMood.happy,
+    int streak = 0,
   }) {
-    if (remaining == 0 && waiting == 0) {
-      return _t(
-        'Ти сьогодні супер! Я пишаюся тобою!',
-        'You were amazing today! I\'m proud of you!',
-      );
+    switch (mood) {
+      case AxolotlMood.celebrate:
+        if (streak > 1) {
+          return _t(
+            'Ти сьогодні супер! Серія — $streak днів!',
+            'You were amazing today! $streak days in a row!',
+          );
+        }
+        return _t(
+          'Ти сьогодні супер! Я пишаюся тобою!',
+          'You were amazing today! I\'m proud of you!',
+        );
+      case AxolotlMood.misses:
+        return _t(
+          'Аксо сумує за тобою. Одне маленьке завдання — і ми знову разом.',
+          'Axo misses you. One tiny task and we are together again.',
+        );
+      case AxolotlMood.waiting:
+        return _t(
+          'Клас! Тепер чекаємо, поки мама чи тато перевірять.',
+          'Nice! Now we wait for a parent to check.',
+        );
+      case AxolotlMood.sleepy:
+        return _t(
+          'Ще трохи сонний... Давай почнемо з одного завдання.',
+          'Still a little sleepy... Let\'s start with one task.',
+        );
+      case AxolotlMood.encouraging:
+        if (remaining > 0 && verified > 0) {
+          return _t(
+            'Гарний старт! Залишилось ${tasksWord(remaining)}.',
+            'Good start! ${tasksWord(remaining)} left.',
+          );
+        }
+        return _t(
+          'Давай виконаємо завдання разом!',
+          'Let\'s do the tasks together!',
+        );
+      case AxolotlMood.cheer:
+        return _t(
+          'Клас! Тепер чекаємо перевірку — і ще трохи роботи.',
+          'Nice! Now we wait for a parent to check — and there\'s a little more to do.',
+        );
+      case AxolotlMood.happy:
+        if (remaining == 0 && waiting == 0 && verified == 0) {
+          return _t(
+            'Привіт! Сьогодні можна відпочити або пограти.',
+            'Hi! Today we can rest or play.',
+          );
+        }
+        return _t(
+          'Привіт! Давай виконаємо завдання разом!',
+          'Hi! Let\'s do the tasks together!',
+        );
     }
-    if (waiting > 0 && remaining == 0) {
-      return _t(
-        'Я скажу мамі й татові, що ти все зробив!',
-        'I\'ll tell your parents you did it all!',
-      );
-    }
-    if (waiting > 0) {
-      return _t(
-        'Клас! Тепер чекаємо перевірку — і ще трохи роботи.',
-        'Nice! Now we wait for a parent to check — and there\'s a little more to do.',
-      );
-    }
-    if (verified > 0) {
-      return _t(
-        'Гарний старт! Давай зробимо ще одне.',
-        'Good start! Let\'s do one more.',
-      );
-    }
-    return _t(
-      'Привіт! Давай виконаємо завдання разом!',
-      'Hi! Let\'s do the tasks together!',
-    );
   }
 
   static String get languageTitle => _t('Мова', 'Language');

@@ -28,10 +28,7 @@ class LocalGoalRepository implements GoalRepository {
 
   @override
   Future<void> save(List<RewardGoal> goals) {
-    return _write(
-      _key,
-      jsonEncode([for (final goal in goals) goal.toJson()]),
-    );
+    return _write(_key, jsonEncode([for (final goal in goals) goal.toJson()]));
   }
 }
 

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../data/axo_mood.dart';
 import '../theme.dart';
 
-enum AxolotlMood { happy, cheer, celebrate }
+export '../data/axo_mood.dart';
 
 class AxolotlMascot extends StatefulWidget {
   const AxolotlMascot({
@@ -19,6 +20,10 @@ class AxolotlMascot extends StatefulWidget {
   static const happy = 'assets/mascot/axolotl_happy.png';
   static const cheer = 'assets/mascot/axolotl_cheer.png';
   static const celebrate = 'assets/mascot/axolotl_celebrate.png';
+  static const sleepy = 'assets/mascot/axolotl_sleepy.png';
+  static const waiting = 'assets/mascot/axolotl_waiting.png';
+  static const encouraging = 'assets/mascot/axolotl_encouraging.png';
+  static const misses = 'assets/mascot/axolotl_misses.png';
 
   @override
   State<AxolotlMascot> createState() => _AxolotlMascotState();
@@ -49,6 +54,10 @@ class _AxolotlMascotState extends State<AxolotlMascot>
   String get _asset => switch (widget.mood) {
     AxolotlMood.celebrate => AxolotlMascot.celebrate,
     AxolotlMood.cheer => AxolotlMascot.cheer,
+    AxolotlMood.sleepy => AxolotlMascot.sleepy,
+    AxolotlMood.waiting => AxolotlMascot.waiting,
+    AxolotlMood.encouraging => AxolotlMascot.encouraging,
+    AxolotlMood.misses => AxolotlMascot.misses,
     AxolotlMood.happy => AxolotlMascot.happy,
   };
 
@@ -60,11 +69,7 @@ class _AxolotlMascotState extends State<AxolotlMascot>
       filterQuality: FilterQuality.high,
       gaplessPlayback: true,
     );
-    final box = SizedBox(
-      width: widget.size,
-      height: widget.size,
-      child: image,
-    );
+    final box = SizedBox(width: widget.size, height: widget.size, child: image);
     if (!widget.animate) return box;
 
     return AnimatedBuilder(
@@ -85,10 +90,8 @@ class SpeechBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = Theme.of(context).textTheme.titleMedium?.copyWith(
-      fontWeight: FontWeight.w800,
-      height: 1.3,
-    );
+    final style = Theme.of(context).textTheme.titleMedium
+        ?.copyWith(fontWeight: FontWeight.w800, height: 1.3);
     final fontSize = style?.fontSize ?? 16;
     final lineHeight = fontSize * (style?.height ?? 1.3);
     final twoLines = MediaQuery.textScalerOf(context).scale(lineHeight) * 2;

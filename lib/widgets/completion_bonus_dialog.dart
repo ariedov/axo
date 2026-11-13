@@ -9,6 +9,7 @@ import '../state/habit_store.dart';
 import '../strings.dart';
 import '../theme.dart';
 import 'axolotl_mascot.dart';
+import 'badge_award_dialog.dart';
 import 'day_highlight_dialog.dart';
 import 'parent_gate.dart';
 
@@ -101,7 +102,10 @@ Future<void> _showCompletionCelebration(
 }) async {
   final stamp = store.pendingHighlightDay;
   final streakPoints = store.lastStreakBonus;
-  if (stamp != null && store.dayHighlightEnabled && navigator.mounted) {
+  if (stamp != null &&
+      store.dayHighlightEnabled &&
+      store.highlightOn(stamp) == null &&
+      navigator.mounted) {
     final note = await showDayHighlightDialog(
       navigator.context,
       today: stamp == todayStamp(store.now()),
@@ -110,12 +114,17 @@ Future<void> _showCompletionCelebration(
       await store.saveDayHighlight(stamp, note);
     }
   }
-  if (bonus <= 0 || !navigator.mounted) return;
-  await showCompletionBonusDialog(
-    navigator.context,
-    points: bonus,
-    streakPoints: streakPoints,
-  );
+  if (bonus > 0 && navigator.mounted) {
+    await showCompletionBonusDialog(
+      navigator.context,
+      points: bonus,
+      streakPoints: streakPoints,
+    );
+  }
+  if (!navigator.mounted) return;
+  final awards = await store.awardNewBadges();
+  if (awards.isEmpty || !navigator.mounted) return;
+  await showBadgeAwardDialog(navigator.context, awards);
 }
 
 Future<void> showCompletionBonusDialog(

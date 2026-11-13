@@ -48,6 +48,50 @@ class DayHistory {
     return streak;
   }
 
+  /// Longest run of fully completed days ever recorded. Badges use it so a
+  /// streak is never taken away once it has been earned.
+  int get bestStreak => _longestRun([
+    for (final entry in days.entries)
+      if (entry.value.isFull) entry.key,
+  ]);
+
+  /// Longest run of consecutive days with a "something good" note.
+  int get goodStreak => _longestRun(highlights.keys);
+
+  /// Days with at least one completed required task.
+  int get activeDays => days.values.where((day) => day.completed > 0).length;
+
+  /// Weekends where both Saturday and Sunday were fully completed.
+  int get perfectWeekends {
+    final full = {
+      for (final entry in days.entries)
+        if (entry.value.isFull) entry.key,
+    };
+    var count = 0;
+    for (final day in full) {
+      final date = dateFromStamp(day);
+      if (date.weekday != DateTime.saturday) continue;
+      final sunday = stampFromDate(
+        DateTime(date.year, date.month, date.day + 1),
+      );
+      if (full.contains(sunday)) count += 1;
+    }
+    return count;
+  }
+
+  static int _longestRun(Iterable<String> stamps) {
+    final sorted = stamps.toList()..sort();
+    var best = 0;
+    var run = 0;
+    String? previous;
+    for (final day in sorted) {
+      run = previous != null && previousStamp(day) == previous ? run + 1 : 1;
+      if (run > best) best = run;
+      previous = day;
+    }
+    return best;
+  }
+
   DayHistory copyWith({
     String? activatedOn,
     Map<String, DayProgress>? days,

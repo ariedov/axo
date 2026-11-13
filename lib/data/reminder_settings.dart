@@ -7,16 +7,28 @@ class ReminderSettingsSnapshot {
     this.enabled = AppConfig.defaultEveningReminderEnabled,
     this.hour = AppConfig.defaultEveningReminderHour,
     this.minute = AppConfig.defaultEveningReminderMinute,
+    this.moodNudgesEnabled = AppConfig.defaultMoodNudgesEnabled,
+    this.missesYouEnabled = AppConfig.defaultMissesYouEnabled,
+    this.lastProudDay,
+    this.lastMissesDay,
   });
 
   final bool enabled;
   final int hour;
   final int minute;
+  final bool moodNudgesEnabled;
+  final bool missesYouEnabled;
+  final String? lastProudDay;
+  final String? lastMissesDay;
 
   Map<String, dynamic> toJson() => {
     'enabled': enabled,
     'hour': hour,
     'minute': minute,
+    'moodNudgesEnabled': moodNudgesEnabled,
+    'missesYouEnabled': missesYouEnabled,
+    'lastProudDay': lastProudDay,
+    'lastMissesDay': lastMissesDay,
   };
 
   factory ReminderSettingsSnapshot.fromJson(Map<String, dynamic> json) {
@@ -32,6 +44,14 @@ class ReminderSettingsSnapshot {
       minute: minute < 0 || minute > 59
           ? AppConfig.defaultEveningReminderMinute
           : minute,
+      moodNudgesEnabled:
+          json['moodNudgesEnabled'] as bool? ??
+          AppConfig.defaultMoodNudgesEnabled,
+      missesYouEnabled:
+          json['missesYouEnabled'] as bool? ??
+          AppConfig.defaultMissesYouEnabled,
+      lastProudDay: json['lastProudDay'] as String?,
+      lastMissesDay: json['lastMissesDay'] as String?,
     );
   }
 }

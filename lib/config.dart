@@ -54,4 +54,16 @@ class AppConfig {
   static const defaultEveningReminderEnabled = true;
   static const defaultEveningReminderHour = 21;
   static const defaultEveningReminderMinute = 0;
+
+  static const defaultMoodNudgesEnabled = true;
+  static const defaultMissesYouEnabled = true;
+  static const axoMorningEnergy = 20;
+  static const axoSleepyBelowEnergy = 25;
+  static const axoProudNudgeDelay = Duration(minutes: 10);
+  static const axoMissesAfterDays = 2;
+  static const axoMissesRepeatDays = 3;
+  static const axoMissesHour = 10;
+  static const axoScoredGamesPerDay = 3;
+  static const axoTimerSessionsPerDay = 2;
+  static const axoTimerMinMinutes = 5;
 }

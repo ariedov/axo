@@ -73,7 +73,9 @@ class AppTheme {
             fontWeight: FontWeight.w800,
             fontSize: 16,
           ),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         ),
       ),
@@ -85,7 +87,9 @@ class AppTheme {
             fontWeight: FontWeight.w800,
             fontSize: 16,
           ),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           side: const BorderSide(color: AppColors.blush, width: 2),
         ),
@@ -116,9 +120,8 @@ class AppTheme {
   }
 
   static TextTheme _withEmojiFallback(TextTheme theme) {
-    TextStyle? patch(TextStyle? style) => style?.copyWith(
-      fontFamilyFallback: emojiFallback,
-    );
+    TextStyle? patch(TextStyle? style) =>
+        style?.copyWith(fontFamilyFallback: emojiFallback);
     return theme.copyWith(
       displayLarge: patch(theme.displayLarge),
       displayMedium: patch(theme.displayMedium),

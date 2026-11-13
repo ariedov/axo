@@ -70,7 +70,9 @@ class GoalTile extends StatelessWidget {
                         S.goalProgress(points, goal.cost),
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
-                          color: ready ? AppColors.goldDeep : AppColors.pinkDark,
+                          color: ready
+                              ? AppColors.goldDeep
+                              : AppColors.pinkDark,
                         ),
                       ),
                       const SizedBox(height: 8),

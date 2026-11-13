@@ -225,10 +225,7 @@ class DayProgress {
     );
   }
 
-  Map<String, dynamic> toJson() => {
-    'completed': completed,
-    'total': total,
-  };
+  Map<String, dynamic> toJson() => {'completed': completed, 'total': total};
 
   factory DayProgress.fromJson(String day, Map<String, dynamic> json) {
     return DayProgress(

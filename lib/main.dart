@@ -6,6 +6,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data/audio_service.dart';
+import 'data/achievements.dart';
+import 'data/axo_state.dart';
 import 'data/completion_bonus.dart';
 import 'data/day_highlight_settings.dart';
 import 'data/day_history_repository.dart';
@@ -71,6 +73,12 @@ Future<void> main() async {
         await prefs.setString(key, value);
       },
     ),
+    achievementsRepo: LocalAchievementsRepository(
+      (key) async => prefs.getString(key),
+      (key, value) async {
+        await prefs.setString(key, value);
+      },
+    ),
     goalRepo: LocalGoalRepository((key) async => prefs.getString(key), (
       key,
       value,
@@ -90,6 +98,12 @@ Future<void> main() async {
       await prefs.setBool(key, value);
     }),
     strikesRepo: LocalStrikesRepository((key) async => prefs.getString(key), (
+      key,
+      value,
+    ) async {
+      await prefs.setString(key, value);
+    }),
+    axoRepo: LocalAxoRepository((key) async => prefs.getString(key), (
       key,
       value,
     ) async {
@@ -174,9 +188,9 @@ class _AxolotlAppState extends State<AxolotlApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      unawaited(
-        widget.store.ensureToday().whenComplete(widget.store.syncReminders),
-      );
+      unawaited(widget.store.setAppForeground(true));
+    } else if (state == AppLifecycleState.paused) {
+      unawaited(widget.store.setAppForeground(false));
     }
   }
 

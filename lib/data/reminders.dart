@@ -6,6 +6,8 @@ abstract final class ReminderId {
   /// replaces it (same id) so nothing lingers afterwards.
   static const timer = 1;
   static const eveningLeftovers = 2;
+  static const moodProud = 3;
+  static const moodMisses = 4;
 }
 
 /// Notification action id that toggles timer music.

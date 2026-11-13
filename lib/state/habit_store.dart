@@ -3,8 +3,12 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 
 import '../config.dart';
+import '../data/achievements.dart';
 import '../data/app_language.dart';
+import '../data/axo_mood.dart';
+import '../data/axo_state.dart';
 import '../data/backup.dart';
+import '../data/badges.dart';
 import '../data/completion_bonus.dart';
 import '../data/day_highlight_settings.dart';
 import '../data/day_history_repository.dart';
@@ -14,6 +18,7 @@ import '../data/game_recents.dart';
 import '../data/goal_repository.dart';
 import '../data/language_repository.dart';
 import '../data/models.dart';
+import '../data/mood_nudges.dart';
 import '../data/onboarding_flags.dart';
 import '../data/parent_auth.dart';
 import '../data/points_repository.dart';
@@ -35,10 +40,12 @@ class HabitStore extends ChangeNotifier {
     required this.historyRepo,
     OnboardingFlags? onboardingFlags,
     StrikesRepository? strikesRepo,
+    AxoRepository? axoRepo,
     GameLimitRepository? gameLimitRepo,
     CompletionBonusRepository? completionBonusRepo,
     DayHighlightSettingsRepository? dayHighlightSettingsRepo,
     GameRecentsRepository? gameRecents,
+    AchievementsRepository? achievementsRepo,
     TimerRepository? timerRepo,
     ReminderSettingsRepository? reminderSettingsRepo,
     ReminderScheduler? reminders,
@@ -48,12 +55,14 @@ class HabitStore extends ChangeNotifier {
     DateTime Function()? now,
   }) : onboardingFlags = onboardingFlags ?? InMemoryOnboardingFlags(),
        strikesRepo = strikesRepo ?? InMemoryStrikesRepository(),
+       axoRepo = axoRepo ?? InMemoryAxoRepository(),
        gameLimitRepo = gameLimitRepo ?? InMemoryGameLimitRepository(),
        completionBonusRepo =
            completionBonusRepo ?? InMemoryCompletionBonusRepository(),
        dayHighlightSettingsRepo =
            dayHighlightSettingsRepo ?? InMemoryDayHighlightSettingsRepository(),
        gameRecents = gameRecents ?? InMemoryGameRecentsRepository(),
+       achievementsRepo = achievementsRepo ?? InMemoryAchievementsRepository(),
        timerRepo = timerRepo ?? InMemoryTimerRepository(),
        reminderSettingsRepo =
            reminderSettingsRepo ?? InMemoryReminderSettingsRepository(),
@@ -71,10 +80,12 @@ class HabitStore extends ChangeNotifier {
   final DayHistoryRepository historyRepo;
   final OnboardingFlags onboardingFlags;
   final StrikesRepository strikesRepo;
+  final AxoRepository axoRepo;
   final GameLimitRepository gameLimitRepo;
   final CompletionBonusRepository completionBonusRepo;
   final DayHighlightSettingsRepository dayHighlightSettingsRepo;
   final GameRecentsRepository gameRecents;
+  final AchievementsRepository achievementsRepo;
   final TimerRepository timerRepo;
   final ReminderSettingsRepository reminderSettingsRepo;
   final ReminderScheduler reminders;
@@ -99,6 +110,9 @@ class HabitStore extends ChangeNotifier {
   GamePlaysSnapshot plays = const GamePlaysSnapshot();
   List<String> recentGameIds = const [];
   DayHistory history = const DayHistory();
+  Achievements achievements = const Achievements();
+  AxoState axo = const AxoState();
+  bool appInForeground = true;
   int strikes = 0;
   String? strikeDay;
   int penaltyPoints = AppConfig.defaultPenaltyPoints;
@@ -124,6 +138,10 @@ class HabitStore extends ChangeNotifier {
   bool eveningReminderEnabled = AppConfig.defaultEveningReminderEnabled;
   int eveningReminderHour = AppConfig.defaultEveningReminderHour;
   int eveningReminderMinute = AppConfig.defaultEveningReminderMinute;
+  bool moodNudgesEnabled = AppConfig.defaultMoodNudgesEnabled;
+  bool missesYouEnabled = AppConfig.defaultMissesYouEnabled;
+  String? lastProudDay;
+  String? lastMissesDay;
   AppLanguage language = AppLanguage.uk;
   bool languageChosen = false;
 
@@ -217,6 +235,9 @@ class HabitStore extends ChangeNotifier {
     plays = await gamePlays.load();
     recentGameIds = await gameRecents.load();
     history = await historyRepo.load();
+    achievements = await achievementsRepo.load();
+    axo = (await axoRepo.load()).startingDay(todayStamp(now()));
+    await axoRepo.save(axo);
     await _loadStrikes();
     await _loadGameLimit();
     await _loadCompletionBonus();
@@ -269,6 +290,8 @@ class HabitStore extends ChangeNotifier {
         DayProgress.fromTasks(snapshot.day, snapshot.tasks),
       );
     }
+    axo = (await axoRepo.load()).startingDay(today);
+    await axoRepo.save(axo);
     await historyRepo.save(history);
     await _loadStrikes();
     await _syncTodayHistory();
@@ -302,6 +325,8 @@ class HabitStore extends ChangeNotifier {
       strikes = 0;
       await _persistStrikes();
     }
+    axo = axo.resetDay(today);
+    await axoRepo.save(axo);
     celebrating = false;
     await syncReminders();
     notifyListeners();
@@ -362,6 +387,7 @@ class HabitStore extends ChangeNotifier {
       strikes = next;
       strikeDay = today;
       await _persistStrikes();
+      await _recordAxo(AxoAction.strike);
       notifyListeners();
       return (applied: 0, penaltyHit: false);
     }
@@ -369,6 +395,7 @@ class HabitStore extends ChangeNotifier {
     strikes = AppConfig.strikesToPenalty;
     strikeDay = today;
     await _persistStrikes();
+    await _recordAxo(AxoAction.strike);
     notifyListeners();
     return (applied: applied, penaltyHit: true);
   }
@@ -603,6 +630,8 @@ class HabitStore extends ChangeNotifier {
     );
     await _persistTimer();
     await _syncTimerReminder();
+    await _recordTimerMinutes(active.targetMillis ~/ 60000);
+    await _recordAxo(AxoAction.timer, minutes: active.targetMillis ~/ 60000);
     notifyListeners();
   }
 
@@ -634,6 +663,7 @@ class HabitStore extends ChangeNotifier {
         ),
       );
       await _persistTimer();
+      await _recordTimerMinutes(active.targetMillis ~/ 60000);
       return;
     }
     activeTimer = active;
@@ -681,7 +711,7 @@ class HabitStore extends ChangeNotifier {
 
   Future<void> prepareReminders() async {
     if (!ready) return;
-    if (eveningReminderEnabled || activeTimer != null) {
+    if (eveningReminderEnabled || moodNudgesEnabled || activeTimer != null) {
       await reminders.requestPermission();
     }
     await syncReminders();
@@ -690,6 +720,7 @@ class HabitStore extends ChangeNotifier {
   Future<void> syncReminders() async {
     await _syncTimerReminder();
     await _syncEveningReminder();
+    await _syncMoodNudges();
   }
 
   bool get hasEveningLeftovers => pendingCount + waitingCount > 0;
@@ -739,14 +770,99 @@ class HabitStore extends ChangeNotifier {
       await reminders.cancel(ReminderId.eveningLeftovers);
       return;
     }
+    final today = todayStamp(now());
+    final streak = history.currentStreak(today);
+    final useStreak = shouldUseStreakNudge(
+      enabled: moodNudgesEnabled,
+      streak: streak,
+      pending: pendingCount,
+    );
+    final awaitingParent = pendingCount == 0 && waitingCount > 0;
     await reminders.schedule(
       ScheduledReminder(
         id: ReminderId.eveningLeftovers,
         when: when,
         title: S.appName,
-        body: S.eveningReminderBody,
+        body: useStreak
+            ? S.streakNudgeBody(streak, pendingCount)
+            : awaitingParent
+            ? S.waitingNudgeBody
+            : S.eveningReminderBody,
       ),
     );
+  }
+
+  Future<void> _syncMoodNudges() async {
+    final today = todayStamp(now());
+    final allowed = moodNudgesEnabled && await reminders.hasPermission();
+
+    final proudAt = proudNudgeAt(
+      now: now(),
+      fullToday: _mandatoryComplete(today),
+      inForeground: appInForeground,
+      enabled: allowed,
+      today: today,
+      lastProudDay: lastProudDay,
+    );
+    if (proudAt == null) {
+      if (lastProudDay != today) {
+        await reminders.cancel(ReminderId.moodProud);
+      }
+    } else {
+      await reminders.schedule(
+        ScheduledReminder(
+          id: ReminderId.moodProud,
+          when: proudAt,
+          title: S.appName,
+          body: S.proudNudgeBody(history.currentStreak(today)),
+        ),
+      );
+      lastProudDay = today;
+      await _persistReminderSettings();
+    }
+
+    final missesAt = missesNudgeAt(
+      now: now(),
+      enabled: allowed && missesYouEnabled,
+      lastActiveDay: axo.lastActiveDay,
+      lastMissesDay: lastMissesDay,
+      today: today,
+    );
+    if (missesAt == null) {
+      final alreadyScheduled =
+          lastMissesDay != null && lastMissesDay!.compareTo(today) >= 0;
+      if (!alreadyScheduled) {
+        await reminders.cancel(ReminderId.moodMisses);
+      }
+    } else {
+      await reminders.schedule(
+        ScheduledReminder(
+          id: ReminderId.moodMisses,
+          when: missesAt,
+          title: S.appName,
+          body: S.missesYouBody,
+        ),
+      );
+      lastMissesDay = stampFromDate(missesAt);
+      await _persistReminderSettings();
+    }
+  }
+
+  Future<void> setMoodNudges({bool? enabled, bool? missesYou}) async {
+    var changed = false;
+    if (enabled != null && enabled != moodNudgesEnabled) {
+      moodNudgesEnabled = enabled;
+      changed = true;
+    }
+    if (missesYou != null && missesYou != missesYouEnabled) {
+      missesYouEnabled = missesYou;
+      changed = true;
+    }
+    if (!changed) return;
+    if (moodNudgesEnabled) await reminders.requestPermission();
+    await _persistReminderSettings();
+    await syncReminders();
+    notifyListeners();
   }
 
   Future<void> _loadReminderSettings() async {
@@ -754,6 +870,10 @@ class HabitStore extends ChangeNotifier {
     eveningReminderEnabled = snapshot.enabled;
     eveningReminderHour = snapshot.hour;
     eveningReminderMinute = snapshot.minute;
+    moodNudgesEnabled = snapshot.moodNudgesEnabled;
+    missesYouEnabled = snapshot.missesYouEnabled;
+    lastProudDay = snapshot.lastProudDay;
+    lastMissesDay = snapshot.lastMissesDay;
   }
 
   Future<void> _persistReminderSettings() {
@@ -762,6 +882,10 @@ class HabitStore extends ChangeNotifier {
         enabled: eveningReminderEnabled,
         hour: eveningReminderHour,
         minute: eveningReminderMinute,
+        moodNudgesEnabled: moodNudgesEnabled,
+        missesYouEnabled: missesYouEnabled,
+        lastProudDay: lastProudDay,
+        lastMissesDay: lastMissesDay,
       ),
     );
   }
@@ -855,10 +979,9 @@ class HabitStore extends ChangeNotifier {
           .increment(gameId, now())
           .pruned(now(), window: playLimitWindow);
       await gamePlays.save(plays);
-      totalPoints = await pointsRepo.award(
-        amount: award,
-        taskId: 'game:$gameId',
-      );
+      await _recordGamePlayed();
+      await _awardPoints(amount: award, taskId: 'game:$gameId');
+      await _recordAxo(AxoAction.game);
       notifyListeners();
       return award;
     }
@@ -869,23 +992,28 @@ class HabitStore extends ChangeNotifier {
         .increment(gameId, now())
         .pruned(now(), window: playLimitWindow);
     await gamePlays.save(plays);
+    await _recordGamePlayed();
     if (scoredAward > 0) {
-      totalPoints = await pointsRepo.award(
-        amount: scoredAward,
-        taskId: 'game:$gameId',
-      );
+      await _awardPoints(amount: scoredAward, taskId: 'game:$gameId');
+      await _recordAxo(AxoAction.game);
     }
     notifyListeners();
     return scoredAward;
   }
 
-  Future<void> submit(String taskId, {String? day}) {
-    return _update(
+  Future<void> submit(String taskId, {String? day}) async {
+    await ensureToday();
+    final task = _taskOn(taskId, day);
+    if (task == null || !task.isPending) return;
+    await _update(
       taskId,
-      (task) =>
-          task.isPending ? task.copyWith(status: TaskStatus.submitted) : task,
+      (task) => task.copyWith(status: TaskStatus.submitted),
       day: day,
     );
+    if (_isToday(day)) {
+      await _recordAxo(AxoAction.submit);
+      notifyListeners();
+    }
   }
 
   Future<void> unsubmit(String taskId, {String? day}) {
@@ -1065,6 +1193,124 @@ class HabitStore extends ChangeNotifier {
 
   int get streak => history.currentStreak(todayStamp(now()));
 
+  BadgeStats get badgeStats => BadgeStats(
+    tasks: history.days.values.fold(0, (sum, day) => sum + day.completed),
+    bestStreak: history.bestStreak,
+    goodThings: history.highlights.length,
+    games: achievements.gamesPlayed,
+    perfectDays: history.days.values.where((day) => day.isFull).length,
+    points: achievements.pointsEarned,
+    goals: goals.where((goal) => goal.isCompleted).length,
+    activeDays: history.activeDays,
+    timerMinutes: achievements.timerMinutes,
+    goodStreak: history.goodStreak,
+    perfectWeekends: history.perfectWeekends,
+    daysWithAxo: history.activatedOn == null
+        ? 0
+        : daysSinceStamp(history.activatedOn, todayStamp(now())) + 1,
+  );
+
+  bool isBadgeEarned(HabitBadge badge) =>
+      badgeStats.of(badge.kind) >= badge.target;
+
+  /// Next badge of [kind] the child is working towards, if any.
+  HabitBadge? nextBadge(BadgeKind kind) =>
+      nextBadgeFor(kind, badgeStats.of(kind));
+
+  String? badgeEarnedOn(String badgeId) => achievements.earnedOn(badgeId);
+
+  /// Marks every badge whose milestone is reached but that was never
+  /// announced. Returns the new badges so a caller can celebrate them.
+  Future<List<HabitBadge>> awardNewBadges() async {
+    final stats = badgeStats;
+    final stamp = todayStamp(now());
+    final earned = <HabitBadge>[];
+    var next = achievements.earned;
+    for (final badge in badgeCatalog) {
+      if (stats.of(badge.kind) < badge.target) continue;
+      if (next.containsKey(badge.id)) continue;
+      next = {...next, badge.id: stamp};
+      earned.add(badge);
+    }
+    if (earned.isEmpty) return const [];
+    achievements = achievements.copyWith(earned: next);
+    await _persistAchievements();
+    notifyListeners();
+    return earned;
+  }
+
+  /// Every "something good" note, newest first.
+  List<({String day, String note})> get goodThings => [
+    for (final entry in history.highlights.entries)
+      (day: entry.key, note: entry.value),
+  ]..sort((a, b) => b.day.compareTo(a.day));
+
+  int get daysSinceAxoActive =>
+      daysSinceStamp(axo.lastActiveDay, todayStamp(now()));
+
+  AxolotlMood get axoMood => axoMoodFor(
+    state: axo,
+    celebrating: celebrating,
+    pending: pendingCount,
+    waiting: waitingCount,
+    verified: verifiedCount,
+    daysSinceActive: daysSinceAxoActive,
+  );
+
+  Future<void> _recordGamePlayed() async {
+    achievements = achievements.copyWith(
+      gamesPlayed: achievements.gamesPlayed + 1,
+    );
+    await _persistAchievements();
+  }
+
+  /// Awards points and remembers the lifetime total for the points badges.
+  Future<void> _awardPoints({
+    required int amount,
+    required String taskId,
+  }) async {
+    totalPoints = await pointsRepo.award(amount: amount, taskId: taskId);
+    if (amount <= 0) return;
+    achievements = achievements.copyWith(
+      pointsEarned: achievements.pointsEarned + amount,
+    );
+    await _persistAchievements();
+  }
+
+  /// Focused minutes from a finished timer, for the timer badges.
+  Future<void> _recordTimerMinutes(int minutes) async {
+    if (minutes <= 0) return;
+    achievements = achievements.copyWith(
+      timerMinutes: achievements.timerMinutes + minutes,
+    );
+    await _persistAchievements();
+  }
+
+  Future<void> _recordAxo(AxoAction action, {int minutes = 0}) async {
+    final today = todayStamp(now());
+    final next = axo.apply(action, today: today, minutes: minutes);
+    if (identical(next, axo)) return;
+    axo = next;
+    await axoRepo.save(axo);
+  }
+
+  /// Called when the app moves between foreground and background. Proud
+  /// nudges are only scheduled while the child is not looking at the app.
+  Future<void> setAppForeground(bool value) async {
+    if (appInForeground == value) return;
+    appInForeground = value;
+    if (!ready) return;
+    if (value) {
+      await reminders.cancel(ReminderId.moodProud);
+      if (lastProudDay == todayStamp(now())) {
+        lastProudDay = null;
+        await _persistReminderSettings();
+      }
+    }
+    await ensureToday();
+    await syncReminders();
+  }
+
   List<HabitTask> tasksOn(String day) {
     final list = _isToday(day) ? tasks : days[day]?.tasks ?? const [];
     final date = _isToday(day) ? now() : dateFromStamp(day);
@@ -1095,6 +1341,9 @@ class HabitStore extends ChangeNotifier {
     if (identical(next, history)) return;
     history = next;
     await historyRepo.save(history);
+    if (next.highlightOn(day) != null) {
+      await _recordAxo(AxoAction.highlight);
+    }
     notifyListeners();
   }
 
@@ -1140,7 +1389,11 @@ class HabitStore extends ChangeNotifier {
       eveningReminderEnabled: eveningReminderEnabled,
       eveningReminderHour: eveningReminderHour,
       eveningReminderMinute: eveningReminderMinute,
+      moodNudgesEnabled: moodNudgesEnabled,
+      missesYouEnabled: missesYouEnabled,
+      axo: axo,
       language: language.code,
+      achievements: achievements,
       timer: TimerSnapshot(
         enabled: timerEnabled,
         musicMuted: timerMusicMuted,
@@ -1172,6 +1425,7 @@ class HabitStore extends ChangeNotifier {
     await goalRepo.save(snapshot.goals);
     await historyRepo.save(snapshot.history);
     await gamePlays.save(snapshot.plays);
+    await axoRepo.save(snapshot.axo);
     await onboardingFlags.setComplete(snapshot.onboardingComplete);
     await strikesRepo.save(
       StrikeSnapshot(
@@ -1198,12 +1452,15 @@ class HabitStore extends ChangeNotifier {
     await dayHighlightSettingsRepo.save(
       DayHighlightSettingsSnapshot(enabled: snapshot.dayHighlightEnabled),
     );
+    await achievementsRepo.save(snapshot.achievements);
     await timerRepo.save(snapshot.timer);
     await reminderSettingsRepo.save(
       ReminderSettingsSnapshot(
         enabled: snapshot.eveningReminderEnabled,
         hour: snapshot.eveningReminderHour,
         minute: snapshot.eveningReminderMinute,
+        moodNudgesEnabled: snapshot.moodNudgesEnabled,
+        missesYouEnabled: snapshot.missesYouEnabled,
       ),
     );
     final imported = AppLanguage.tryParse(snapshot.language);
@@ -1273,6 +1530,10 @@ class HabitStore extends ChangeNotifier {
     return goalRepo.save(goals);
   }
 
+  Future<void> _persistAchievements() {
+    return achievementsRepo.save(achievements);
+  }
+
   bool _isToday(String? day) {
     return day == null || day == todayStamp(now());
   }
@@ -1309,14 +1570,22 @@ class HabitStore extends ChangeNotifier {
     if (task == null || !task.isSubmitted) return 0;
 
     final wasComplete = _mandatoryComplete(day);
-    totalPoints = await pointsRepo.award(amount: task.points, taskId: task.id);
+    await _awardPoints(amount: task.points, taskId: task.id);
     celebrating = _isToday(day);
     await _update(
       taskId,
       (item) => item.copyWith(status: TaskStatus.verified),
       day: day,
     );
-    return _maybeAwardCompletionBonus(day: day, wasComplete: wasComplete);
+    final bonus = await _maybeAwardCompletionBonus(
+      day: day,
+      wasComplete: wasComplete,
+    );
+    if (_isToday(day)) {
+      await _recordAxo(AxoAction.verify);
+      if (_mandatoryComplete(day)) await _recordAxo(AxoAction.allDone);
+    }
+    return bonus;
   }
 
   Future<int> _maybeAwardCompletionBonus({
@@ -1326,7 +1595,9 @@ class HabitStore extends ChangeNotifier {
     if (wasComplete || !_mandatoryComplete(day)) return 0;
     final stamp = day ?? todayStamp(now());
     if (history.bonusOn(stamp)) return 0;
-    pendingHighlightDay = stamp;
+    // Only ask when there is nothing written yet: the child may have added a
+    // good thing from the home screen before finishing the last task.
+    pendingHighlightDay = history.highlightOn(stamp) == null ? stamp : null;
 
     final base = completionBonusEnabled && completionBonusPoints > 0
         ? completionBonusPoints
@@ -1335,16 +1606,10 @@ class HabitStore extends ChangeNotifier {
     if (base == 0 && streakPoints == 0) return 0;
 
     if (base > 0) {
-      totalPoints = await pointsRepo.award(
-        amount: base,
-        taskId: 'bonus:$stamp',
-      );
+      await _awardPoints(amount: base, taskId: 'bonus:$stamp');
     }
     if (streakPoints > 0) {
-      totalPoints = await pointsRepo.award(
-        amount: streakPoints,
-        taskId: 'streak:$stamp',
-      );
+      await _awardPoints(amount: streakPoints, taskId: 'streak:$stamp');
     }
     history = history.withBonusDay(stamp);
     await historyRepo.save(history);

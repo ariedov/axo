@@ -57,7 +57,11 @@ class TaskGlyph extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Icon(TaskIcons.of(icon), size: size, color: color ?? AppColors.pinkDark);
+    return Icon(
+      TaskIcons.of(icon),
+      size: size,
+      color: color ?? AppColors.pinkDark,
+    );
   }
 }
 

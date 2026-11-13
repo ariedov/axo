@@ -3,16 +3,19 @@ import 'package:flutter/material.dart';
 import '../data/game_catalog.dart';
 import '../data/models.dart';
 import '../screens/bonus_points_screen.dart';
+import '../screens/badges_screen.dart';
 import '../screens/games_screen.dart';
 import '../screens/parent_settings_screen.dart';
 import '../state/habit_scope.dart';
 import '../strings.dart';
 import '../theme.dart';
 import '../widgets/axolotl_mascot.dart';
+import '../widgets/badge_shelf.dart';
 import '../widgets/completion_bonus_dialog.dart';
 import '../widgets/game_card.dart';
 import '../widgets/game_plays_banner.dart';
 import '../widgets/goal_tile.dart';
+import '../widgets/good_things_card.dart';
 import '../widgets/parent_gate.dart';
 import '../widgets/parent_goals_sheet.dart';
 import '../widgets/points_hero.dart';
@@ -49,15 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final store = HabitScope.of(context);
-    final mood =
-        store.celebrating ||
-            (store.pendingCount == 0 &&
-                store.waitingCount == 0 &&
-                store.verifiedCount > 0)
-        ? AxolotlMood.celebrate
-        : store.waitingCount > 0
-        ? AxolotlMood.cheer
-        : AxolotlMood.happy;
+    final mood = store.axoMood;
 
     return Scaffold(
       floatingActionButton: store.timerEnabled && store.activeTimer == null
@@ -106,8 +101,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             remaining: store.pendingCount,
                             waiting: store.waitingCount,
                             verified: store.verifiedCount,
+                            mood: mood,
+                            streak: store.streak,
                           ),
                         ),
+                        const GoodThingsCard(),
                         const SizedBox(height: 8),
                       ],
                     ),
@@ -151,6 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     },
                   ),
+                  const SliverToBoxAdapter(child: GoodThingButton()),
                   if (store.waitingCount > 0)
                     const SliverToBoxAdapter(child: _ApproveCompleted()),
                   if (store.pendingCount == 0 && store.waitingCount == 0)
@@ -231,6 +230,23 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 20),
+                      child: _SectionTitle(
+                        title: S.badges,
+                        onMore: () => Navigator.push<void>(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (_) => const BadgesScreen(),
+                          ),
+                        ),
+                        moreTooltip: S.allBadges,
+                        moreKey: const Key('all-badges'),
+                      ),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: BadgeShelf()),
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.only(top: 20),

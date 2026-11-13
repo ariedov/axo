@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import '../config.dart';
+import 'achievements.dart';
+import 'axo_state.dart';
 import 'day_history_repository.dart';
 import 'game_plays.dart';
 import 'models.dart';
@@ -32,8 +34,12 @@ class BackupSnapshot {
     this.eveningReminderEnabled = AppConfig.defaultEveningReminderEnabled,
     this.eveningReminderHour = AppConfig.defaultEveningReminderHour,
     this.eveningReminderMinute = AppConfig.defaultEveningReminderMinute,
+    this.moodNudgesEnabled = AppConfig.defaultMoodNudgesEnabled,
+    this.missesYouEnabled = AppConfig.defaultMissesYouEnabled,
+    this.axo = const AxoState(),
     this.language,
     this.timer = const TimerSnapshot(),
+    this.achievements = const Achievements(),
   });
 
   static const appId = 'axo';
@@ -61,10 +67,14 @@ class BackupSnapshot {
   final bool eveningReminderEnabled;
   final int eveningReminderHour;
   final int eveningReminderMinute;
+  final bool moodNudgesEnabled;
+  final bool missesYouEnabled;
+  final AxoState axo;
 
   /// `uk` or `en`. Null on backups from before the language setting.
   final String? language;
   final TimerSnapshot timer;
+  final Achievements achievements;
 
   String get fileName => 'axo-${todayStamp(exportedAt)}.json';
 
@@ -99,8 +109,12 @@ class BackupSnapshot {
       'eveningReminderEnabled': eveningReminderEnabled,
       'eveningReminderHour': eveningReminderHour,
       'eveningReminderMinute': eveningReminderMinute,
+      'moodNudgesEnabled': moodNudgesEnabled,
+      'missesYouEnabled': missesYouEnabled,
+      'axo': axo.toJson(),
       if (language != null) 'language': language,
       'timer': timer.toJson(),
+      'achievements': achievements.toJson(),
     },
   };
 
@@ -173,10 +187,22 @@ class BackupSnapshot {
       eveningReminderMinute:
           (data['eveningReminderMinute'] as num?)?.toInt() ??
           AppConfig.defaultEveningReminderMinute,
+      moodNudgesEnabled:
+          data['moodNudgesEnabled'] as bool? ??
+          AppConfig.defaultMoodNudgesEnabled,
+      missesYouEnabled:
+          data['missesYouEnabled'] as bool? ??
+          AppConfig.defaultMissesYouEnabled,
+      axo: data['axo'] is Map<String, dynamic>
+          ? AxoState.fromJson(data['axo'] as Map<String, dynamic>)
+          : const AxoState(),
       language: data['language'] as String?,
       timer: data['timer'] is Map<String, dynamic>
           ? TimerSnapshot.fromJson(data['timer'] as Map<String, dynamic>)
           : const TimerSnapshot(),
+      achievements: data['achievements'] is Map<String, dynamic>
+          ? Achievements.fromJson(data['achievements'] as Map<String, dynamic>)
+          : const Achievements(),
     );
   }
 }

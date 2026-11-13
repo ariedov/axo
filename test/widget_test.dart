@@ -4,7 +4,10 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:app/config.dart';
+import 'package:app/data/achievements.dart';
 import 'package:app/data/app_language.dart';
+import 'package:app/data/axo_state.dart';
+import 'package:app/data/badges.dart';
 import 'package:app/data/language_repository.dart';
 import 'package:app/data/answer.dart';
 import 'package:app/data/backup.dart';
@@ -42,6 +45,7 @@ import 'package:app/state/habit_scope.dart';
 import 'package:app/state/habit_store.dart';
 import 'package:app/strings.dart';
 import 'package:app/theme.dart';
+import 'package:app/widgets/badge_medallion.dart';
 import 'package:app/widgets/answer_flash.dart';
 import 'package:app/widgets/completion_bonus_dialog.dart';
 import 'package:app/widgets/day_highlight_dialog.dart';
@@ -75,6 +79,7 @@ HabitStore testStore({
   int streakBonusMaxPoints = AppConfig.defaultStreakBonusMaxPoints,
   bool dayHighlightEnabled = AppConfig.defaultDayHighlightEnabled,
   GameRecentsRepository? gameRecents,
+  AchievementsRepository? achievementsRepo,
   OnboardingFlags? onboardingFlags,
   DayHistory? history,
   TimerRepository? timerRepo,
@@ -84,6 +89,7 @@ HabitStore testStore({
   TimerSession? activeTimer,
   ReminderSettingsRepository? reminderSettingsRepo,
   ReminderScheduler? reminders,
+  AxoRepository? axoRepo,
   bool eveningReminderEnabled = AppConfig.defaultEveningReminderEnabled,
   int eveningReminderHour = AppConfig.defaultEveningReminderHour,
   int eveningReminderMinute = AppConfig.defaultEveningReminderMinute,
@@ -101,6 +107,7 @@ HabitStore testStore({
     parentAuth: InMemoryParentAuth(password),
     gamePlays: InMemoryGamePlaysRepository(),
     gameRecents: gameRecents,
+    achievementsRepo: achievementsRepo,
     onboardingFlags: onboardingFlags,
     goalRepo: InMemoryGoalRepository([...goals]),
     historyRepo: InMemoryDayHistoryRepository(history ?? const DayHistory()),
@@ -111,6 +118,7 @@ HabitStore testStore({
         penaltyPoints: penaltyPoints,
       ),
     ),
+    axoRepo: axoRepo,
     gameLimitRepo: InMemoryGameLimitRepository(
       GameLimitSnapshot(
         enabled: gameLimitEnabled,
@@ -2602,7 +2610,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const Key('all-games')),
       300,
-      scrollable: find.byType(Scrollable),
+      scrollable: find.byType(Scrollable).first,
     );
 
     expect(find.text(S.timesTables), findsOneWidget);
@@ -2633,7 +2641,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const Key('all-games')),
       300,
-      scrollable: find.byType(Scrollable),
+      scrollable: find.byType(Scrollable).first,
     );
 
     expect(find.text(S.english), findsOneWidget);
@@ -2702,7 +2710,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const Key('all-games')),
       300,
-      scrollable: find.byType(Scrollable),
+      scrollable: find.byType(Scrollable).first,
     );
 
     expect(find.text(S.memory), findsOneWidget);
@@ -3636,7 +3644,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const Key('add-today-task')),
       300,
-      scrollable: find.byType(Scrollable),
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.tap(find.byKey(const Key('add-today-task')));
     await tester.pump();
@@ -3953,7 +3961,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text(S.monthTitle(now.year, now.month)),
       300,
-      scrollable: find.byType(Scrollable),
+      scrollable: find.byType(Scrollable).first,
     );
 
     expect(find.text(S.monthTitle(now.year, now.month)), findsOneWidget);
@@ -4014,7 +4022,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const Key('cal-2026-08-26')),
       300,
-      scrollable: find.byType(Scrollable),
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.ensureVisible(find.byKey(const Key('cal-2026-08-26')));
     await tester.pump();
@@ -4089,7 +4097,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const Key('cal-2026-08-26')),
       300,
-      scrollable: find.byType(Scrollable),
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.ensureVisible(find.byKey(const Key('cal-2026-08-26')));
     await tester.pump();
@@ -4160,7 +4168,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const Key('cal-2026-08-26')),
       300,
-      scrollable: find.byType(Scrollable),
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.ensureVisible(find.byKey(const Key('cal-2026-08-26')));
     await tester.pump();
@@ -4379,7 +4387,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('Множення'),
       300,
-      scrollable: find.byType(Scrollable),
+      scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Множення'), findsOneWidget);
     expect(find.text('Правопис'), findsOneWidget);
@@ -4402,6 +4410,11 @@ void main() {
       ],
     );
     await store.load();
+
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(AxolotlApp(store: store));
     await tester.pump();
@@ -4445,6 +4458,45 @@ void main() {
     await tester.pump();
   });
 
+  testWidgets('no good-thing prompt when today already has a note', (
+    tester,
+  ) async {
+    final store = testStore(
+      tasks: const [
+        HabitTask(
+          id: 'bed',
+          title: 'Застелити ліжко',
+          points: 10,
+          icon: 'bed',
+          status: TaskStatus.submitted,
+        ),
+      ],
+      history: DayHistory(highlights: {todayStamp(): 'Already written'}),
+    );
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+
+    await tester.tap(find.text(S.verify));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), '4826');
+    await tester.tap(find.text(S.verify).last);
+    await tester.pump();
+    await tester.tap(find.text(S.awardPoints));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(const Key('day-highlight-dialog')), findsNothing);
+    expect(find.text(S.dayHighlightToday), findsNothing);
+    expect(find.byKey(const Key('completion-bonus-dialog')), findsOneWidget);
+    expect(store.highlightOn(todayStamp()), 'Already written');
+  });
+
   testWidgets('all-done highlight asks even when no bonus is awarded', (
     tester,
   ) async {
@@ -4462,6 +4514,11 @@ void main() {
       ],
     );
     await store.load();
+
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(AxolotlApp(store: store));
     await tester.pump();
@@ -4539,6 +4596,11 @@ void main() {
       ],
     );
     await store.load();
+
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(AxolotlApp(store: store));
     await tester.pump();
@@ -4804,7 +4866,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const Key('add-strike')),
       300,
-      scrollable: find.byType(Scrollable),
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.ensureVisible(find.byKey(const Key('add-strike')));
     await tester.pump();
@@ -4838,7 +4900,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const Key('add-strike')),
       300,
-      scrollable: find.byType(Scrollable),
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.ensureVisible(find.byKey(const Key('add-strike')));
     await tester.pump();
@@ -5270,7 +5332,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('Додаткові завдання'),
       300,
-      scrollable: find.byType(Scrollable),
+      scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Додаткові завдання'), findsOneWidget);
     expect(find.text('Допомогти вдома'), findsOneWidget);
@@ -5297,7 +5359,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text(S.optionalTasksHint),
       300,
-      scrollable: find.byType(Scrollable),
+      scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Додаткові завдання'), findsOneWidget);
     expect(find.text(S.optionalTasksHint), findsOneWidget);
@@ -5323,7 +5385,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const Key('add-today-task')),
       300,
-      scrollable: find.byType(Scrollable),
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.tap(find.byKey(const Key('add-today-task')));
     await tester.pump();
@@ -5381,7 +5443,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const Key('add-today-task')),
       300,
-      scrollable: find.byType(Scrollable),
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.tap(find.byKey(const Key('add-today-task')));
     await tester.pump();
@@ -6290,5 +6352,428 @@ void main() {
     await tester.tap(find.byKey(const Key('import-result-ok')));
     await tester.pumpAndSettle();
     expect(find.text(S.importErrorTitle), findsNothing);
+  });
+
+  test('axo wakes up, warms to tasks, and celebrates a full day', () async {
+    const tasks = [
+      HabitTask(id: 't1', title: 'Brush teeth', points: 5, icon: 'star'),
+      HabitTask(id: 't2', title: 'Read', points: 5, icon: 'book'),
+    ];
+    final store = testStore(tasks: tasks);
+    await store.load();
+
+    expect(store.axoMood, AxolotlMood.sleepy);
+    await store.submit('t1');
+    expect(store.axoMood, AxolotlMood.encouraging);
+    expect(store.axo.energy, greaterThan(AppConfig.axoMorningEnergy));
+
+    await store.verify('t1');
+    expect(store.axoMood, AxolotlMood.encouraging);
+
+    await store.submit('t2');
+    await store.verify('t2');
+    expect(store.axoMood, AxolotlMood.celebrate);
+    expect(store.axo.tally.allDone, isTrue);
+    expect(store.axo.bond, greaterThan(20));
+  });
+
+  test('axo misses the child after two quiet days', () async {
+    final now = DateTime.now();
+    final twoDaysAgo = stampFromDate(
+      DateTime(now.year, now.month, now.day - 2),
+    );
+    final store = testStore(
+      tasks: const [
+        HabitTask(id: 't1', title: 'Brush teeth', points: 5, icon: 'star'),
+      ],
+      axoRepo: InMemoryAxoRepository(AxoState(lastActiveDay: twoDaysAgo)),
+    );
+    await store.load();
+
+    expect(store.axoMood, AxolotlMood.misses);
+  });
+
+  test(
+    'proud nudge is scheduled only while the app is in background',
+    () async {
+      final reminders = InMemoryReminderScheduler();
+      final store = testStore(
+        tasks: const [
+          HabitTask(id: 't1', title: 'Brush teeth', points: 5, icon: 'star'),
+        ],
+        reminders: reminders,
+      );
+      await store.load();
+      await store.submit('t1');
+      await store.verify('t1');
+      await store.setAppForeground(false);
+
+      expect(reminders.scheduled.containsKey(ReminderId.moodProud), isTrue);
+
+      await store.setAppForeground(true);
+      expect(reminders.scheduled.containsKey(ReminderId.moodProud), isFalse);
+    },
+  );
+
+  test('misses nudge is scheduled after two quiet days', () async {
+    final now = DateTime.now();
+    final twoDaysAgo = stampFromDate(
+      DateTime(now.year, now.month, now.day - 2),
+    );
+    final reminders = InMemoryReminderScheduler();
+    final store = testStore(
+      tasks: const [
+        HabitTask(id: 't1', title: 'Brush teeth', points: 5, icon: 'star'),
+      ],
+      reminders: reminders,
+      axoRepo: InMemoryAxoRepository(AxoState(lastActiveDay: twoDaysAgo)),
+    );
+    await store.load();
+
+    expect(reminders.scheduled.containsKey(ReminderId.moodMisses), isTrue);
+  });
+
+  test('axo state rides along in the backup', () async {
+    final store = testStore(
+      tasks: const [
+        HabitTask(id: 't1', title: 'Brush teeth', points: 5, icon: 'star'),
+      ],
+    );
+    await store.load();
+    await store.submit('t1');
+
+    final json = store.exportBackup().toJson();
+    expect(json['data']['axo'], isA<Map<String, dynamic>>());
+    final restored = BackupSnapshot.fromJson(json);
+    expect(restored.axo.bond, store.axo.bond);
+  });
+
+  test('best streak remembers the longest run of full days', () {
+    const history = DayHistory(
+      days: {
+        '2026-08-01': DayProgress(day: '2026-08-01', completed: 1, total: 1),
+        '2026-08-02': DayProgress(day: '2026-08-02', completed: 2, total: 2),
+        '2026-08-03': DayProgress(day: '2026-08-03', completed: 1, total: 1),
+        '2026-08-05': DayProgress(day: '2026-08-05', completed: 1, total: 1),
+        '2026-08-06': DayProgress(day: '2026-08-06', completed: 0, total: 2),
+      },
+    );
+
+    expect(history.bestStreak, 3);
+    expect(history.currentStreak('2026-08-05'), 1);
+  });
+
+  test('games played are counted for badges and survive a reload', () async {
+    final repo = InMemoryAchievementsRepository();
+    final store = testStore(achievementsRepo: repo);
+    await store.load();
+    await store.tryAwardGamePlay('memory');
+    await store.tryAwardGamePlay('memory');
+
+    expect(store.badgeStats.games, 2);
+
+    final reloaded = testStore(achievementsRepo: repo);
+    await reloaded.load();
+    expect(reloaded.badgeStats.games, 2);
+  });
+
+  test('badge kinds are ordered by tiers, then by progress', () {
+    const stats = BadgeStats(tasks: 120, bestStreak: 3);
+    final kinds = badgeKindsByAchievement(stats);
+
+    expect(kinds.length, BadgeKind.values.length);
+    expect(kinds.first, BadgeKind.tasks);
+    expect(kinds[1], BadgeKind.streak);
+    expect(kinds.toSet().length, BadgeKind.values.length);
+  });
+
+  test('good streak, active days and perfect weekends come from history', () {
+    const history = DayHistory(
+      days: {
+        '2026-08-01': DayProgress(day: '2026-08-01', completed: 1, total: 1),
+        '2026-08-02': DayProgress(day: '2026-08-02', completed: 1, total: 1),
+        '2026-08-08': DayProgress(day: '2026-08-08', completed: 1, total: 1),
+        '2026-08-09': DayProgress(day: '2026-08-09', completed: 1, total: 1),
+        '2026-08-10': DayProgress(day: '2026-08-10', completed: 0, total: 2),
+      },
+      highlights: {'2026-08-03': 'a', '2026-08-04': 'b', '2026-08-06': 'c'},
+    );
+
+    expect(history.goodStreak, 2);
+    expect(history.perfectWeekends, 2);
+    expect(history.activeDays, 4);
+  });
+
+  test('points and timer minutes feed the badge counters', () async {
+    final repo = InMemoryAchievementsRepository();
+    final store = testStore(achievementsRepo: repo);
+    await store.load();
+
+    await store.tryAwardGamePlay('memory');
+
+    expect(store.badgeStats.games, 1);
+    expect(store.badgeStats.points, AppConfig.gamePlayPoints);
+  });
+
+  test('badges are announced once', () async {
+    final repo = InMemoryAchievementsRepository();
+    final store = testStore(
+      achievementsRepo: repo,
+      history: const DayHistory(
+        days: {
+          '2026-08-25': DayProgress(day: '2026-08-25', completed: 5, total: 5),
+          '2026-08-26': DayProgress(day: '2026-08-26', completed: 5, total: 5),
+        },
+      ),
+    );
+    await store.load();
+
+    expect(store.badgeStats.tasks, 10);
+    expect(store.isBadgeEarned(badgesOf(BadgeKind.tasks).first), isTrue);
+
+    final first = await store.awardNewBadges();
+    expect(first.map((badge) => badge.id), contains('tasks:10'));
+    expect(store.badgeEarnedOn('tasks:10'), todayStamp());
+
+    final second = await store.awardNewBadges();
+    expect(second, isEmpty);
+    expect(repo.achievements.earnedOn('tasks:10'), todayStamp());
+  });
+
+  testWidgets('a good thing can be written before the tasks are done', (
+    tester,
+  ) async {
+    final store = testStore(
+      tasks: const [
+        HabitTask(id: 'bed', title: 'Застелити ліжко', points: 10, icon: 'bed'),
+      ],
+    );
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+
+    expect(store.pendingCount, 1);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('good-thing-button')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('good-thing-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byKey(const Key('day-highlight-dialog')), findsOneWidget);
+    expect(find.text(S.dayHighlightToday), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const Key('day-highlight-field')),
+      'Побачив веселку',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('day-highlight-save')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(store.highlightOn(todayStamp()), 'Побачив веселку');
+    expect(find.byKey(const Key('badge-award-dialog')), findsOneWidget);
+    expect(find.byKey(const Key('awarded-goodThings:1')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('badge-award-ok')));
+    await tester.pump();
+
+    expect(store.badgeEarnedOn('goodThings:1'), todayStamp());
+    expect(find.byKey(const Key('badge-award-dialog')), findsNothing);
+  });
+
+  testWidgets('saving the good thing again edits the note', (tester) async {
+    final store = testStore(
+      history: const DayHistory(highlights: {'2026-08-27': 'Старий запис'}),
+      now: () => DateTime(2026, 8, 27),
+    );
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('good-thing-button')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('good-thing-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.controller?.text, 'Старий запис');
+    expect(find.text(S.cancel), findsOneWidget);
+  });
+
+  testWidgets('good things log lists notes newest first', (tester) async {
+    final store = testStore(
+      history: const DayHistory(
+        activatedOn: '2026-08-20',
+        highlights: {
+          '2026-08-25': 'Стара радість',
+          '2026-08-26': 'Нова радість',
+        },
+      ),
+      now: () => DateTime(2026, 8, 27),
+    );
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('good-things-card')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('good-things-card')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('good-thing-2026-08-26')),
+        matching: find.text('Нова радість'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('good-thing-2026-08-25')),
+        matching: find.text('Стара радість'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester.getTopLeft(find.byKey(const Key('good-thing-2026-08-26'))).dy,
+      lessThan(
+        tester.getTopLeft(find.byKey(const Key('good-thing-2026-08-25'))).dy,
+      ),
+    );
+    expect(find.byKey(const Key('good-things-add')), findsOneWidget);
+  });
+
+  testWidgets('badge row shows every category, most achieved first', (
+    tester,
+  ) async {
+    final store = testStore(
+      history: const DayHistory(
+        activatedOn: '2026-08-20',
+        days: {
+          '2026-08-25': DayProgress(day: '2026-08-25', completed: 5, total: 5),
+          '2026-08-26': DayProgress(day: '2026-08-26', completed: 5, total: 5),
+        },
+      ),
+      now: () => DateTime(2026, 8, 27),
+    );
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('badge-row')),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump();
+
+    const tasksKey = Key('badge-tasks:10');
+    const streakKey = Key('badge-streak:5');
+
+    expect(find.byKey(tasksKey), findsOneWidget);
+    expect(find.byKey(streakKey), findsOneWidget);
+    expect(find.byKey(const Key('badge-goodThings:1')), findsOneWidget);
+    expect(find.byKey(const Key('badge-games:10')), findsOneWidget);
+    expect(find.byKey(const Key('badge-perfectDays:10')), findsOneWidget);
+    expect(find.byKey(const Key('badge-points:100')), findsOneWidget);
+    expect(find.byKey(const Key('badge-goals:1')), findsOneWidget);
+    expect(find.byKey(const Key('badge-activeDays:10')), findsOneWidget);
+    expect(find.byKey(const Key('badge-timerMinutes:30')), findsOneWidget);
+    expect(find.byKey(const Key('badge-goodStreak:3')), findsOneWidget);
+    expect(find.byKey(const Key('badge-perfectWeekends:1')), findsOneWidget);
+    expect(find.byKey(const Key('badge-daysWithAxo:7')), findsOneWidget);
+
+    expect(tester.widget<BadgeMedallion>(find.byKey(tasksKey)).earned, isTrue);
+    expect(
+      tester.widget<BadgeMedallion>(find.byKey(streakKey)).earned,
+      isFalse,
+    );
+
+    // Ten tasks already earn tier 1, so tasks lead the row.
+    expect(
+      tester.getCenter(find.byKey(tasksKey)).dx,
+      lessThan(tester.getCenter(find.byKey(streakKey)).dx),
+    );
+
+    await tester.tap(find.byKey(tasksKey));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byKey(const Key('badge-dialog-tasks:10')), findsOneWidget);
+    expect(find.text(S.badgeTierName(1)), findsOneWidget);
+    expect(find.text(S.badgeRequirement(BadgeKind.tasks, 10)), findsOneWidget);
+  });
+
+  testWidgets('all badges screen lists every category and tier', (
+    tester,
+  ) async {
+    final store = testStore(
+      history: const DayHistory(
+        activatedOn: '2026-08-20',
+        highlights: {'2026-08-26': 'Веселка'},
+      ),
+      now: () => DateTime(2026, 8, 27),
+    );
+    await store.load();
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(AxolotlApp(store: store));
+    await tester.pump();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('all-badges')),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('all-badges')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.byKey(const Key('badge-kind-goodThings')), findsOneWidget);
+    expect(find.byKey(const Key('badge-all-goodThings:250')), findsOneWidget);
+    expect(find.byKey(const Key('badge-all-tasks:10000')), findsOneWidget);
+    expect(
+      tester
+          .widget<BadgeMedallion>(
+            find.byKey(const Key('badge-all-goodThings:1')),
+          )
+          .earned,
+      isTrue,
+    );
   });
 }

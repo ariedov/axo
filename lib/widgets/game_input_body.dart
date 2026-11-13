@@ -24,10 +24,7 @@ class GameInputBody extends StatelessWidget {
           ...prompt,
           const SizedBox(height: 12),
           field,
-          Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: action,
-          ),
+          Padding(padding: const EdgeInsets.only(top: 12), child: action),
         ],
       ),
     );

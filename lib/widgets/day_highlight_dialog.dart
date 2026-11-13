@@ -2,26 +2,49 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../config.dart';
+import '../data/today.dart';
+import '../state/habit_scope.dart';
 import '../strings.dart';
 import 'axolotl_mascot.dart';
+import 'badge_award_dialog.dart';
 import 'labeled_field.dart';
 
 /// Asks what good thing happened. Returns the trimmed note, or null if skipped.
 Future<String?> showDayHighlightDialog(
   BuildContext context, {
   required bool today,
+  String? initialNote,
 }) {
   return showDialog<String>(
     context: context,
     barrierDismissible: false,
-    builder: (context) => _DayHighlightDialog(today: today),
+    builder: (context) =>
+        _DayHighlightDialog(today: today, initialNote: initialNote),
   );
 }
 
+/// Writes (or edits) today's good thing and celebrates any badge it earned.
+Future<void> recordGoodThing(BuildContext context) async {
+  final store = HabitScope.of(context);
+  final day = todayStamp(store.now());
+  final note = await showDayHighlightDialog(
+    context,
+    today: true,
+    initialNote: store.highlightOn(day),
+  );
+  if (note == null || !context.mounted) return;
+  await store.saveDayHighlight(day, note);
+  if (!context.mounted) return;
+  final awards = await store.awardNewBadges();
+  if (awards.isEmpty || !context.mounted) return;
+  await showBadgeAwardDialog(context, awards);
+}
+
 class _DayHighlightDialog extends StatefulWidget {
-  const _DayHighlightDialog({required this.today});
+  const _DayHighlightDialog({required this.today, this.initialNote});
 
   final bool today;
+  final String? initialNote;
 
   @override
   State<_DayHighlightDialog> createState() => _DayHighlightDialogState();
@@ -29,6 +52,16 @@ class _DayHighlightDialog extends StatefulWidget {
 
 class _DayHighlightDialogState extends State<_DayHighlightDialog> {
   final _note = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initialNote;
+    if (initial != null && initial.isNotEmpty) {
+      _note.text = initial;
+      _note.selection = TextSelection.collapsed(offset: initial.length);
+    }
+  }
 
   @override
   void dispose() {
@@ -88,7 +121,12 @@ class _DayHighlightDialogState extends State<_DayHighlightDialog> {
                     onPressed: () => Navigator.pop(context),
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
-                      child: Text(S.dayHighlightSkip, maxLines: 1),
+                      child: Text(
+                        widget.initialNote == null
+                            ? S.dayHighlightSkip
+                            : S.cancel,
+                        maxLines: 1,
+                      ),
                     ),
                   ),
                 ),
